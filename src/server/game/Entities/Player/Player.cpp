@@ -19619,13 +19619,10 @@ void Player::RewardQuest(Quest const* p_Quest, uint32 p_Reward, Object* p_QuestG
     m_RewardedQuests.insert(l_QuestId);
     m_RewardedQuestsSave[l_QuestId] = true;
 
-    PhaseUpdateData phaseUdateData;
-    phaseUdateData.AddQuestUpdate(l_QuestId);
-    phaseMgr.NotifyConditionChanged(phaseUdateData);
-
     // Must come after the insert in m_RewardedQuests because of spell_area check
     RemoveActiveQuest(l_QuestId);
 
+    PhaseUpdateData phaseUdateData;
     phaseUdateData.AddQuestUpdate(l_QuestId);
 
     phaseMgr.NotifyConditionChanged(phaseUdateData);
