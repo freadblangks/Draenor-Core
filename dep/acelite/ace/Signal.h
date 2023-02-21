@@ -4,9 +4,7 @@
 /**
  *  @file    Signal.h
  *
- *  $Id: Signal.h 80826 2008-03-04 14:51:23Z wotte $
- *
- *  @author Douglas C. Schmidt <schmidt@cs.wustl.edu>
+ *  @author Douglas C. Schmidt <d.schmidt@vanderbilt.edu>
  */
 //=============================================================================
 
@@ -14,7 +12,7 @@
 #define ACE_SIGNAL_H
 #include /**/ "ace/pre.h"
 
-#include "ace/config-lite.h"
+#include /**/ "ace/config-lite.h"
 
 #if defined (ACE_DONT_INCLUDE_ACE_SIGNAL_H)
 # error ace/Signal.h was #included instead of signal.h by ace/OS_NS_signal.h:  fix!!!!
@@ -28,7 +26,7 @@
 
 #include "ace/OS_NS_signal.h"
 
-// Type of the extended signal handler.
+/// Type of the extended signal handler.
 typedef void (*ACE_Sig_Handler_Ex) (int, siginfo_t *siginfo, ucontext_t *ucontext);
 
 ACE_BEGIN_VERSIONED_NAMESPACE_DECL
@@ -45,7 +43,6 @@ ACE_BEGIN_VERSIONED_NAMESPACE_DECL
 class ACE_Export ACE_Sig_Set
 {
 public:
-  // = Initialization and termination methods.
   /// Initialize <sigset_> with @a sigset.  If @a sigset == 0 then fill
   /// the set.
   ACE_Sig_Set (sigset_t *sigset);
@@ -58,13 +55,13 @@ public:
   /// full.
   ACE_Sig_Set (int fill = 0);
 
-  ~ACE_Sig_Set (void);
+  ~ACE_Sig_Set ();
 
   /// Create a set that excludes all signals defined by the system.
-  int empty_set (void);
+  int empty_set ();
 
   /// Create a set that includes all signals defined by the system.
-  int fill_set (void);
+  int fill_set ();
 
   /// Adds the individual signal specified by @a signo to the set.
   int sig_add (int signo);
@@ -79,10 +76,10 @@ public:
   operator sigset_t *();
 
   /// Returns a copy of the underlying @c sigset_t.
-  sigset_t sigset (void) const;
+  sigset_t sigset () const;
 
   /// Dump the state of an object.
-  void dump (void) const;
+  void dump () const;
 
   /// Declare the dynamic allocation hooks.
   ACE_ALLOC_HOOK_DECLARE;
@@ -100,9 +97,8 @@ private:
 class ACE_Export ACE_Sig_Action
 {
 public:
-  // = Initialization methods.
   /// Default constructor.  Initializes everything to 0.
-  ACE_Sig_Action (void);
+  ACE_Sig_Action ();
 
   /// Assigns the various fields of a @c sigaction struct but doesn't
   /// register for signal handling via the @c sigaction function.
@@ -136,18 +132,6 @@ public:
                   const ACE_Sig_Set &sigmask,
                   int flags = 0);
 
-
-  // @@ The next two methods have a parameter as "signalss". Please do
-  // not change the argument name as "signals". This causes the
-  // following problem as reported by
-  // <James.Briggs@dsto.defence.gov.au>.
-
-  // In the file Signal.h two of the functions have and argument name
-  // of signals. signals is a Qt macro (to do with their meta object
-  // stuff.
-  // We could as well have it as "signal", but I am nost sure whether
-  // that would cause a problem with something else - Bala <bala@cs>
-
   /**
    * Assigns the various fields of a @c sigaction struct and registers
    * the @a handler to process all @a signalss via the @c sigaction
@@ -168,11 +152,13 @@ public:
                   sigset_t *sigmask = 0,
                   int flags = 0);
 
-  /// Copy constructor.
-  ACE_Sig_Action (const ACE_Sig_Action &s);
+  ACE_Sig_Action (const ACE_Sig_Action&) = default;
+  ACE_Sig_Action (ACE_Sig_Action&&) = default;
+  ACE_Sig_Action& operator = (ACE_Sig_Action const &) = default;
+  ACE_Sig_Action &operator = (ACE_Sig_Action&&)  = default;
 
   /// Default dtor.
-  ~ACE_Sig_Action (void);
+  ~ACE_Sig_Action ();
 
   // = Signal action management.
   /// Register @c this as the current disposition and store old
@@ -192,30 +178,30 @@ public:
   void set (struct sigaction *);
 
   /// Get current signal action.
-  struct sigaction *get (void);
+  struct sigaction *get ();
   operator struct sigaction *();
 
   /// Set current signal flags.
   void flags (int);
 
   /// Get current signal flags.
-  int flags (void);
+  int flags ();
 
   /// Set current signal mask.
   void mask (sigset_t *);
   void mask (ACE_Sig_Set &);
 
   /// Get current signal mask.
-  sigset_t *mask (void);
+  sigset_t *mask ();
 
   /// Set current signal handler (pointer to function).
   void handler (ACE_SignalHandler);
 
   /// Get current signal handler (pointer to function).
-  ACE_SignalHandler handler (void);
+  ACE_SignalHandler handler ();
 
   /// Dump the state of an object.
-  void dump (void) const;
+  void dump () const;
 
   /// Declare the dynamic allocation hooks.
   ACE_ALLOC_HOOK_DECLARE;
@@ -234,17 +220,16 @@ private:
 class ACE_Export ACE_Sig_Guard
 {
 public:
-  // = Initialization and termination methods.
   /// This is kind of conditional Guard, needed when guard should be
-  /// activated only when a spcific condition met. When condition ==
+  /// activated only when a specific condition met. When condition ==
   /// true (default), Guard is activated
   ACE_Sig_Guard (ACE_Sig_Set *mask = 0, bool condition = true);
 
   /// Restore blocked signals.
-  ~ACE_Sig_Guard (void);
+  ~ACE_Sig_Guard ();
 
   /// Dump the state of an object.
-  void dump (void) const;
+  void dump () const;
 
   /// Declare the dynamic allocation hooks.
   ACE_ALLOC_HOOK_DECLARE;

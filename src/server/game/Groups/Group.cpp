@@ -70,10 +70,10 @@ Group::~Group()
 {
     if (m_bgGroup)
     {
-        sLog->outDebug(LOG_FILTER_BATTLEGROUND, "Group::~Group: battleground group being deleted.");
+        TC_LOG_DEBUG("bg.battleground", "Group::~Group: battleground group being deleted.");
         if (m_bgGroup->GetBgRaid(ALLIANCE) == this) m_bgGroup->SetBgRaid(ALLIANCE, NULL);
         else if (m_bgGroup->GetBgRaid(HORDE) == this) m_bgGroup->SetBgRaid(HORDE, NULL);
-        else sLog->outError(LOG_FILTER_GENERAL, "Group::~Group: battleground group is not linked to the correct battleground.");
+        else TC_LOG_ERROR("server.worldserver", "Group::~Group: battleground group is not linked to the correct battleground.");
     }
     Rolls::iterator itr;
     while (!RollId.empty())
@@ -1161,7 +1161,7 @@ void Group::GroupLoot(Loot* loot, WorldObject* pLootedObject)
         item = sObjectMgr->GetItemTemplate(i->itemid);
         if (!item)
         {
-            //sLog->outDebug(LOG_FILTER_GENERAL, "Group::GroupLoot: missing item prototype for item with id: %d", i->itemid);
+            //TC_LOG_DEBUG("misc", "Group::GroupLoot: missing item prototype for item with id: %d", i->itemid);
             continue;
         }
 
@@ -1249,7 +1249,7 @@ void Group::GroupLoot(Loot* loot, WorldObject* pLootedObject)
         item = sObjectMgr->GetItemTemplate(i->itemid);
         if (!item)
         {
-            //sLog->outDebug(LOG_FILTER_GENERAL, "Group::GroupLoot: missing item prototype for item with id: %d", i->itemid);
+            //TC_LOG_DEBUG("misc", "Group::GroupLoot: missing item prototype for item with id: %d", i->itemid);
             continue;
         }
 
@@ -2560,7 +2560,7 @@ InstanceGroupBind* Group::BindToInstance(InstanceSave* save, bool permanent, boo
     bind.save = save;
     bind.perm = permanent;
     if (!load)
-        sLog->outDebug(LOG_FILTER_MAPS, "Group::BindToInstance: Group (guid: %u, storage id: %u) is now bound to map %d, instance %d, difficulty %d",
+        TC_LOG_DEBUG("maps", "Group::BindToInstance: Group (guid: %u, storage id: %u) is now bound to map %d, instance %d, difficulty %d",
         GUID_LOPART(GetGUID()), m_dbStoreId, save->GetMapId(), save->GetInstanceId(), save->GetDifficultyID());
 
     return &bind;
@@ -2618,7 +2618,7 @@ void Group::BroadcastGroupUpdate(void)
         {
             pp->ForceValuesUpdateAtIndex(UNIT_FIELD_SHAPESHIFT_FORM);
             pp->ForceValuesUpdateAtIndex(UNIT_FIELD_FACTION_TEMPLATE);
-            sLog->outDebug(LOG_FILTER_GENERAL, "-- Forced group value update for '%s'", pp->GetName());
+            TC_LOG_DEBUG("misc", "-- Forced group value update for '%s'", pp->GetName());
         }
     }
 }
@@ -3384,6 +3384,83 @@ void Group::FinishGame(int32 rating_change, uint8 slot)
             player->SetArenaPersonalRating(slot, std::max(0, (int)player->GetArenaPersonalRating(slot) + rating_change));
             player->IncrementWeekGames(slot);
             player->IncrementSeasonGames(slot);
+        }
+    }
+}
+	
+bool Group::leaderInstanceCheckFail()
+{
+    if (Player *leader = ObjectAccessor::FindPlayer(GetLeaderGUID()))
+    {
+        const uint32 leaderInstanceID = leader->GetInstanceId();
+        if (leaderInstanceID == 0)
+        {
+            Player *pMember = NULL;
+            for (member_citerator citr = m_memberSlots.begin(); citr != m_memberSlots.end(); ++citr)
+            {
+                pMember = ObjectAccessor::FindPlayer(citr->guid);
+                if ( pMember && (pMember->GetInstanceId() != leaderInstanceID) )
+                    return true;
+            }
+        }       
+    }
+
+    return false;
+}
+
+void Group::UpdateGuildAchievementCriteria(AchievementCriteriaTypes type, uint32 miscValue1, uint32 miscValue2, uint32 miscValue3, Unit* pUnit, WorldObject* pRewardSource)
+{
+    // We will update criteria for each guild in grouplist but only once
+    std::list<uint32> guildList;
+    for (GroupReference* itr = GetFirstMember(); itr != NULL; itr = itr->next())
+    {
+        if (Player* pPlayer = itr->getSource())
+        {
+            // Check for reward
+            if (pRewardSource)
+            {
+                if (!pPlayer->IsAtGroupRewardDistance(pRewardSource))
+                    continue;
+
+                if (!pPlayer->isAlive())
+                    continue;
+            }
+
+            uint32 guildId = pPlayer->GetGuildId();
+
+            if (guildId == 0)
+                continue;
+
+            if (!guildList.empty())
+            {
+                // if we already have any guild in list
+                // then check new guild
+                bool bUnique = true;
+                for (std::list<uint32>::const_iterator itr2 = guildList.begin(); itr2 != guildList.end(); ++itr2)
+                {
+                    if ((*itr2) == guildId)
+                    {
+                        bUnique = false;
+                        break;
+                    }
+                }
+                // If we have already rewarded current guild then continue
+                // else update criteria 
+                if (bUnique && guildId)
+                {
+                    guildList.push_back(guildId);
+                    //if (Guild* pGuild = pPlayer->GetGuildId(guildId))
+                        //pGuild->GetAchievementMgr().UpdateAchievementCriteria(type, miscValue1, miscValue2, miscValue3, pUnit, pPlayer);
+                }
+            }
+            else
+            {
+                // If that's first guild in list
+                // then add to the list and update criteria
+                guildList.push_back(guildId);
+                //if (Guild* pGuild = sGuildMgr->GetGuildById(guildId))
+                    //pGuild->GetAchievementMgr().UpdateAchievementCriteria(type, miscValue1, miscValue2, miscValue3, pUnit, pPlayer);
+            }
         }
     }
 }

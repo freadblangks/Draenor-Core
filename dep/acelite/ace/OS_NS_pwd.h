@@ -4,9 +4,7 @@
 /**
  *  @file   OS_NS_pwd.h
  *
- *  $Id: OS_NS_pwd.h 87270 2009-10-29 21:47:47Z olli $
- *
- *  @author Douglas C. Schmidt <schmidt@cs.wustl.edu>
+ *  @author Douglas C. Schmidt <d.schmidt@vanderbilt.edu>
  *  @author Jesper S. M|ller<stophph@diku.dk>
  *  @author and a cast of thousands...
  *
@@ -39,28 +37,27 @@ ACE_BEGIN_VERSIONED_NAMESPACE_DECL
 
 namespace ACE_OS
 {
-
-
   //@{ @name A set of wrappers for password routines.
 
   ACE_NAMESPACE_INLINE_FUNCTION
-  void endpwent (void);
+  void endpwent ();
 
   ACE_NAMESPACE_INLINE_FUNCTION
-  struct passwd *getpwent (void);
+  struct passwd *getpwent ();
 
   ACE_NAMESPACE_INLINE_FUNCTION
   struct passwd *getpwnam (const char *user);
 
   ACE_NAMESPACE_INLINE_FUNCTION
-  struct passwd *getpwnam_r (const char *name,
-                             struct passwd *pwent,
-                             char *buffer,
-                             int buflen);
-  ACE_NAMESPACE_INLINE_FUNCTION
-  void setpwent (void);
-  //@}
+  int getpwnam_r (const char *name,
+                  struct passwd *pwd,
+                  char *buffer,
+                  size_t bufsize,
+                  struct passwd **result);
 
+  ACE_NAMESPACE_INLINE_FUNCTION
+  void setpwent ();
+  //@}
 } /* namespace ACE_OS */
 
 ACE_END_VERSIONED_NAMESPACE_DECL

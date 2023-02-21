@@ -29,7 +29,7 @@
 #include <readline/readline.h>
 #include <readline/history.h>
 
-char * command_finder(const char* text, int state)
+char* command_finder(const char* text, int state)
 {
     static int idx, len;
     const char* ret;
@@ -60,21 +60,20 @@ char * command_finder(const char* text, int state)
     return ((char*)NULL);
 }
 
-char ** cli_completion(const char * text, int start, int /*end*/)
+char** cli_completion(const char* text, int start, int /*end*/)
 {
-    char ** matches;
-    matches = (char**)NULL;
+    char** matches;
 
-    if (start == 0)
-        matches = rl_completion_matches((char*)text, &command_finder);
+    if (start)
 /*#ifdef PLATFORM != PLATFORM_APPLE
+       rl_bind_key('\t', rl_abort);
     else
-        rl_bind_key('\t', rl_abort);
 #endif*/
-    return (matches);
+        matches = rl_completion_matches((char*)text, &command_finder);
+    return matches;
 }
 
-int cli_hook_func(void)
+int cli_hook_func()
 {
 #if PLATFORM != PLATFORM_APPLE
        if (World::IsStopped())
@@ -129,7 +128,7 @@ int kb_hit_return()
 void CliRunnable::run()
 {
     ///- Display the list of available CLI functions then beep
-    //sLog->outInfo(LOG_FILTER_WORLDSERVER, "");
+    //TC_LOG_INFO("server.worldserver", "");
 #if PLATFORM != PLATFORM_WINDOWS
     rl_attempted_completion_function = cli_completion;
     #if PLATFORM != PLATFORM_APPLE
@@ -137,7 +136,7 @@ void CliRunnable::run()
     #endif
 #endif
 
-    if (ConfigMgr::GetBoolDefault("BeepAtStart", true))
+    if (sConfigMgr->GetBoolDefault("BeepAtStart", true))
         printf("\a");                                       // \a = Alert
 
     // print this here the first time

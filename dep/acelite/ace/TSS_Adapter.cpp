@@ -1,16 +1,16 @@
 /**
  * @file TSS_Adapter.cpp
  *
- * $Id: TSS_Adapter.cpp 91286 2010-08-05 09:04:31Z johnnyw $
- *
  * Originally in Synch.cpp
  *
- * @author Douglas C. Schmidt <schmidt@cs.wustl.edu>
+ * @author Douglas C. Schmidt <d.schmidt@vanderbilt.edu>
  */
 
 #include "ace/TSS_Adapter.h"
 
-
+#if defined (ACE_HAS_ALLOC_HOOKS)
+# include "ace/Malloc_Base.h"
+#endif /* ACE_HAS_ALLOC_HOOKS */
 
 ACE_BEGIN_VERSIONED_NAMESPACE_DECL
 
@@ -18,22 +18,21 @@ ACE_TSS_Adapter::ACE_TSS_Adapter (void *object, ACE_THR_DEST f)
   : ts_obj_ (object),
     func_ (f)
 {
-  // ACE_TRACE ("ACE_TSS_Adapter::ACE_TSS_Adapter");
 }
 
+ACE_ALLOC_HOOK_DEFINE(ACE_TSS_Adapter);
+
 void
-ACE_TSS_Adapter::cleanup (void)
+ACE_TSS_Adapter::cleanup ()
 {
-  // ACE_TRACE ("ACE_TSS_Adapter::cleanup");
   (*this->func_)(this->ts_obj_);  // call cleanup routine for ts_obj_
 }
 
 ACE_END_VERSIONED_NAMESPACE_DECL
 
-extern "C" void
+extern "C" ACE_Export void
 ACE_TSS_C_cleanup (void *object)
 {
-  // ACE_TRACE ("ACE_TSS_C_cleanup");
   if (object != 0)
     {
       ACE_TSS_Adapter * const tss_adapter = (ACE_TSS_Adapter *) object;

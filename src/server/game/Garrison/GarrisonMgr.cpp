@@ -52,7 +52,7 @@ namespace MS {
 
 			case FactionIndex::Max:
 			default:
-				ASSERT(false);
+				ABORT();
 				break;
 
 			}
@@ -132,7 +132,7 @@ namespace MS {
 
 			case FactionIndex::Max:
 			default:
-				ASSERT(false);
+				ABORT();
 				break;
 
 			}
@@ -488,7 +488,7 @@ namespace MS {
 
 				case FactionIndex::Max:
 				default:
-					ASSERT(false);
+					ABORT();
 					break;
 
 				}
@@ -3770,7 +3770,7 @@ namespace MS {
 
 			if (l_SiteEntry == nullptr)
 			{
-				sLog->outAshran("Garrison::InitDataForLevel() not data found");
+				TC_LOG_ERROR("server.worldserver", "Garrison::InitDataForLevel() not data found");
 				assert(false && "Garrison::InitDataForLevel() not data found");
 				return;
 			}
@@ -4795,7 +4795,7 @@ namespace MS {
 
 			case FactionIndex::Max:
 			default:
-				ASSERT(false);
+				ABORT();
 				break;
 
 			}
@@ -5223,7 +5223,7 @@ namespace MS {
 
 					if (!l_NewAbility)
 					{
-						sLog->outAshran("Can't find random ability for follower ID %u", p_Follower.FollowerID);
+						TC_LOG_ERROR("server.worldserver", "Can't find random ability for follower ID %u", p_Follower.FollowerID);
 						break;
 					}
 

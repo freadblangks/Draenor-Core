@@ -4,10 +4,8 @@
 /**
  *  @file    Naming_Context.h
  *
- *  $Id: Naming_Context.h 84160 2009-01-14 14:13:58Z johnnyw $
- *
  *  @author Gerhard Lenzer
- *  @author Douglas C. Schmidt <schmidt@cs.wustl.edu>
+ *  @author Douglas C. Schmidt <d.schmidt@vanderbilt.edu>
  *  @author Prashant Jain <pjain@uci.edu>
  */
 //==========================================================================
@@ -65,7 +63,6 @@ public:
       NET_LOCAL
     };
 
-  // = Initialization and termination methods.
   /// "Do-nothing" constructor.
   ACE_Naming_Context (void);
 
@@ -126,7 +123,7 @@ public:
   /**
    * Overwrite the value or type of an existing name in a
    * ACE_Naming_Context or bind a new name to the context, if it
-   * didn't exist yet. (Wide charcter strings interface).
+   * didn't exist yet. (Wide character strings interface).
    */
   int rebind (const ACE_NS_WString &name_in,
               const ACE_NS_WString &value_in,
@@ -135,13 +132,13 @@ public:
   /**
    * Overwrite the value or type of an existing name in a
    * ACE_Naming_Context or bind a new name to the context, if it
-   * didn't exist yet. ( charcter strings interface)
+   * didn't exist yet. ( character strings interface)
    */
   int rebind (const char *name_in,
               const char *value_in,
               const char *type_in = "");
 
-  /// Delete a name from a ACE_Naming_Context (Wide charcter strings
+  /// Delete a name from a ACE_Naming_Context (Wide character strings
   /// Interface).
   int unbind (const ACE_NS_WString &name_in);
 
@@ -269,7 +266,6 @@ private:
 
   /// 1 if we're on the same local machine as the name server, else 0.
   int local (void);
-
 };
 
 /**
@@ -280,7 +276,6 @@ private:
 class ACE_Export ACE_Name_Options
 {
 public:
-  // = Initialization and termination methods.
   ACE_Name_Options (void);
   ~ACE_Name_Options (void);
 
@@ -342,6 +337,8 @@ public:
   /// Return verbose status
   bool verbose (void);
 
+  ACE_ALLOC_HOOK_DECLARE;
+
 private:
   /// Extra debugging info
   bool debugging_;
@@ -374,14 +371,14 @@ private:
   ACE_Naming_Context::Context_Scope_Type context_;
 };
 
+ACE_FACTORY_DECLARE (ACE, ACE_Naming_Context)
+ACE_STATIC_SVC_DECLARE_EXPORT (ACE, ACE_Naming_Context)
+
 ACE_END_VERSIONED_NAMESPACE_DECL
 
 #if defined (__ACE_INLINE__)
 #include "ace/Naming_Context.inl"
 #endif /* __ACE_INLINE__ */
-
-ACE_FACTORY_DECLARE (ACE, ACE_Naming_Context)
-ACE_STATIC_SVC_DECLARE_EXPORT (ACE, ACE_Naming_Context)
 
 #include /**/ "ace/post.h"
 #endif /* ACE_NAMING_CONTEXT_H */

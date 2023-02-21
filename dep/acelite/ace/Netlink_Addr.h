@@ -1,10 +1,6 @@
-// $Id: Netlink_Addr.h 80826 2008-03-04 14:51:23Z wotte $
-
 //=============================================================================
 /**
  *  @file    Netlink_Addr.h
- *
- *  $Id: Netlink_Addr.h 80826 2008-03-04 14:51:23Z wotte $
  *
  * @author Robert Iakobashvilli <coroberti@gmail.com>
  * @author Raz Ben Yehuda <raziebe@gmail.com>
@@ -40,8 +36,6 @@ ACE_BEGIN_VERSIONED_NAMESPACE_DECL
  */
 class ACE_Export ACE_Netlink_Addr : public ACE_Addr {
 public:
-  // = Initialization methods.
-
   /// Default constructor.
   ACE_Netlink_Addr (void);
 
@@ -85,7 +79,7 @@ public:
   /**
    * Set a pointer to the address
    */
-  virtual void set_addr (void *, int len= sizeof(sockaddr_nl) );
+  virtual void set_addr (const void *, int len= sizeof(sockaddr_nl) );
 
   /// Declare the dynamic allocation hooks.
   ACE_ALLOC_HOOK_DECLARE;

@@ -6,8 +6,6 @@
  *
  *  file control options
  *
- *  $Id: os_fcntl.h 80826 2008-03-04 14:51:23Z wotte $
- *
  *  @author Don Hinton <dhinton@dresystems.com>
  *  @author This code was originally in various places including ace/OS.h.
  */
@@ -31,11 +29,6 @@
 # include /**/ <fcntl.h>
 #endif /* !ACE_LACKS_FCNTL_H */
 
-#if defined (ACE_VXWORKS) && (ACE_VXWORKS < 0x620)
-// for creat(), open()
-#  include /**/ <ioLib.h>
-#endif /* ACE_VXWORKS */
-
 // Place all additions (especially function declarations) within extern "C" {}
 #ifdef __cplusplus
 extern "C"
@@ -55,10 +48,6 @@ extern "C"
 #  define _O_BINARY O_BINARY
 #  define _O_TEXT   O_TEXT
 #endif /* __BORLANDC__ */
-
-#if defined (__DMC__)
-#  define _O_TEMPORARY 0x08 /* see fcntl.h */
-#endif /* __DMC__ */
 
 // defined Win32 specific macros for UNIX platforms
 #if !defined (O_BINARY)

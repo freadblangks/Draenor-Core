@@ -1,6 +1,4 @@
 /* -*- C -*- */
-// $Id: config-rtems.h 87169 2009-10-19 20:26:55Z olli $
-
 /* The following configuration file is designed to work for RTEMS
    platforms using GNU C.
 */
@@ -56,7 +54,6 @@
 #define ACE_LACKS_MKSTEMP
 #define ACE_LACKS_STRDUP
 #define ACE_LACKS_STRTOK_R
-#define ACE_LACKS_RAND_REENTRANT_FUNCTIONS
 #define ACE_LACKS_REALPATH
 #define ACE_LACKS_TEMPNAM
 #define ACE_LACKS_TZSET
@@ -76,13 +73,11 @@
 # define ACE_HAS_PTHREAD_SCHEDPARAM
 # define ACE_LACKS_THREAD_PROCESS_SCOPING
 #else
-# define ACE_HAS_POSIX_GETPWNAM_R
 # define ACE_HAS_2_PARAM_ASCTIME_R_AND_CTIME_R
 #endif
 
 #define ACE_HAS_ALT_CUSERID
 #define ACE_HAS_4_4BSD_SENDMSG_RECVMSG
-#define ACE_HAS_3_PARAM_READDIR_R
 #define ACE_HAS_CLOCK_GETTIME
 #define ACE_HAS_CLOCK_SETTIME
 #define ACE_HAS_DIRENT
@@ -112,7 +107,6 @@
 #define ACE_LACKS_MSYNC
 #define ACE_LACKS_NETDB_REENTRANT_FUNCTIONS
 #define ACE_LACKS_PTHREAD_THR_SIGSETMASK
-#define ACE_LACKS_READDIR_R
 #define ACE_LACKS_READLINK
 #define ACE_LACKS_READV
 #define ACE_LACKS_RLIMIT

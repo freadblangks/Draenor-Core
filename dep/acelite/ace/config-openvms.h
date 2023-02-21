@@ -1,6 +1,4 @@
 /* -*- C++ -*- */
-// $Id: config-openvms.h 91685 2010-09-09 09:35:14Z johnnyw $
-
 // The following configuration file is designed to work for OpenVMS 7.3-2
 
 #ifndef ACE_CONFIG_H
@@ -52,8 +50,6 @@
 
 #define ACE_MAX_UDP_PACKET_SIZE 65535
 
-#define ACE_HAS_STDCPP_STL_INCLUDES 1
-
 /* missing system headers */
 #define ACE_LACKS_STDINT_H  1
 #define ACE_LACKS_SYS_IPC_H 1
@@ -86,9 +82,6 @@
 #define ACE_LACKS_REALPATH 1
 
 #define ACE_LACKS_SYMLINKS 1
-
-#define ACE_LACKS_PWD_REENTRANT_FUNCTIONS 1
-#define ACE_LACKS_RAND_REENTRANT_FUNCTIONS 1
 
 #define ACE_HAS_P_READ_WRITE
 #define ACE_HAS_CHARPTR_DL 1
@@ -165,7 +158,6 @@
 #define ACE_LACKS_UNIX_SIGNALS 1
 
 #define ACE_HAS_CONSISTENT_SIGNAL_PROTOTYPES 1
-#define ACE_HAS_CPLUSPLUS_HEADERS 1
 #define ACE_LACKS_LINEBUFFERED_STREAMBUF 1
 
 #define ACE_HAS_GPERF 1
@@ -188,5 +180,8 @@
 
 #define ACE_LACKS_SETENV
 #define ACE_LACKS_UNSETENV
+
+#define ACE_HAS_SOCK_BUF_SIZE_MAX
+#define ACE_HAS_SOCK_BUF_SIZE_MAX_VALUE 65535
 
 #endif

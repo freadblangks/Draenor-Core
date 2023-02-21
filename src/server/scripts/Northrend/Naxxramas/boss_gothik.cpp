@@ -191,7 +191,7 @@ class boss_gothik : public CreatureScript
 
                 if (LiveTriggerGUID.size() < POS_LIVE || DeadTriggerGUID.size() < POS_DEAD)
                 {
-                    sLog->outError(LOG_FILTER_TSCR, "Script Gothik: cannot summon triggers!");
+                    TC_LOG_ERROR("scripts", "Script Gothik: cannot summon triggers!");
                     EnterEvadeMode();
                     return;
                 }
@@ -594,7 +594,7 @@ class spell_gothik_shadow_bolt_volley: public SpellScriptLoader
 
             void FilterTargets(std::list<WorldObject*>& targets)
             {
-                targets.remove_if(JadeCore::UnitAuraCheck(false, SPELL_SHADOW_MARK));
+                targets.remove_if(Trinity::UnitAuraCheck(false, SPELL_SHADOW_MARK));
             }
 
             void Register()

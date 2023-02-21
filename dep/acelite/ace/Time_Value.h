@@ -4,9 +4,7 @@
 /**
  *  @file    Time_Value.h
  *
- *  $Id: Time_Value.h 90683 2010-06-17 22:07:42Z shuston $
- *
- *  @author Douglas C. Schmidt <schmidt@cs.wustl.edu>
+ *  @author Douglas C. Schmidt <d.schmidt@vanderbilt.edu>
  */
 //=============================================================================
 
@@ -21,7 +19,9 @@
 # pragma once
 #endif /* ACE_LACKS_PRAGMA_ONCE */
 
-# include "ace/os_include/os_time.h"
+#include "ace/os_include/os_time.h"
+#include <chrono>
+#include "ace/Truncate.h"
 
 // Define some helpful constants.
 // Not type-safe, and signed.  For backward compatibility.
@@ -35,17 +35,7 @@ suseconds_t const ACE_ONE_SECOND_IN_USECS = 1000000;
 // needed to determine if iostreams are present
 #include "ace/iosfwd.h"
 
-// This forward declaration is needed by the set() and FILETIME() functions
-#if defined (ACE_LACKS_LONGLONG_T)
 ACE_BEGIN_VERSIONED_NAMESPACE_DECL
-class ACE_Export ACE_U_LongLong;
-ACE_END_VERSIONED_NAMESPACE_DECL
-#endif  /* ACE_LACKS_LONGLONG_T */
-
-// -------------------------------------------------------------------
-
-ACE_BEGIN_VERSIONED_NAMESPACE_DECL
-
 
 /**
  * @class ACE_Time_Value
@@ -60,7 +50,6 @@ ACE_BEGIN_VERSIONED_NAMESPACE_DECL
 class ACE_Export ACE_Time_Value
 {
 public:
-
   /// Constant "0".
   static const ACE_Time_Value zero;
 
@@ -74,10 +63,8 @@ public:
    */
   static const ACE_Time_Value max_time;
 
-  // = Initialization methods.
-
   /// Default Constructor.
-  ACE_Time_Value (void);
+  ACE_Time_Value ();
 
   /// Constructor.
   explicit ACE_Time_Value (time_t sec, suseconds_t usec = 0);
@@ -89,6 +76,22 @@ public:
 
   /// Construct the ACE_Time_Value object from a timespec_t.
   explicit ACE_Time_Value (const timespec_t &t);
+
+  ACE_Time_Value (const ACE_Time_Value&) = default;
+  ACE_Time_Value (ACE_Time_Value&&) = default;
+
+  /// Construct the ACE_Time_Value object from a chrono duration.
+  template< class Rep, class Period >
+  explicit ACE_Time_Value (const std::chrono::duration<Rep, Period>& duration)
+  {
+    this->set (duration);
+  }
+
+  /// Destructor
+  virtual ~ACE_Time_Value ();
+
+  /// Declare the dynamic allocation hooks.
+  ACE_ALLOC_HOOK_DECLARE;
 
 # if defined (ACE_WIN32)
   /// Construct the ACE_Time_Value object from a Win32 FILETIME
@@ -109,9 +112,22 @@ public:
   void set (const timespec_t &t);
 
 # if defined (ACE_WIN32)
-  ///  Initializes the ACE_Time_Value object from a Win32 FILETIME.
+  /// Initializes the ACE_Time_Value object from a Win32 FILETIME.
   void set (const FILETIME &ft);
 # endif /* ACE_WIN32 */
+
+  /// Initializes the ACE_Time_Value object from a std::duration.
+  template< class Rep, class Period >
+  void set (const std::chrono::duration<Rep, Period>& duration)
+  {
+    std::chrono::seconds const s {
+      std::chrono::duration_cast<std::chrono::seconds> (duration)};
+
+    std::chrono::microseconds const usec {
+      std::chrono::duration_cast<std::chrono::microseconds>(
+        duration % std::chrono::seconds (1))};
+    this->set (s.count (), ACE_Utils::truncate_cast<suseconds_t>(usec.count ()));
+  }
 
   /// Converts from ACE_Time_Value format into milliseconds format.
   /**
@@ -124,7 +140,7 @@ public:
    *       usec() methods.  There is no analogous "millisecond"
    *       component in an ACE_Time_Value.
    */
-  unsigned long msec (void) const;
+  unsigned long msec () const;
 
   /// Converts from ACE_Time_Value format into milliseconds format.
   /**
@@ -210,7 +226,7 @@ public:
    * @note The semantics of this method differs from the msec()
    *       method.
    */
-  time_t sec (void) const;
+  time_t sec () const;
 
   /// Set seconds.
   void sec (time_t sec);
@@ -222,7 +238,7 @@ public:
    * @note The semantics of this method differs from the msec()
    *       method.
    */
-  suseconds_t usec (void) const;
+  suseconds_t usec () const;
 
   /// Set microseconds.
   void usec (suseconds_t usec);
@@ -241,17 +257,48 @@ public:
   /// Add @a tv to this.
   ACE_Time_Value &operator += (time_t tv);
 
-  /// Assign @ tv to this
-  ACE_Time_Value &operator = (const ACE_Time_Value &tv);
+  /// Assign @a tv to this
+  ACE_Time_Value &operator = (const ACE_Time_Value &) = default;
+  ACE_Time_Value &operator = (ACE_Time_Value &&)  = default;
 
-  /// Assign @ tv to this
+  /// Assign @a tv to this
   ACE_Time_Value &operator = (time_t tv);
 
   /// Subtract @a tv to this.
   ACE_Time_Value &operator -= (const ACE_Time_Value &tv);
 
-  /// Substract @a tv to this.
+  /// Subtract @a tv to this.
   ACE_Time_Value &operator -= (time_t tv);
+
+  /// Add @a std::duration to this.
+  template< class Rep, class Period >
+  ACE_Time_Value &operator += (const std::chrono::duration<Rep, Period>& duration)
+  {
+    const ACE_Time_Value tv (duration);
+    this->sec (this->sec () + tv.sec ());
+    this->usec (this->usec () + tv.usec ());
+    this->normalize ();
+    return *this;
+  }
+
+  /// Assign @a std::duration to this
+  template< class Rep, class Period >
+  ACE_Time_Value &operator = (const std::chrono::duration<Rep, Period>& duration)
+  {
+    this->set (duration);
+    return *this;
+  }
+
+  /// Subtract @a std::duration to this.
+  template< class Rep, class Period >
+  ACE_Time_Value &operator -= (const std::chrono::duration<Rep, Period>& duration)
+  {
+    const ACE_Time_Value tv (duration);
+    this->sec (this->sec () - tv.sec ());
+    this->usec (this->usec () - tv.usec ());
+    this->normalize ();
+    return *this;
+  }
 
   /**
     \brief Multiply the time value by the @a d factor.
@@ -273,7 +320,7 @@ public:
    * @note The only reason this is here is to allow the use of ACE_Atomic_Op
    * with ACE_Time_Value.
    */
-  ACE_Time_Value &operator++ (void);
+  ACE_Time_Value &operator++ ();
 
   /// Decrement microseconds as postfix.
   /**
@@ -287,7 +334,7 @@ public:
    * @note The only reason this is here is to allow the use of ACE_Atomic_Op
    * with ACE_Time_Value.
    */
-  ACE_Time_Value &operator-- (void);
+  ACE_Time_Value &operator-- ();
 
   /// Adds two ACE_Time_Value objects together, returns the sum.
   friend ACE_Export ACE_Time_Value operator + (const ACE_Time_Value &tv1,
@@ -330,6 +377,51 @@ public:
                                                double d);
   //@}
 
+  /// Get current time of day.
+  /**
+   * @return  Time value representing current time of day.
+   *
+   * @note    This method is overloaded in the time policy based template
+   *          instantiations derived from this class. Allows for time policy
+   *          aware time values.
+   */
+  virtual ACE_Time_Value now () const;
+
+  /// Converts absolute time value to time value relative to current time of day.
+  /**
+   * @return  Relative time value.
+   *
+   * @note    This method is overloaded in the time policy based template
+   *          instantiations derived from this class. Allows for time policy
+   *          aware time values.
+   *          The developer is responsible for making sure this is an absolute
+   *          time value compatible with the active time policy (which is system
+   *          time for the base class).
+   */
+  virtual ACE_Time_Value to_relative_time () const;
+
+  /// Converts relative time value to absolute time value based on current time of day.
+  /**
+   * @return  Absolute time value.
+   *
+   * @note    This method is overloaded in the time policy based template
+   *          instantiations derived from this class. Allows for time policy
+   *          aware time values.
+   *          The developer is responsible for making sure this is a relative
+   *          time value. Current time of day is determined based on time policy
+   *          (which is system time for the base class).
+   */
+  virtual ACE_Time_Value to_absolute_time () const;
+
+  /// Duplicates this time value (incl. time policy).
+  /**
+   * @return  Dynamically allocated time value copy.
+   *
+   * @note    The caller is responsible for freeing the copy when it's not needed
+   *          anymore.
+   */
+  virtual ACE_Time_Value * duplicate () const;
+
   /// Dump is a no-op.
   /**
    * The dump() method is a no-op.  It's here for backwards compatibility
@@ -337,15 +429,11 @@ public:
    * violates layering restrictions in ACE because this class is part
    * of the OS layer and @c ACE_Log_Msg is at a higher level.
    */
-  void dump (void) const;
+  void dump () const;
 
 # if defined (ACE_WIN32)
   /// Const time difference between FILETIME and POSIX time.
-#  if defined (ACE_LACKS_LONGLONG_T)
-  static const ACE_U_LongLong FILETIME_to_timval_skew;
-#  else
   static const DWORDLONG FILETIME_to_timval_skew;
-#  endif // ACE_LACKS_LONGLONG_T
 # endif /* ACE_WIN32 */
 
 private:
@@ -377,6 +465,61 @@ extern ACE_Export ostream &operator<<( ostream &o, const ACE_Time_Value &v );
 #endif
 
 ACE_END_VERSIONED_NAMESPACE_DECL
+
+// Additional chrono operators.
+namespace std
+{
+  namespace chrono
+  {
+    /**
+    * @name Streaming ACE_Time_Value to chrono
+    *
+    * Streaming an ACE_Time_Value into one of the chrono types (nanoseconds,
+    * microseconds, milliseconds, seconds, minutes, or hours).
+    *
+    */
+    //@{
+    ACE_Export nanoseconds& operator <<(nanoseconds &ns, ACE_Time_Value const &tv);
+    ACE_Export microseconds& operator <<(microseconds &us, ACE_Time_Value const &tv);
+    ACE_Export milliseconds& operator <<(milliseconds &ms, ACE_Time_Value const &tv);
+    ACE_Export seconds& operator <<(seconds &s, ACE_Time_Value const &tv);
+    ACE_Export minutes& operator <<(minutes &m, ACE_Time_Value const &tv);
+    ACE_Export hours& operator <<(hours &h, ACE_Time_Value const &tv);
+    //@}
+
+    /**
+    * @name Adding ACE_Time_Value to chrono
+    *
+    * Adding an ACE_Time_Value to one of the chrono types (nanoseconds,
+    * microseconds, milliseconds, seconds, minutes, or hours).
+    *
+    */
+    //@{
+    ACE_Export nanoseconds& operator +=(nanoseconds &ns, ACE_Time_Value const &tv);
+    ACE_Export microseconds& operator +=(microseconds &us, ACE_Time_Value const &tv);
+    ACE_Export milliseconds& operator +=(milliseconds &ms, ACE_Time_Value const &tv);
+    ACE_Export seconds& operator +=(seconds &s, ACE_Time_Value const &tv);
+    ACE_Export minutes& operator +=(minutes &m, ACE_Time_Value const &tv);
+    ACE_Export hours& operator +=(hours &h, ACE_Time_Value const &tv);
+    //@}
+
+    /**
+    * @name Substracting ACE_Time_Value from chrono
+    *
+    * Substracting an ACE_Time_Value from one of the chrono types (nanoseconds,
+    * microseconds, milliseconds, seconds, minutes, or hours).
+    *
+    */
+    //@{
+    ACE_Export nanoseconds& operator -=(nanoseconds &ns, ACE_Time_Value const &tv);
+    ACE_Export microseconds& operator -=(microseconds &us, ACE_Time_Value const &tv);
+    ACE_Export milliseconds& operator -=(milliseconds &ms, ACE_Time_Value const &tv);
+    ACE_Export seconds& operator -=(seconds &s, ACE_Time_Value const &tv);
+    ACE_Export minutes& operator -=(minutes &m, ACE_Time_Value const &tv);
+    ACE_Export hours& operator -=(hours &h, ACE_Time_Value const &tv);
+    //@}
+  }
+}
 
 #if defined (__ACE_INLINE__)
 #include "ace/Time_Value.inl"

@@ -6,8 +6,6 @@
  *
  *  threads
  *
- *  $Id: os_pthread.h 91781 2010-09-15 12:49:15Z johnnyw $
- *
  *  @author Don Hinton <dhinton@dresystems.com>
  *  @author This code was originally in various places including ace/OS.h.
  */
@@ -37,6 +35,7 @@
 #endif /* ACE_HAS_PRIOCNTL */
 
 #include "ace/os_include/sys/os_types.h"
+#include "ace/os_include/os_stdint.h"
 
 // This needs to go here *first* to avoid problems with AIX.
 # if defined (ACE_HAS_PTHREADS)
@@ -45,15 +44,8 @@
 #   undef ACE_DONT_INCLUDE_ACE_SIGNAL_H
 # endif /* ACE_HAS_PTHREADS */
 
-
 #if !defined (ACE_LACKS_PTHREAD_H)
-   extern "C" {
-#   if defined (ACE_TANDEM_T1248_PTHREADS)
-#   include /**/ <spthread.h>
-#   else
 #  include /**/ <pthread.h>
-#   endif
-   }
 #endif /* !ACE_LACKS_PTHREAD_H */
 
 #if defined (ACE_HAS_PTHREAD_NP_H)
@@ -233,26 +225,10 @@
 #  endif /* ! ACE_LACKS_COND_T */
    typedef pthread_mutex_t ACE_thread_mutex_t;
 
-#  if !defined (PTHREAD_CANCEL_DISABLE)
-#    define PTHREAD_CANCEL_DISABLE      0
-#  endif /* PTHREAD_CANCEL_DISABLE */
-
-#  if !defined (PTHREAD_CANCEL_ENABLE)
-#    define PTHREAD_CANCEL_ENABLE       0
-#  endif /* PTHREAD_CANCEL_ENABLE */
-
-#  if !defined (PTHREAD_CANCEL_DEFERRED)
-#    define PTHREAD_CANCEL_DEFERRED     0
-#  endif /* PTHREAD_CANCEL_DEFERRED */
-
-#  if !defined (PTHREAD_CANCEL_ASYNCHRONOUS)
-#    define PTHREAD_CANCEL_ASYNCHRONOUS 0
-#  endif /* PTHREAD_CANCEL_ASYNCHRONOUS */
-
-#  define THR_CANCEL_DISABLE      PTHREAD_CANCEL_DISABLE
-#  define THR_CANCEL_ENABLE       PTHREAD_CANCEL_ENABLE
-#  define THR_CANCEL_DEFERRED     PTHREAD_CANCEL_DEFERRED
-#  define THR_CANCEL_ASYNCHRONOUS PTHREAD_CANCEL_ASYNCHRONOUS
+#  define THR_CANCEL_DISABLE      0x00000100
+#  define THR_CANCEL_ENABLE       0x00000200
+#  define THR_CANCEL_DEFERRED     0x00000400
+#  define THR_CANCEL_ASYNCHRONOUS 0x00000800
 
 #  if !defined (PTHREAD_CREATE_JOINABLE)
 #    if defined (PTHREAD_CREATE_UNDETACHED)
@@ -292,20 +268,20 @@
 #  endif /* ACE_HAS_STHREADS */
 
    /* MM-Graz:  prevent warnings */
-#    undef THR_BOUND
-#    undef THR_NEW_LWP
-#    undef THR_DETACHED
-#    undef THR_SUSPENDED
-#    undef THR_DAEMON
+#  undef THR_BOUND
+#  undef THR_NEW_LWP
+#  undef THR_DETACHED
+#  undef THR_SUSPENDED
+#  undef THR_DAEMON
 
-#    define THR_BOUND               0x00000001
-#    define THR_NEW_LWP             0x00000002
-#    define THR_DETACHED            0x00000040
-#    define THR_SUSPENDED           0x00000080
-#    define THR_DAEMON              0x00000100
-#    define THR_SCHED_FIFO          0x00020000
-#    define THR_SCHED_RR            0x00040000
-#    define THR_SCHED_DEFAULT       0x00080000
+#  define THR_BOUND               0x00000001
+#  define THR_NEW_LWP             0x00000002
+#  define THR_DAEMON              0x00000010
+#  define THR_DETACHED            0x00000040
+#  define THR_SUSPENDED           0x00000080
+#  define THR_SCHED_FIFO          0x00020000
+#  define THR_SCHED_RR            0x00040000
+#  define THR_SCHED_DEFAULT       0x00080000
 
 #  define THR_JOINABLE            0x00010000
 
@@ -316,7 +292,7 @@
 #  define THR_EXPLICIT_SCHED      0x00800000
 #  define THR_SCHED_IO            0x01000000
 
-#  if !defined (ACE_HAS_STHREADS)
+#  if !defined (ACE_HAS_STHREADS) && !defined (ACE_MQX)
 #    if !defined (ACE_HAS_POSIX_SEM) && !defined (ACE_USES_FIFO_SEM)
 
 // This needs to be moved out of here.
@@ -361,7 +337,7 @@ public:
 #    endif /* !ACE_HAS_POSIX_SEM */
 #  endif /* !ACE_HAS_STHREADS */
 
-#  if defined (ACE_HAS_PTHREADS_UNIX98_EXT)
+#  if defined (ACE_HAS_PTHREADS_UNIX98_EXT) && !defined (ACE_LACKS_RWLOCK_T)
      typedef pthread_rwlock_t ACE_rwlock_t;
 #   endif /* ACE_HAS_PTHREADS_UNIX98_EXT */
 
@@ -385,7 +361,7 @@ public:
                                              const struct timespec * abstime);
 #    endif  /* _XOPEN_SOURCE && _XOPEN_SOURCE < 600 */
 
-#  endif  /* linux && ((__GLIBC__ > 2) || (__GLIBC__ == 2 && __GLIBC_MINOR__ >= 2)) */
+#  endif  /* ACE_LINUX && ((__GLIBC__ > 2) || (__GLIBC__ == 2 && __GLIBC_MINOR__ >= 2)) */
 
 #elif defined (ACE_HAS_STHREADS)
 #  if !defined (ACE_THR_PRI_FIFO_MIN)

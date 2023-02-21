@@ -4,11 +4,9 @@
 /**
  *  @file    RW_Mutex.h
  *
- *  $Id: RW_Mutex.h 83934 2008-12-01 13:47:06Z johnnyw $
- *
  *   Moved from Synch.h.
  *
- *  @author Douglas C. Schmidt <schmidt@cs.wustl.edu>
+ *  @author Douglas C. Schmidt <d.schmidt@vanderbilt.edu>
  */
 //==========================================================================
 
@@ -47,31 +45,31 @@ public:
                 void *arg = 0);
 
   /// Implicitly destroy a readers/writer lock
-  ~ACE_RW_Mutex (void);
+  ~ACE_RW_Mutex ();
 
   /**
    * Explicitly destroy a readers/writer lock.  Note that only one
    * thread should call this method since it doesn't protect against
    * race conditions.
    */
-  int remove (void);
+  int remove ();
 
   /// Acquire a read lock, but block if a writer hold the lock.
-  int acquire_read (void);
+  int acquire_read ();
 
   /// Acquire a write lock, but block if any readers or a
   /// writer hold the lock.
-  int acquire_write (void);
+  int acquire_write ();
 
   /**
    * Conditionally acquire a read lock (i.e., won't block).  Returns
    * -1 on failure.  If we "failed" because someone else already had
    * the lock, @c errno is set to @c EBUSY.
    */
-  int tryacquire_read (void);
+  int tryacquire_read ();
 
   /// Conditionally acquire a write lock (i.e., won't block).
-  int tryacquire_write (void);
+  int tryacquire_write ();
 
   /**
    * Conditionally upgrade a read lock to a write lock.  This only
@@ -81,32 +79,32 @@ public:
    * already possess this lock as a read lock (but this condition is
    * not checked by the current implementation).
    */
-  int tryacquire_write_upgrade (void);
+  int tryacquire_write_upgrade ();
 
   /**
    * Note, for interface uniformity with other synchronization
    * wrappers we include the <acquire> method.  This is implemented as
    * a write-lock to safe...
    */
-  int acquire (void);
+  int acquire ();
 
   /**
    * Note, for interface uniformity with other synchronization
-   * wrappers we include the <tryacquire> method.  This is implemented
+   * wrappers we include the tryacquire() method.  This is implemented
    * as a write-lock to be safe...  Returns -1 on failure.  If we
    * "failed" because someone else already had the lock, @c errno is
    * set to @c EBUSY.
    */
-  int tryacquire (void);
+  int tryacquire ();
 
   /// Unlock a readers/writer lock.
-  int release (void);
+  int release ();
 
   /// Return the underlying lock.
-  const ACE_rwlock_t &lock (void) const;
+  const ACE_rwlock_t &lock () const;
 
   /// Dump the state of an object.
-  void dump (void) const;
+  void dump () const;
 
   /// Declare the dynamic allocation hooks.
   ACE_ALLOC_HOOK_DECLARE;
@@ -115,11 +113,11 @@ protected:
   /// Readers/writer lock.
   ACE_rwlock_t lock_;
 
-  /// Keeps track of whether <remove> has been called yet to avoid
-  /// multiple <remove> calls, e.g., explicitly and implicitly in the
-  /// destructor.  This flag isn't protected by a lock, so make sure
+  /// Keeps track of whether remove() has been called yet to avoid
+  /// multiple remove() calls, e.g., explicitly and implicitly in the
+  /// destructor. This flag isn't protected by a lock, so make sure
   /// that you don't have multiple threads simultaneously calling
-  /// <remove> on the same object, which is a bad idea anyway...
+  /// remove() on the same object, which is a bad idea anyway...
   bool removed_;
 
 private:

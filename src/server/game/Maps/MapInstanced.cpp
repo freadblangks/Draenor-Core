@@ -187,14 +187,14 @@ InstanceMap* MapInstanced::CreateInstance(uint32 InstanceId, InstanceSave* save,
     const MapEntry* entry = sMapStore.LookupEntry(GetId());
     if (!entry)
     {
-        sLog->outError(LOG_FILTER_MAPS, "CreateInstance: no entry for map %d", GetId());
-        ASSERT(false);
+        TC_LOG_ERROR("maps", "CreateInstance: no entry for map %d", GetId());
+        ABORT();
     }
     const InstanceTemplate* iTemplate = sObjectMgr->GetInstanceTemplate(GetId());
     if (!iTemplate)
     {
-        sLog->outError(LOG_FILTER_MAPS, "CreateInstance: no instance template for map %d", GetId());
-        ASSERT(false);
+        TC_LOG_ERROR("maps", "CreateInstance: no instance template for map %d", GetId());
+        ABORT();
     }
 
     // some instances only have one difficulty
@@ -204,7 +204,7 @@ InstanceMap* MapInstanced::CreateInstance(uint32 InstanceId, InstanceSave* save,
         if (entry->MaxPlayers == 40)
             difficulty = Difficulty40;
 
-    sLog->outDebug(LOG_FILTER_MAPS, "MapInstanced::CreateInstance: %s map instance %d for %d created with difficulty %s", save ? "" :"new ", InstanceId, GetId(), (difficulty == DifficultyHeroic || difficulty == Difficulty10HC || difficulty == Difficulty25HC) ? "heroic" : "normal");
+    TC_LOG_DEBUG("maps", "MapInstanced::CreateInstance: %s map instance %d for %d created with difficulty %s", save ? "" :"new ", InstanceId, GetId(), (difficulty == DifficultyHeroic || difficulty == Difficulty10HC || difficulty == Difficulty25HC) ? "heroic" : "normal");
 
     InstanceMap* map = new InstanceMap(GetId(), GetGridExpiry(), InstanceId, difficulty, this);
     ASSERT(map->IsDungeon());
@@ -223,7 +223,7 @@ BattlegroundMap* MapInstanced::CreateBattleground(uint32 InstanceId, Battlegroun
     // load/create a map
     TRINITY_GUARD(ACE_Thread_Mutex, Lock);
 
-    sLog->outDebug(LOG_FILTER_MAPS, "MapInstanced::CreateBattleground: map bg %d for %d created.", InstanceId, GetId());
+    TC_LOG_DEBUG("maps", "MapInstanced::CreateBattleground: map bg %d for %d created.", InstanceId, GetId());
 
     MS::Battlegrounds::Bracket const* bracketEntry = MS::Battlegrounds::Brackets::FindForLevel(bg->GetMinLevel());
 
@@ -278,6 +278,6 @@ bool MapInstanced::DestroyInstance(InstancedMaps::iterator &itr)
 
 bool MapInstanced::CanEnter(Player* /*player*/)
 {
-    //ASSERT(false);
+    //ABORT();
     return true;
 }

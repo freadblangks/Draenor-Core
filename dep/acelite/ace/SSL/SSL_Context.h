@@ -1,16 +1,12 @@
 // -*- C++ -*-
-
 //=============================================================================
 /**
  *  @file    SSL_Context.h
- *
- *  $Id: SSL_Context.h 83916 2008-11-28 16:32:21Z johnnyw $
  *
  *  @author Carlos O'Ryan <coryan@ece.uci.edu>
  *  @author Ossama Othman <ossama@dre.vanderbilt.edu>
  */
 //=============================================================================
-
 
 #ifndef ACE_SSL_CONTEXT_H
 #define ACE_SSL_CONTEXT_H
@@ -31,28 +27,27 @@
 
 #include <openssl/ssl.h>
 
-
 ACE_BEGIN_VERSIONED_NAMESPACE_DECL
+
+class ACE_INET_Addr;
 
 class ACE_SSL_Export ACE_SSL_Data_File
 {
 public:
-
   /// Default constructor
-  ACE_SSL_Data_File (void);
+  ACE_SSL_Data_File ();
 
-  /// Contructor from a file name and the file type.
+  /// Constructor from a file name and the file type.
   ACE_SSL_Data_File (const char *file_name,
                      int type = SSL_FILETYPE_PEM);
 
   /// The file name
-  const char *file_name (void) const;
+  const char *file_name () const;
 
   /// The type
-  int type (void) const;
+  int type () const;
 
 private:
-
   /// The file name
   ACE_CString file_name_;
 
@@ -62,6 +57,34 @@ private:
 
 // ****************************************************************
 
+// NOTE: Solaris studio compilers amongst others will issue warnings if the
+// the correct type of function pointer (i.e. extern "C" ) is not stored/used
+// of the form:
+// Warning (Anachronism): Formal argument callback of type
+//   extern "C" int(*)(int,x509_store_ctx_st*) in call to
+//   SSL_CTX_set_verify(ssl_ctx_st*, int, extern "C" int(*)(int,x509_store_ctx_st*))
+//   is being passed int(*)(int,x509_store_ctx_st*)
+// when C library routines are passed CallBack functions pointers that are
+// actually C++ functions.
+//
+// Unfortunatly you can not specify extern "C" linkage anywhere inside a class
+// declaration or inside a function prototype for individual parameters. I.e:
+//   class { extern "C" int (*callback_) (int, void *); };
+// to store a function pointer as a data member of the class is illegal as is:
+//   void function (extern "C" int (*callback) (int, void *);
+// to declare function (or a class member) that takes a extern "C" function
+// pointer as a parameter.
+//
+// Since we need an extern "C" function pointer as a parameter to be stored
+// in the class and handled by member functions, we are forced to declare
+// a typedef of that extern "C" function pointer that we can then use.
+// Again unfortunatly you also are not allowed to simply add the extern "C"
+// to the typedef itself, instead you have to place the typedef declaration
+// inside an extern "C" block, thus:
+
+extern "C" {
+  typedef int (*extern_C_CallBackVerify_t) (int, X509_STORE_CTX *);
+}
 
 /**
  * @class ACE_SSL_Context
@@ -75,36 +98,29 @@ private:
 class ACE_SSL_Export ACE_SSL_Context
 {
 public:
-
 #ifdef ACE_HAS_THREADS
   typedef ACE_SYNCH_MUTEX lock_type;
 #endif  /* ACE_HAS_THREADS */
 
   enum {
     INVALID_METHOD = -1,
-    SSLv2_client = 1,
-    SSLv2_server,
-    SSLv2,
-    SSLv3_client,
-    SSLv3_server,
-    SSLv3,
     SSLv23_client,
     SSLv23_server,
-    SSLv23,
-    TLSv1_client,
-    TLSv1_server,
-    TLSv1
+    SSLv23
   };
 
   /// Constructor
-  ACE_SSL_Context (void);
+  ACE_SSL_Context ();
 
   /// Destructor
-  ~ACE_SSL_Context (void);
+  ~ACE_SSL_Context ();
 
   /// The Singleton context, the SSL components use the singleton if
   /// nothing else is available.
-  static ACE_SSL_Context *instance (void);
+  static ACE_SSL_Context *instance ();
+
+  /// Explicitly delete the Singleton context.
+  static void close ();
 
   /**
    * Set the CTX mode.  The mode can be set only once, afterwards the
@@ -116,14 +132,14 @@ public:
    */
   int set_mode (int mode = ACE_SSL_Context::SSLv23);
 
-  int get_mode (void) const;
+  int get_mode () const;
 
   /// Get the SSL context
-  SSL_CTX *context (void);
+  SSL_CTX *context ();
 
   /// Get the file name and file format used for the private key
-  int private_key_type (void) const;
-  const char *private_key_file_name (void) const;
+  int private_key_type () const;
+  const char *private_key_file_name () const;
 
   /// Set the private key file.
   /**
@@ -139,11 +155,11 @@ public:
    *       been set since key verification is performed against the
    *       certificate, among other things.
    */
-  int verify_private_key (void);
+  int verify_private_key ();
 
   /// Get the file name and file format used for the certificate file
-  int certificate_type (void) const;
-  const char *certificate_file_name (void) const;
+  int certificate_type () const;
+  const char *certificate_file_name () const;
 
   /// Set the certificate file.
   int certificate (const char *file_name,
@@ -151,6 +167,12 @@ public:
 
   /// Load certificate from memory rather than a file.
   int certificate (X509* cert);
+
+  /// Parse the string and filter crypto versions accordingly
+  int filter_versions (const char *filter);
+
+  /// verify the peer cert matches the host
+  bool check_host (const ACE_INET_Addr& host, SSL * peerssl);
 
   /**
    *  Load the location of the trusted certification authority
@@ -233,8 +255,7 @@ public:
    *  @retval >0  The number of successful CA load attempts.
    *  @retval  0  If all CA load attempts have failed.
    */
-  int have_trusted_ca (void) const;
-
+  int have_trusted_ca () const;
 
   /**
    *  @todo Complete this documentation where elipses(...) are used
@@ -277,15 +298,15 @@ public:
    * It can be overriden on a per-ACE_SSL object.
    */
   void default_verify_mode (int mode);
-  int default_verify_mode (void) const;
+  int default_verify_mode () const;
 
   /**
    * Set and query the default verify callback for this context, it is
    * inherited by all the ACE_SSL objects created using the context.
    * It can be overriden on a per-ACE_SSL object.
    */
-  void default_verify_callback (int (*callback) (int, X509_STORE_CTX *));
-  int (*default_verify_callback(void) const) (int,X509_STORE_CTX *);
+  void default_verify_callback (extern_C_CallBackVerify_t);
+  extern_C_CallBackVerify_t  default_verify_callback () const;
 
   /**
    * @name OpenSSL Random Number Generator Seed Related Methods
@@ -315,7 +336,7 @@ public:
   static void report_error (unsigned long error_code);
 
   /// Print the last SSL error for the current thread.
-  static void report_error (void);
+  static void report_error ();
 
   /**
    * @name Diffie-Hellman (DH) Parameters
@@ -339,9 +360,8 @@ public:
   //@}
 
 private:
-
   /// Verify if the context has been initialized or not.
-  void check_context (void);
+  void check_context ();
 
   /// @@ More to document
   void ssl_library_init ();
@@ -354,7 +374,6 @@ private:
   //@}
 
 private:
-
   /// The SSL_CTX structure
   SSL_CTX *context_;
 
@@ -370,17 +389,16 @@ private:
   int default_verify_mode_;
 
   /// The default verify callback.
-  int (*default_verify_callback_)(int, X509_STORE_CTX *);
+  extern_C_CallBackVerify_t  default_verify_callback_;
 
   /// count of successful CA load attempts
   int have_ca_;
 
-#ifdef ACE_HAS_THREADS
+#if defined(ACE_HAS_THREADS) && (OPENSSL_VERSION_NUMBER < 0x10100000L)
   /// Array of mutexes used internally by OpenSSL when the SSL
   /// application is multithreaded.
   static lock_type * locks_;
-#endif  /* ACE_HAS_THREADS */
-
+#endif /* ACE_HAS_THREADS && OPENSSL_VERSION_NUMBER < 0x10100000L */
 };
 
 ACE_END_VERSIONED_NAMESPACE_DECL
@@ -390,5 +408,4 @@ ACE_END_VERSIONED_NAMESPACE_DECL
 #endif /* __ACE_INLINE__ */
 
 #include /**/ "ace/post.h"
-
 #endif  /* ACE_SSL_CONTEXT_H */

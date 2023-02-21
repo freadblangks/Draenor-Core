@@ -3,45 +3,41 @@
 /**
  * @file Condition_Recursive_Thread_Mutex.cpp
  *
- * $Id: Condition_Recursive_Thread_Mutex.cpp 89127 2010-02-22 19:58:18Z schmidt $
- *
  * Originally in Synch.cpp
  *
- * @author Douglas C. Schmidt <schmidt@cs.wustl.edu>
+ * @author Douglas C. Schmidt <d.schmidt@vanderbilt.edu>
  */
 
 #include "ace/Condition_Recursive_Thread_Mutex.h"
 
 #if defined (ACE_HAS_THREADS)
 
-#if defined (ACE_HAS_DUMP)
-#  include "ace/Log_Msg.h"
-#endif /* ACE_HAS_DUMP */
+#include "ace/Log_Category.h"
 
 ACE_BEGIN_VERSIONED_NAMESPACE_DECL
 
 int
-ACE_Condition<ACE_Recursive_Thread_Mutex>::remove (void)
+ACE_Condition<ACE_Recursive_Thread_Mutex>::remove ()
 {
   return ACE_OS::cond_destroy (&this->cond_);
 }
 
 void
-ACE_Condition<ACE_Recursive_Thread_Mutex>::dump (void) const
+ACE_Condition<ACE_Recursive_Thread_Mutex>::dump () const
 {
 #if defined (ACE_HAS_DUMP)
 // ACE_TRACE ("ACE_Condition<MUTEX>::dump");
 
-  ACE_DEBUG ((LM_DEBUG, ACE_BEGIN_DUMP, this));
+  ACELIB_DEBUG ((LM_DEBUG, ACE_BEGIN_DUMP, this));
   // No dump method for ACE_cond_t even in emulated mode.
   // cond_.dump ();
   this->mutex_.dump ();
-  ACE_DEBUG ((LM_DEBUG, ACE_TEXT ("\n")));
-  ACE_DEBUG ((LM_DEBUG, ACE_END_DUMP));
+  ACELIB_DEBUG ((LM_DEBUG, ACE_TEXT ("\n")));
+  ACELIB_DEBUG ((LM_DEBUG, ACE_END_DUMP));
 #endif /* ACE_HAS_DUMP */
 }
 
-ACE_Condition<ACE_Recursive_Thread_Mutex>::~ACE_Condition (void)
+ACE_Condition<ACE_Recursive_Thread_Mutex>::~ACE_Condition ()
 {
   this->remove ();
 }
@@ -49,7 +45,19 @@ ACE_Condition<ACE_Recursive_Thread_Mutex>::~ACE_Condition (void)
 ACE_Condition<ACE_Recursive_Thread_Mutex>::ACE_Condition (ACE_Recursive_Thread_Mutex &m)
   : mutex_ (m)
 {
-  ACE_OS::cond_init (&this->cond_);
+  if (ACE_OS::cond_init (&this->cond_) != 0)
+    ACELIB_ERROR ((LM_ERROR, ACE_TEXT ("%p\n"),
+                ACE_TEXT ("ACE_Condition<ACE_Recursive_Thread_Mutex>::ACE_Condition<ACE_Recursive_Thread_Mutex>")));
+}
+
+ACE_Condition<ACE_Recursive_Thread_Mutex>::ACE_Condition (ACE_Recursive_Thread_Mutex &m,
+                                                          const ACE_Condition_Attributes &attributes)
+  : mutex_ (m)
+{
+  if (ACE_OS::cond_init (&this->cond_,
+                         const_cast<ACE_condattr_t &> (attributes.attributes ())) != 0)
+    ACELIB_ERROR ((LM_ERROR, ACE_TEXT ("%p\n"),
+                ACE_TEXT ("ACE_Condition<ACE_Recursive_Thread_Mutex>::ACE_Condition<ACE_Recursive_Thread_Mutex>")));
 }
 
 int
@@ -101,27 +109,21 @@ ACE_Condition<ACE_Recursive_Thread_Mutex>::wait (ACE_Recursive_Thread_Mutex &mut
 }
 
 int
-ACE_Condition<ACE_Recursive_Thread_Mutex>::signal (void)
+ACE_Condition<ACE_Recursive_Thread_Mutex>::signal ()
 {
   return ACE_OS::cond_signal (&this->cond_);
 }
 
 int
-ACE_Condition<ACE_Recursive_Thread_Mutex>::broadcast (void)
+ACE_Condition<ACE_Recursive_Thread_Mutex>::broadcast ()
 {
   return ACE_OS::cond_broadcast (&this->cond_);
 }
 
 ACE_Recursive_Thread_Mutex &
-ACE_Condition<ACE_Recursive_Thread_Mutex>::mutex (void)
+ACE_Condition<ACE_Recursive_Thread_Mutex>::mutex ()
 {
   return this->mutex_;
-}
-
-ACE_Condition_Recursive_Thread_Mutex::ACE_Condition_Recursive_Thread_Mutex (
-  ACE_Recursive_Thread_Mutex &m) :
-    ACE_Condition<ACE_Recursive_Thread_Mutex> (m)
-{
 }
 
 ACE_END_VERSIONED_NAMESPACE_DECL

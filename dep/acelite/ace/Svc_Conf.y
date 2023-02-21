@@ -1,6 +1,4 @@
 %{
-// $Id: Svc_Conf.y 91368 2010-08-16 13:03:34Z mhengstmengel $
-
 #include "ace/Svc_Conf.h"
 
 #if (ACE_USES_CLASSIC_SVC_CONF == 1)
@@ -331,11 +329,10 @@ ace_get_module (ACE_Service_Type const * sr,
                 ACE_TCHAR const * svc_name,
                 int & yyerrno)
 {
-  ACE_Service_Type_Impl const * const type = sr->type ();
   ACE_Stream_Type const * const st =
     (sr == 0
      ? 0
-     : dynamic_cast<ACE_Stream_Type const *> (type));
+     : dynamic_cast<ACE_Stream_Type const *> (sr->type ()));
   ACE_Module_Type const * const mt = (st == 0 ? 0 : st->find (svc_name));
 
   if (sr == 0 || st == 0 || mt == 0)

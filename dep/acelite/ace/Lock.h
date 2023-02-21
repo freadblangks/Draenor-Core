@@ -4,11 +4,9 @@
 /**
  *  @file    Lock.h
  *
- *  $Id: Lock.h 80826 2008-03-04 14:51:23Z wotte $
- *
  *   Moved from Synch.h.
  *
- *  @author Douglas C. Schmidt <schmidt@cs.wustl.edu>
+ *  @author Douglas C. Schmidt <d.schmidt@vanderbilt.edu>
  */
 //==========================================================================
 
@@ -43,69 +41,69 @@ ACE_BEGIN_VERSIONED_NAMESPACE_DECL
 class ACE_Export ACE_Lock
 {
 public:
-  /// CE needs a default ctor here.
-  ACE_Lock (void);
+  /// CE needs a default constructor here.
+  ACE_Lock ();
 
   /// Noop virtual destructor
-  virtual ~ACE_Lock (void);
+  virtual ~ACE_Lock ();
 
   /**
    * Explicitly destroy the lock.  Note that only one thread should
    * call this method since it doesn't protect against race
    * conditions.
    */
-  virtual int remove (void) = 0;
+  virtual int remove () = 0;
 
   /// Block the thread until the lock is acquired.  Returns -1 on
   /// failure.
-  virtual int acquire (void) = 0;
+  virtual int acquire () = 0;
 
   /**
    * Conditionally acquire the lock (i.e., won't block).  Returns -1
    * on failure.  If we "failed" because someone else already had the
    * lock, @c errno is set to @c EBUSY.
    */
-  virtual int tryacquire (void) = 0;
+  virtual int tryacquire () = 0;
 
   /// Release the lock.  Returns -1 on failure.
-  virtual int release (void) = 0;
+  virtual int release () = 0;
 
   /**
    * Block until the thread acquires a read lock.  If the locking
    * mechanism doesn't support read locks then this just calls
-   * <acquire>.  Returns -1 on failure.
+   * acquire().  Returns -1 on failure.
    */
-  virtual int acquire_read (void) = 0;
+  virtual int acquire_read () = 0;
 
   /**
    * Block until the thread acquires a write lock.  If the locking
    * mechanism doesn't support read locks then this just calls
-   * <acquire>.  Returns -1 on failure.
+   * acquire().  Returns -1 on failure.
    */
-  virtual int acquire_write (void) = 0;
+  virtual int acquire_write () = 0;
 
   /**
    * Conditionally acquire a read lock.  If the locking mechanism
-   * doesn't support read locks then this just calls <acquire>.
+   * doesn't support read locks then this just calls acquire().
    * Returns -1 on failure.  If we "failed" because someone else
    * already had the lock, @c errno is set to @c EBUSY.
    */
-  virtual int tryacquire_read (void) = 0;
+  virtual int tryacquire_read () = 0;
 
   /**
    * Conditionally acquire a write lock.  If the locking mechanism
-   * doesn't support read locks then this just calls <acquire>.
+   * doesn't support read locks then this just calls acquire().
    * Returns -1 on failure.  If we "failed" because someone else
    * already had the lock, @c errno is set to @c EBUSY.
    */
-  virtual int tryacquire_write (void) = 0;
+  virtual int tryacquire_write () = 0;
 
   /**
    * Conditionally try to upgrade a lock held for read to a write lock.
    * If the locking mechanism doesn't support read locks then this just
-   * calls <acquire>. Returns 0 on success, -1 on failure.
+   * calls acquire(). Returns 0 on success, -1 on failure.
    */
-  virtual int tryacquire_write_upgrade (void) = 0;
+  virtual int tryacquire_write_upgrade () = 0;
 };
 
 /**
@@ -118,35 +116,35 @@ public:
  * However, it defers our decision of what kind of lock to use
  * to the run time and delegates all locking operations to the actual
  * lock.  Users must define a constructor in their subclass to
- * initialize <lock_>.
+ * initialize @c lock_.
  */
 class ACE_Export ACE_Adaptive_Lock : public ACE_Lock
 {
 public:
   /// You must also override the destructor function to match with how
-  /// you construct the underneath <lock_>.
-  virtual ~ACE_Adaptive_Lock (void);
+  /// you construct the underneath @c lock_.
+  virtual ~ACE_Adaptive_Lock ();
 
   // = Lock/unlock operations.
 
-  virtual int remove (void);
-  virtual int acquire (void);
-  virtual int tryacquire (void);
-  virtual int release (void);
-  virtual int acquire_read (void);
-  virtual int acquire_write (void);
-  virtual int tryacquire_read (void);
-  virtual int tryacquire_write (void);
-  virtual int tryacquire_write_upgrade (void);
-  void dump (void) const;
+  virtual int remove ();
+  virtual int acquire ();
+  virtual int tryacquire ();
+  virtual int release ();
+  virtual int acquire_read ();
+  virtual int acquire_write ();
+  virtual int tryacquire_read ();
+  virtual int tryacquire_write ();
+  virtual int tryacquire_write_upgrade ();
+  void dump () const;
 
 protected:
   /**
-   * Create and initialize create the actual lcok used in the class.
-   * The default constructor simply set the <lock_> to 0 (null).  You
+   * Create and initialize create the actual lock used in the class.
+   * The default constructor simply set the @c lock_ to 0 (null).  You
    * must overwrite this method for this class to work.
    */
-  ACE_Adaptive_Lock (void);
+  ACE_Adaptive_Lock ();
 
   ACE_Lock *lock_;
 };

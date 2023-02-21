@@ -4,9 +4,7 @@
 /**
  *  @file    Message_Queue_T.h
  *
- *  $Id: Message_Queue_T.h 91626 2010-09-07 10:59:20Z johnnyw $
- *
- *  @author Douglas C. Schmidt <schmidt@cs.wustl.edu>
+ *  @author Douglas C. Schmidt <d.schmidt@vanderbilt.edu>
  */
 //=============================================================================
 
@@ -19,6 +17,11 @@
 #include "ace/Dynamic_Message_Strategy.h"
 #include "ace/Synch_Traits.h"
 #include "ace/Guard_T.h"
+#include "ace/Time_Policy.h"
+#include "ace/Time_Value_T.h"
+#if defined (ACE_HAS_THREADS)
+# include "ace/Condition_Attributes.h"
+#endif
 
 #if !defined (ACE_LACKS_PRAGMA_ONCE)
 # pragma once
@@ -47,11 +50,11 @@ namespace ACE
 /**
  * @class ACE_Message_Queue
  *
- * @brief A message queueing facility with parameterized synchronization
+ * @brief A message queuing facility with parameterized synchronization
  * capability. ACE_Message_Queue is modeled after the queueing facilities
  * in System V STREAMs.
  *
- * ACE_Message_Queue is the primary queueing facility for
+ * ACE_Message_Queue is the primary queuing facility for
  * messages in the ACE framework.  It's one template argument parameterizes
  * the queue's synchronization. The argument specifies a synchronization
  * strategy. The two main strategies available for ACE_SYNCH_DECL are:
@@ -61,17 +64,17 @@ namespace ACE
  * All data passing through ACE_Message_Queue is in the form of
  * ACE_Message_Block objects. @sa ACE_Message_Block.
  */
-template <ACE_SYNCH_DECL>
+template <ACE_SYNCH_DECL, class TIME_POLICY = ACE_System_Time_Policy>
 class ACE_Message_Queue : public ACE_Message_Queue_Base
 {
 public:
-  friend class ACE_Message_Queue_Iterator<ACE_SYNCH_USE>;
-  friend class ACE_Message_Queue_Reverse_Iterator<ACE_SYNCH_USE>;
+  friend class ACE_Message_Queue_Iterator<ACE_SYNCH_USE, TIME_POLICY>;
+  friend class ACE_Message_Queue_Reverse_Iterator<ACE_SYNCH_USE, TIME_POLICY>;
 
   // = Traits
-  typedef ACE_Message_Queue_Iterator<ACE_SYNCH_USE>
+  typedef ACE_Message_Queue_Iterator<ACE_SYNCH_USE, TIME_POLICY>
           ITERATOR;
-  typedef ACE_Message_Queue_Reverse_Iterator<ACE_SYNCH_USE>
+  typedef ACE_Message_Queue_Reverse_Iterator<ACE_SYNCH_USE, TIME_POLICY>
           REVERSE_ITERATOR;
 
   /**
@@ -109,10 +112,10 @@ public:
   /// @sa flush().
   ///
   /// @retval The number of messages released from the queue; -1 on error.
-  virtual int close (void);
+  virtual int close ();
 
   /// Releases all resources from the message queue and marks it deactivated.
-  virtual ~ACE_Message_Queue (void);
+  virtual ~ACE_Message_Queue ();
 
   /**
    * Releases all resources from the message queue but does not mark it
@@ -121,7 +124,7 @@ public:
    *
    * @return The number of messages flushed; -1 on error.
    */
-  virtual int flush (void);
+  virtual int flush ();
 
   /**
    * Release all resources from the message queue but do not mark it
@@ -132,7 +135,7 @@ public:
    *
    * @return The number of messages flushed.
    */
-  virtual int flush_i (void);
+  virtual int flush_i ();
 
   /** @name Enqueue and dequeue methods
    *
@@ -352,26 +355,26 @@ public:
   //@{
 
   /// True if queue is full, else false.
-  virtual bool is_full (void);
+  virtual bool is_full ();
   /// True if queue is empty, else false.
-  virtual bool is_empty (void);
+  virtual bool is_empty ();
 
   /**
    * Number of total bytes on the queue, i.e., sum of the message
    * block sizes.
    */
-  virtual size_t message_bytes (void);
+  virtual size_t message_bytes ();
 
   /**
    * Number of total length on the queue, i.e., sum of the message
    * block lengths.
    */
-  virtual size_t message_length (void);
+  virtual size_t message_length ();
 
   /**
    * Number of total messages on the queue.
    */
-  virtual size_t message_count (void);
+  virtual size_t message_count ();
 
   // = Manual changes to these stats (used when queued message blocks
   // change size or lengths).
@@ -396,7 +399,7 @@ public:
   /**
    * Get high watermark.
    */
-  virtual size_t high_water_mark (void);
+  virtual size_t high_water_mark ();
   /**
    * Set the high watermark, which determines how many bytes can be
    * stored in a queue before it's considered "full."
@@ -406,7 +409,7 @@ public:
   /**
    * Get low watermark.
    */
-  virtual size_t low_water_mark (void);
+  virtual size_t low_water_mark ();
   /**
    * Set the low watermark, which determines how many bytes must be in
    * the queue before supplier threads are allowed to enqueue
@@ -430,13 +433,13 @@ public:
    * ESHUTDOWN.  Returns WAS_INACTIVE if queue was inactive before the
    * call and WAS_ACTIVE if queue was active before the call.
    */
-  virtual int deactivate (void);
+  virtual int deactivate ();
 
   /**
    * Reactivate the queue so that threads can enqueue and dequeue
    * messages again.  Returns the state of the queue before the call.
    */
-  virtual int activate (void);
+  virtual int activate ();
 
   /**
    * Pulse the queue to wake up any waiting threads.  Changes the
@@ -445,15 +448,15 @@ public:
    *
    * @return The queue's state before this call.
    */
-  virtual int pulse (void);
+  virtual int pulse ();
 
   /// Returns the current state of the queue, which can be one of
   /// ACTIVATED, DEACTIVATED, or PULSED.
-  virtual int state (void);
+  virtual int state ();
 
   /// Returns true if the state of the queue is <DEACTIVATED>,
   /// but false if the queue's is <ACTIVATED> or <PULSED>.
-  virtual int deactivated (void);
+  virtual int deactivated ();
   //@}
 
   /** @name Notification strategy methods
@@ -470,20 +473,28 @@ public:
    * guarantee that the queue will be still be non-empty by the time
    * the notification occurs.
    */
-  virtual int notify (void);
+  virtual int notify ();
 
   /// Get the notification strategy for the <Message_Queue>
-  virtual ACE_Notification_Strategy *notification_strategy (void);
+  virtual ACE_Notification_Strategy *notification_strategy ();
 
   /// Set the notification strategy for the <Message_Queue>
   virtual void notification_strategy (ACE_Notification_Strategy *s);
   //@}
 
   /// Returns a reference to the lock used by the ACE_Message_Queue.
-  virtual ACE_SYNCH_MUTEX_T &lock (void);
+  virtual ACE_SYNCH_MUTEX_T &lock ();
+
+  /// Get the current time of day according to the queue's TIME_POLICY.
+  /// Allows users to initialize timeout values using correct time policy.
+  ACE_Time_Value_T<TIME_POLICY> gettimeofday () const;
+
+  /// Allows applications to control how the timer queue gets the time
+  /// of day.
+  void set_time_policy (TIME_POLICY const & time_policy);
 
   /// Dump the state of an object.
-  virtual void dump (void) const;
+  virtual void dump () const;
 
   /// Declare the dynamic allocation hooks.
   ACE_ALLOC_HOOK_DECLARE;
@@ -526,10 +537,10 @@ protected:
   // = Check the boundary conditions (assumes locks are held).
 
   /// True if queue is full, else false.
-  virtual bool is_full_i (void);
+  virtual bool is_full_i ();
 
   /// True if queue is empty, else false.
-  virtual bool is_empty_i (void);
+  virtual bool is_empty_i ();
 
   // = Implementation of the public <activate> and <deactivate> methods.
 
@@ -552,7 +563,7 @@ protected:
   virtual int deactivate_i (int pulse = 0);
 
   /// Activate the queue.
-  virtual int activate_i (void);
+  virtual int activate_i ();
 
   // = Helper methods to factor out common #ifdef code.
 
@@ -563,10 +574,10 @@ protected:
   virtual int wait_not_empty_cond (ACE_Time_Value *timeout);
 
   /// Inform any threads waiting to enqueue that they can procede.
-  virtual int signal_enqueue_waiters (void);
+  virtual int signal_enqueue_waiters ();
 
   /// Inform any threads waiting to dequeue that they can procede.
-  virtual int signal_dequeue_waiters (void);
+  virtual int signal_dequeue_waiters ();
 
   /// Pointer to head of ACE_Message_Block list.
   ACE_Message_Block *head_;
@@ -596,11 +607,22 @@ protected:
   /// Protect queue from concurrent access.
   ACE_SYNCH_MUTEX_T lock_;
 
+#if defined (ACE_HAS_THREADS)
+  /// Attributes to initialize conditions with.
+  /* We only need this because some crappy compilers can't
+     properly handle initializing the conditions with
+     temporary objects. */
+  ACE_Condition_Attributes_T<TIME_POLICY> cond_attr_;
+#endif
+
   /// Used to make threads sleep until the queue is no longer empty.
   ACE_SYNCH_CONDITION_T not_empty_cond_;
 
   /// Used to make threads sleep until the queue is no longer full.
   ACE_SYNCH_CONDITION_T not_full_cond_;
+
+  /// The policy to return the current time of day
+  TIME_POLICY time_policy_;
 
   /// Sends the size of the queue whenever it changes.
 #if defined (ACE_HAS_MONITOR_POINTS) && (ACE_HAS_MONITOR_POINTS == 1)
@@ -608,10 +630,9 @@ protected:
 #endif
 
 private:
-
   // = Disallow these operations.
-  ACE_UNIMPLEMENTED_FUNC (void operator= (const ACE_Message_Queue<ACE_SYNCH_USE> &))
-  ACE_UNIMPLEMENTED_FUNC (ACE_Message_Queue (const ACE_Message_Queue<ACE_SYNCH_USE> &))
+  void operator= (const ACE_Message_Queue<ACE_SYNCH_USE> &) = delete;
+  ACE_Message_Queue (const ACE_Message_Queue<ACE_SYNCH_USE> &) = delete;
 };
 
 // This typedef is used to get around a compiler bug in g++/vxworks.
@@ -623,12 +644,11 @@ typedef ACE_Message_Queue<ACE_SYNCH> ACE_DEFAULT_MESSAGE_QUEUE_TYPE;
  *
  * @brief Iterator for the ACE_Message_Queue.
  */
-template <ACE_SYNCH_DECL>
+template <ACE_SYNCH_DECL, class TIME_POLICY = ACE_System_Time_Policy>
 class ACE_Message_Queue_Iterator
 {
 public:
-  // = Initialization method.
-  ACE_Message_Queue_Iterator (ACE_Message_Queue <ACE_SYNCH_USE> &queue);
+  ACE_Message_Queue_Iterator (ACE_Message_Queue <ACE_SYNCH_USE, TIME_POLICY> &queue);
 
   // = Iteration methods.
   /// Pass back the @a entry that hasn't been seen in the queue.
@@ -636,22 +656,23 @@ public:
   int next (ACE_Message_Block *&entry);
 
   /// Returns 1 when all items have been seen, else 0.
-  int done (void) const;
+  int done () const;
 
   /// Move forward by one element in the queue.  Returns 0 when all the
   /// items in the set have been seen, else 1.
-  int advance (void);
+  int advance ();
 
   /// Dump the state of an object.
-  void dump (void) const;
+  void dump () const;
 
   /// Declare the dynamic allocation hooks.
   ACE_ALLOC_HOOK_DECLARE;
 
 private:
   /// Message_Queue we are iterating over.
-  ACE_Message_Queue <ACE_SYNCH_USE> &queue_;
+  ACE_Message_Queue <ACE_SYNCH_USE, TIME_POLICY> &queue_;
 
+protected:
   /// Keeps track of how far we've advanced...
   ACE_Message_Block *curr_;
 };
@@ -661,12 +682,11 @@ private:
  *
  * @brief Reverse Iterator for the ACE_Message_Queue.
  */
-template <ACE_SYNCH_DECL>
+template <ACE_SYNCH_DECL, class TIME_POLICY = ACE_System_Time_Policy>
 class ACE_Message_Queue_Reverse_Iterator
 {
 public:
-  // = Initialization method.
-  ACE_Message_Queue_Reverse_Iterator (ACE_Message_Queue <ACE_SYNCH_USE> &queue);
+  ACE_Message_Queue_Reverse_Iterator (ACE_Message_Queue <ACE_SYNCH_USE, TIME_POLICY> &queue);
 
   // = Iteration methods.
   /// Pass back the @a entry that hasn't been seen in the queue.
@@ -674,22 +694,23 @@ public:
   int next (ACE_Message_Block *&entry);
 
   /// Returns 1 when all items have been seen, else 0.
-  int done (void) const;
+  int done () const;
 
   /// Move forward by one element in the queue.  Returns 0 when all the
   /// items in the set have been seen, else 1.
-  int advance (void);
+  int advance ();
 
   /// Dump the state of an object.
-  void dump (void) const;
+  void dump () const;
 
   /// Declare the dynamic allocation hooks.
   ACE_ALLOC_HOOK_DECLARE;
 
 private:
   /// Message_Queue we are iterating over.
-  ACE_Message_Queue <ACE_SYNCH_USE> &queue_;
+  ACE_Message_Queue <ACE_SYNCH_USE, TIME_POLICY> &queue_;
 
+protected:
   /// Keeps track of how far we've advanced...
   ACE_Message_Block *curr_;
 };
@@ -761,18 +782,17 @@ private:
  * ensure the correct semantics, but that is not a
  * very stable or portable approach (discouraged).
  */
-template <ACE_SYNCH_DECL>
-class ACE_Dynamic_Message_Queue : public ACE_Message_Queue<ACE_SYNCH_USE>
+template <ACE_SYNCH_DECL, class TIME_POLICY = ACE_System_Time_Policy>
+class ACE_Dynamic_Message_Queue : public ACE_Message_Queue<ACE_SYNCH_USE, TIME_POLICY>
 {
 public:
-  // = Initialization and termination methods.
   ACE_Dynamic_Message_Queue (ACE_Dynamic_Message_Strategy & message_strategy,
                              size_t hwm = ACE_Message_Queue_Base::DEFAULT_HWM,
                              size_t lwm = ACE_Message_Queue_Base::DEFAULT_LWM,
                              ACE_Notification_Strategy * = 0);
 
   /// Close down the message queue and release all resources.
-  virtual ~ACE_Dynamic_Message_Queue (void);
+  virtual ~ACE_Dynamic_Message_Queue ();
 
   /**
    * Detach all messages with status given in the passed flags from
@@ -796,7 +816,7 @@ public:
                             ACE_Time_Value *timeout = 0);
 
   /// Dump the state of the queue.
-  virtual void dump (void) const;
+  virtual void dump () const;
 
   /**
    * Just call priority enqueue method: tail enqueue semantics for dynamic
@@ -883,8 +903,8 @@ protected:
 private:
   // = Disallow public access to these operations.
 
-  ACE_UNIMPLEMENTED_FUNC (void operator= (const ACE_Dynamic_Message_Queue<ACE_SYNCH_USE> &))
-  ACE_UNIMPLEMENTED_FUNC (ACE_Dynamic_Message_Queue (const ACE_Dynamic_Message_Queue<ACE_SYNCH_USE> &))
+  void operator= (const ACE_Dynamic_Message_Queue<ACE_SYNCH_USE, TIME_POLICY> &) = delete;
+  ACE_Dynamic_Message_Queue (const ACE_Dynamic_Message_Queue<ACE_SYNCH_USE, TIME_POLICY> &) = delete;
 
   // provide definitions for these (just call base class method),
   // but make them private so they're not accessible outside the class
@@ -892,7 +912,6 @@ private:
   /// Private method to hide public base class method: just calls base class method
   virtual int peek_dequeue_head (ACE_Message_Block *&first_item,
                                  ACE_Time_Value *timeout = 0);
-
 };
 
 /**
@@ -909,18 +928,18 @@ private:
  * any of these factory methods is only responsible for
  * ensuring destruction of the message queue itself.
  */
-template <ACE_SYNCH_DECL>
+template <ACE_SYNCH_DECL, class TIME_POLICY = ACE_System_Time_Policy>
 class ACE_Message_Queue_Factory
 {
 public:
   /// Factory method for a statically prioritized ACE_Message_Queue
-  static ACE_Message_Queue<ACE_SYNCH_USE> *
+  static ACE_Message_Queue<ACE_SYNCH_USE, TIME_POLICY> *
     create_static_message_queue (size_t hwm = ACE_Message_Queue_Base::DEFAULT_HWM,
                                  size_t lwm = ACE_Message_Queue_Base::DEFAULT_LWM,
                                  ACE_Notification_Strategy * = 0);
 
   /// Factory method for a dynamically prioritized (by time to deadline) ACE_Dynamic_Message_Queue
-  static ACE_Dynamic_Message_Queue<ACE_SYNCH_USE> *
+  static ACE_Dynamic_Message_Queue<ACE_SYNCH_USE, TIME_POLICY> *
     create_deadline_message_queue (size_t hwm = ACE_Message_Queue_Base::DEFAULT_HWM,
                                    size_t lwm = ACE_Message_Queue_Base::DEFAULT_LWM,
                                    ACE_Notification_Strategy * = 0,
@@ -930,7 +949,7 @@ public:
                                    u_long dynamic_priority_offset =  0x200000UL); // 2^(22-1)
 
   /// Factory method for a dynamically prioritized (by laxity) ACE_Dynamic_Message_Queue
-  static ACE_Dynamic_Message_Queue<ACE_SYNCH_USE> *
+  static ACE_Dynamic_Message_Queue<ACE_SYNCH_USE, TIME_POLICY> *
     create_laxity_message_queue (size_t hwm = ACE_Message_Queue_Base::DEFAULT_HWM,
                                  size_t lwm = ACE_Message_Queue_Base::DEFAULT_LWM,
                                  ACE_Notification_Strategy * = 0,
@@ -959,8 +978,8 @@ public:
 };
 
 // Forward decls.
-template <class ACE_MESSAGE_TYPE, ACE_SYNCH_DECL> class ACE_Message_Queue_Ex_Iterator;
-template <class ACE_MESSAGE_TYPE, ACE_SYNCH_DECL> class ACE_Message_Queue_Ex_Reverse_Iterator;
+template <class ACE_MESSAGE_TYPE, ACE_SYNCH_DECL, class TIME_POLICY> class ACE_Message_Queue_Ex_Iterator;
+template <class ACE_MESSAGE_TYPE, ACE_SYNCH_DECL, class TIME_POLICY> class ACE_Message_Queue_Ex_Reverse_Iterator;
 
 /**
  * @class ACE_Message_Queue_Ex
@@ -979,7 +998,7 @@ template <class ACE_MESSAGE_TYPE, ACE_SYNCH_DECL> class ACE_Message_Queue_Ex_Rev
  *   -# ACE_MT_SYNCH: all operations are thread-safe
  *   -# ACE_NULL_SYNCH: no synchronization and no locking overhead
  */
-template <class ACE_MESSAGE_TYPE, ACE_SYNCH_DECL>
+template <class ACE_MESSAGE_TYPE, ACE_SYNCH_DECL, class TIME_POLICY = ACE_System_Time_Policy>
 class ACE_Message_Queue_Ex
 {
 public:
@@ -990,13 +1009,13 @@ public:
     DEFAULT_PRIORITY = 0
   };
 
-  friend class ACE_Message_Queue_Ex_Iterator <ACE_MESSAGE_TYPE, ACE_SYNCH_USE>;
-  friend class ACE_Message_Queue_Ex_Reverse_Iterator<ACE_MESSAGE_TYPE, ACE_SYNCH_USE>;
+  friend class ACE_Message_Queue_Ex_Iterator <ACE_MESSAGE_TYPE, ACE_SYNCH_USE, TIME_POLICY>;
+  friend class ACE_Message_Queue_Ex_Reverse_Iterator<ACE_MESSAGE_TYPE, ACE_SYNCH_USE, TIME_POLICY>;
 
   // = Traits
-  typedef ACE_Message_Queue_Ex_Iterator<ACE_MESSAGE_TYPE, ACE_SYNCH_USE>
+  typedef ACE_Message_Queue_Ex_Iterator<ACE_MESSAGE_TYPE, ACE_SYNCH_USE, TIME_POLICY>
           ITERATOR;
-  typedef ACE_Message_Queue_Ex_Reverse_Iterator<ACE_MESSAGE_TYPE, ACE_SYNCH_USE>
+  typedef ACE_Message_Queue_Ex_Reverse_Iterator<ACE_MESSAGE_TYPE, ACE_SYNCH_USE, TIME_POLICY>
           REVERSE_ITERATOR;
 
   /**
@@ -1034,10 +1053,10 @@ public:
   /// @sa flush().
   ///
   /// @retval The number of messages released from the queue; -1 on error.
-  virtual int close (void);
+  virtual int close ();
 
   /// Releases all resources from the message queue and marks it deactivated.
-  virtual ~ACE_Message_Queue_Ex (void);
+  virtual ~ACE_Message_Queue_Ex ();
 
   /**
    * Releases all resources from the message queue but does not mark it
@@ -1046,7 +1065,7 @@ public:
    *
    * @return The number of messages flushed; -1 on error.
    */
-  virtual int flush (void);
+  virtual int flush ();
 
   /**
    * Release all resources from the message queue but do not mark it
@@ -1057,7 +1076,7 @@ public:
    *
    * @return The number of messages flushed.
    */
-  virtual int flush_i (void);
+  virtual int flush_i ();
 
   /** @name Enqueue and dequeue methods
    *
@@ -1237,25 +1256,25 @@ public:
   //@{
 
   /// True if queue is full, else false.
-  virtual bool is_full (void);
+  virtual bool is_full ();
 
   /// True if queue is empty, else false.
-  virtual bool is_empty (void);
+  virtual bool is_empty ();
 
   /**
    * Number of total bytes on the queue, i.e., sum of the message
    * block sizes.
    */
-  virtual size_t message_bytes (void);
+  virtual size_t message_bytes ();
   /**
    * Number of total length on the queue, i.e., sum of the message
    * block lengths.
    */
-  virtual size_t message_length (void);
+  virtual size_t message_length ();
   /**
    * Number of total messages on the queue.
    */
-  virtual size_t message_count (void);
+  virtual size_t message_count ();
 
   // = Manual changes to these stats (used when queued message blocks
   // change size or lengths).
@@ -1279,7 +1298,7 @@ public:
   /**
    * Get high watermark.
    */
-  virtual size_t high_water_mark (void);
+  virtual size_t high_water_mark ();
   /**
    * Set the high watermark, which determines how many bytes can be
    * stored in a queue before it's considered "full."
@@ -1289,7 +1308,7 @@ public:
   /**
    * Get low watermark.
    */
-  virtual size_t low_water_mark (void);
+  virtual size_t low_water_mark ();
   /**
    * Set the low watermark, which determines how many bytes must be in
    * the queue before supplier threads are allowed to enqueue
@@ -1313,13 +1332,13 @@ public:
    * ESHUTDOWN.  Returns WAS_INACTIVE if queue was inactive before the
    * call and WAS_ACTIVE if queue was active before the call.
    */
-  virtual int deactivate (void);
+  virtual int deactivate ();
 
   /**
    * Reactivate the queue so that threads can enqueue and dequeue
    * messages again.  Returns the state of the queue before the call.
    */
-  virtual int activate (void);
+  virtual int activate ();
 
   /**
    * Pulse the queue to wake up any waiting threads.  Changes the
@@ -1328,15 +1347,15 @@ public:
    *
    * @retval  The queue's state before this call.
    */
-  virtual int pulse (void);
+  virtual int pulse ();
 
   /// Returns the current state of the queue, which can be one of
   /// ACTIVATED, DEACTIVATED, or PULSED.
-  virtual int state (void);
+  virtual int state ();
 
   /// Returns true if the state of the queue is DEACTIVATED,
   /// but false if the queue's state is ACTIVATED or PULSED.
-  virtual int deactivated (void);
+  virtual int deactivated ();
   //@}
 
   /** @name Notification strategy methods
@@ -1353,27 +1372,35 @@ public:
    * guarantee that the queue will be still be non-empty by the time
    * the notification occurs.
    */
-  virtual int notify (void);
+  virtual int notify ();
 
   /// Get the notification strategy for the <Message_Queue>
-  virtual ACE_Notification_Strategy *notification_strategy (void);
+  virtual ACE_Notification_Strategy *notification_strategy ();
 
   /// Set the notification strategy for the <Message_Queue>
   virtual void notification_strategy (ACE_Notification_Strategy *s);
   //@}
 
   /// Returns a reference to the lock used by the ACE_Message_Queue_Ex.
-  virtual ACE_SYNCH_MUTEX_T &lock (void);
+  virtual ACE_SYNCH_MUTEX_T &lock ();
+
+  /// Get the current time of day according to the queue's TIME_POLICY.
+  /// Allows users to initialize timeout
+  ACE_Time_Value_T<TIME_POLICY> gettimeofday ();
+
+  /// Allows applications to control how the timer queue gets the time
+  /// of day.
+  void set_time_policy (TIME_POLICY const & time_policy);
 
   /// Dump the state of an object.
-  virtual void dump (void) const;
+  virtual void dump () const;
 
   /// Declare the dynamic allocation hooks.
   ACE_ALLOC_HOOK_DECLARE;
 
 protected:
   /// Implement this via an ACE_Message_Queue.
-  ACE_Message_Queue<ACE_SYNCH_USE> queue_;
+  ACE_Message_Queue<ACE_SYNCH_USE, TIME_POLICY> queue_;
 };
 
 /**
@@ -1381,12 +1408,11 @@ protected:
  *
  * @brief Iterator for the ACE_Message_Queue_Ex.
  */
-template <class ACE_MESSAGE_TYPE, ACE_SYNCH_DECL>
+template <class ACE_MESSAGE_TYPE, ACE_SYNCH_DECL, class TIME_POLICY = ACE_System_Time_Policy>
 class ACE_Message_Queue_Ex_Iterator
 {
 public:
-  // = Initialization method.
-  ACE_Message_Queue_Ex_Iterator (ACE_Message_Queue_Ex<ACE_MESSAGE_TYPE, ACE_SYNCH_USE> & queue);
+  ACE_Message_Queue_Ex_Iterator (ACE_Message_Queue_Ex<ACE_MESSAGE_TYPE, ACE_SYNCH_USE, TIME_POLICY> & queue);
 
   // = Iteration methods.
   /// Pass back the @a entry that hasn't been seen in the queue.
@@ -1394,21 +1420,21 @@ public:
   int next (ACE_MESSAGE_TYPE *&entry);
 
   /// Returns 1 when all items have been seen, else 0.
-  int done (void) const;
+  int done () const;
 
   /// Move forward by one element in the queue.  Returns 0 when all the
   /// items in the set have been seen, else 1.
-  int advance (void);
+  int advance ();
 
   /// Dump the state of an object.
-  void dump (void) const;
+  void dump () const;
 
   /// Declare the dynamic allocation hooks.
   ACE_ALLOC_HOOK_DECLARE;
 
 private:
   /// Implement this via the ACE_Message_Queue_Iterator
-  ACE_Message_Queue_Iterator<ACE_SYNCH_USE> iter_;
+  ACE_Message_Queue_Iterator<ACE_SYNCH_USE, TIME_POLICY> iter_;
 };
 
 /**
@@ -1416,12 +1442,11 @@ private:
  *
  * @brief Reverse iterator for the ACE_Message_Queue_Ex.
  */
-template <class ACE_MESSAGE_TYPE, ACE_SYNCH_DECL>
+template <class ACE_MESSAGE_TYPE, ACE_SYNCH_DECL, class TIME_POLICY = ACE_System_Time_Policy>
 class ACE_Message_Queue_Ex_Reverse_Iterator
 {
 public:
-  // = Initialization method.
-  ACE_Message_Queue_Ex_Reverse_Iterator (ACE_Message_Queue_Ex<ACE_MESSAGE_TYPE, ACE_SYNCH_USE> & queue);
+  ACE_Message_Queue_Ex_Reverse_Iterator (ACE_Message_Queue_Ex<ACE_MESSAGE_TYPE, ACE_SYNCH_USE, TIME_POLICY> & queue);
 
   // = Iteration methods.
   /// Pass back the @a entry that hasn't been seen in the queue.
@@ -1429,21 +1454,21 @@ public:
   int next (ACE_MESSAGE_TYPE *&entry);
 
   /// Returns 1 when all items have been seen, else 0.
-  int done (void) const;
+  int done () const;
 
   /// Move forward by one element in the queue.  Returns 0 when all the
   /// items in the set have been seen, else 1.
-  int advance (void);
+  int advance ();
 
   /// Dump the state of an object.
-  void dump (void) const;
+  void dump () const;
 
   /// Declare the dynamic allocation hooks.
   ACE_ALLOC_HOOK_DECLARE;
 
 private:
   /// Implement this via the ACE_Message_Queue_Reverse_Iterator
-  ACE_Message_Queue_Reverse_Iterator<ACE_SYNCH_USE> iter_;
+  ACE_Message_Queue_Reverse_Iterator<ACE_SYNCH_USE, TIME_POLICY> iter_;
 };
 
 /**
@@ -1464,12 +1489,10 @@ private:
  * ACE_Message_Queue_Ex_N uses this method to run through
  * all the incoming messages and enqueue them in one call.
  */
-template <class ACE_MESSAGE_TYPE, ACE_SYNCH_DECL>
-class ACE_Message_Queue_Ex_N : public ACE_Message_Queue_Ex<ACE_MESSAGE_TYPE, ACE_SYNCH_USE>
+template <class ACE_MESSAGE_TYPE, ACE_SYNCH_DECL, class TIME_POLICY = ACE_System_Time_Policy>
+class ACE_Message_Queue_Ex_N : public ACE_Message_Queue_Ex<ACE_MESSAGE_TYPE, ACE_SYNCH_USE, TIME_POLICY>
 {
 public:
-  // = Initialization and termination methods.
-
   /**
    * Initialize an ACE_Message_Queue_Ex_N.  The @a high_water_mark
    * determines how many bytes can be stored in a queue before it's
@@ -1489,7 +1512,7 @@ public:
                           ACE_Notification_Strategy * ns = 0);
 
   /// Close down the message queue and release all resources.
-  virtual ~ACE_Message_Queue_Ex_N (void);
+  virtual ~ACE_Message_Queue_Ex_N ();
 
   /**
    * Enqueue one or more @c ACE_MESSAGE_TYPE objects at the head of the queue.

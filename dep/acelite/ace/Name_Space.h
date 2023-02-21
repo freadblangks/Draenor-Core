@@ -4,8 +4,6 @@
 /**
  *  @file    Name_Space.h
  *
- *  $Id: Name_Space.h 84834 2009-03-16 12:28:51Z johnnyw $
- *
  *  @author Prashant Jain <pjain@cse.wustl.edu>
  */
 //==========================================================================
@@ -36,7 +34,6 @@ typedef ACE_Unbounded_Set<ACE_NS_WString> ACE_WSTRING_SET;
 class ACE_Export ACE_Name_Binding
 {
 public:
-  // = Initialization and termination.
   /// Main constructor that initializes all the fields.
   ACE_Name_Binding (const ACE_NS_WString &n,
                     const ACE_NS_WString &v,
@@ -77,7 +74,7 @@ typedef ACE_Unbounded_Set_Iterator<ACE_NS_WString> ACE_PWSTRING_ITERATOR;
  * @class ACE_Name_Space
  *
  * @brief Abstract base class that provides an abstract interface to
- * the database without exposing any implemenation details.
+ * the database without exposing any implementation details.
  *
  * Manages a Naming Service Name Space. Provides the basic
  * methods -- bind, unbind, rebind, find, and listnames.
@@ -99,13 +96,13 @@ public:
   /**
    * Overwrite the value or type of an existing name in a
    * ACE_Name_Space or bind a new name to the context, if it didn't
-   * exist yet. (Wide charcter strings interface).
+   * exist yet. (Wide character strings interface).
    */
   virtual int rebind (const ACE_NS_WString &name_in,
                       const ACE_NS_WString &value_in,
                       const char *type_in = "") = 0;
 
-  /// Delete a name from a ACE_Name_Space (Wide charcter strings
+  /// Delete a name from a ACE_Name_Space (Wide character strings
   /// Interface).
   virtual int unbind (const ACE_NS_WString &name_in) = 0;
 

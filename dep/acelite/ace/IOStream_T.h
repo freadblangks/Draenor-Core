@@ -4,8 +4,6 @@
 /**
  *  @file    IOStream_T.h
  *
- *  $Id: IOStream_T.h 80826 2008-03-04 14:51:23Z wotte $
- *
  *  @author James CE Johnson <jcej@lads.com>
  *  @author Jim Crossley <jim@lads.com>
  *
@@ -111,12 +109,11 @@ template <class STREAM>
 class ACE_IOStream : public iostream, public STREAM
 {
 public:
-  // = Initialization and termination methods.
   ACE_IOStream (STREAM &stream,
                   u_int streambuf_size = ACE_STREAMBUF_SIZE);
 
   /**
-   * The default constructor.  This will initiailze your STREAM and
+   * The default constructor.  This will initialize your STREAM and
    * then setup the iostream baseclass to use a custom streambuf based
    * on STREAM.
    */
@@ -126,7 +123,7 @@ public:
   /// to the <iostream> base class;
   virtual ~ACE_IOStream (void);
 
-  /// The only ambituity in the multiple inheritance is the <close>
+  /// The only ambiguity in the multiple inheritance is the <close>
   /// function.
   virtual int close (void);
 
@@ -227,17 +224,15 @@ protected:
   ACE_Streambuf_T<STREAM> *streambuf_;
 
 private:
-  // = Private methods.
-
   // We move these into the private section so that they cannot be
   // used by the application programmer.  This is necessary because
   // streambuf_ will be buffering IO on the STREAM object.  If these
   // functions were used in your program, there is a danger of getting
   // the datastream out of sync.
-  ACE_UNIMPLEMENTED_FUNC (ssize_t send (...))
-  ACE_UNIMPLEMENTED_FUNC (ssize_t recv (...))
-  ACE_UNIMPLEMENTED_FUNC (ssize_t send_n (...))
-  ACE_UNIMPLEMENTED_FUNC (ssize_t recv_n (...))
+  ssize_t send (...) = delete;
+  ssize_t recv (...) = delete;
+  ssize_t send_n (...) = delete;
+  ssize_t recv_n (...) = delete;
 };
 
 /**

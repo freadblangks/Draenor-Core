@@ -1,6 +1,4 @@
 //* -*- C++ -*- */
-// $Id: config-vxworks6.4.h 91683 2010-09-09 09:07:49Z johnnyw $
-
 // The following configuration file is designed to work for VxWorks
 // 6.4 platforms using one of these compilers:
 // 1) The GNU g++ compiler that is shipped with VxWorks 6.4
@@ -17,6 +15,14 @@
 #if ! defined (ACE_VXWORKS)
 # define ACE_VXWORKS 0x640
 #endif /* ! ACE_VXWORKS */
+
+#ifndef ACE_LACKS_RAND_R
+# define ACE_LACKS_RAND_R 1
+#endif
+
+#ifndef __RTP__
+# define ACE_LACKS_STD_WSTRING
+#endif
 
 #if !defined (__RTP__)
   // Fix for wrong typedef of time_t in kernel mode
@@ -48,7 +54,7 @@
 #elif defined (__DCC__)
 # define ACE_HAS_STANDARD_CPP_LIBRARY 1
 # define ACE_TEMPLATES_REQUIRE_SOURCE
-#else  /* ! __GNUG__ && ! ghs && !__DCC__ */
+#else  /* ! __GNUG__ && !__DCC__ */
 #  ifdef __cplusplus  /* Let it slide for C compilers. */
 #    error unsupported compiler on VxWorks
 #  endif  /* __cplusplus */
@@ -81,7 +87,7 @@
 
 // OS-specific configuration
 #define ACE_HAS_4_4BSD_SENDMSG_RECVMSG
-#define ACE_HAS_3_PARAM_READDIR_R
+#define ACE_HAS_NET_IF_DL_H
 #define ACE_HAS_NONCONST_GETBY
 #define ACE_HAS_NONCONST_INET_ADDR
 #define ACE_HAS_NONCONST_SWAB
@@ -97,7 +103,6 @@
 #define ACE_HAS_CLOCK_GETTIME
 #define ACE_HAS_CLOCK_SETTIME
 #define ACE_HAS_CONSISTENT_SIGNAL_PROTOTYPES
-#define ACE_HAS_CPLUSPLUS_HEADERS
 #define ACE_HAS_DIRENT
 #define ACE_HAS_HANDLE_SET_OPTIMIZED_FOR_SELECT
 #define ACE_HAS_MSG
@@ -202,6 +207,8 @@
 #define ACE_LACKS_SYMLINKS
 #define ACE_LACKS_ISCTYPE
 
+#define ACE_LACKS_PTHREAD_SCOPE_PROCESS
+
 #if defined __RTP__
   // We are building for RTP mode
   #if !defined (ACE_AS_STATIC_LIBS)
@@ -238,7 +245,6 @@
   #define ACE_LACKS_STDINT_H
   #define ACE_LACKS_UNAME
   #define ACE_LACKS_UTSNAME_T
-  #define ACE_LACKS_RAND_REENTRANT_FUNCTIONS
   #define ACE_LACKS_DLFCN_H
   #define ACE_LACKS_WAIT
   #define ACE_LACKS_WAITPID
@@ -262,6 +268,7 @@
   #define ACE_LACKS_WCSNCPY
   #define ACE_LACKS_WCSPBRK
   #define ACE_LACKS_WCSRCHR
+  #define ACE_LACKS_WCSRTOMBS
   #define ACE_LACKS_WCSSPN
   #define ACE_LACKS_WCSSTR
   #define ACE_LACKS_WCSTOK

@@ -1,6 +1,4 @@
 /* -*- C++ -*- */
-// $Id: config-netbsd.h 91285 2010-08-05 08:29:30Z johnnyw $
-
 #ifndef ACE_CONFIG_H
 #define ACE_CONFIG_H
 
@@ -28,7 +26,6 @@
 #define ACE_HAS_GETTIMEOFDAY 1
 #define ACE_HAS_2_PARAM_ASCTIME_R_AND_CTIME_R 1
 #define ACE_HAS_3_PARAM_WCSTOK 1
-#define ACE_HAS_3_PARAM_READDIR_R 1
 #define ACE_HAS_4_4BSD_SENDMSG_RECVMSG 1
 #define ACE_HAS_ALT_CUSERID 1
 #define ACE_HAS_AUTOMATIC_INIT_FINI 1
@@ -48,7 +45,6 @@
 #define ACE_HAS_NONCONST_SELECT_TIMEVAL 1
 #define ACE_HAS_ONLY_SCHED_OTHER 1
 #define ACE_HAS_POLL 1
-#define ACE_HAS_POSITION_INDEPENDENT_POINTERS 1
 #define ACE_HAS_POSIX_NONBLOCK 1
 #define ACE_HAS_POSIX_TIME 1
 #define ACE_HAS_P_READ_WRITE 1
@@ -69,11 +65,10 @@
 #define ACE_HAS_SOCKLEN_T 1
 #define ACE_HAS_SSIZE_T 1
 #define ACE_HAS_STANDARD_CPP_LIBRARY 1
-#define ACE_HAS_STDEXCEPT_NO_H 1
 #define ACE_HAS_STRINGS 1
 #define ACE_HAS_STRING_CLASS 1
 #define ACE_HAS_SVR4_DYNAMIC_LINKING 1
-#define ACE_HAS_SYSV_IPC 1
+#define ACE_HAS_SYSV_IPC
 #define ACE_HAS_SYS_FILIO_H 1
 #define ACE_HAS_STRSIGNAL
 #define ACE_HAS_SYS_SOCKIO_H 1
@@ -105,7 +100,6 @@
 #define ACE_LACKS_PRI_T 1
 #define ACE_LACKS_PTHREAD_THR_SIGSETMASK 1
 #define ACE_LACKS_PTHREAD_YIELD 1
-#define ACE_LACKS_PWD_REENTRANT_FUNCTIONS 1
 #define ACE_LACKS_RWLOCKATTR_PSHARED 1
 #define ACE_LACKS_RWLOCK_T 1
 #define ACE_LACKS_SETSCHED 1
@@ -132,9 +126,6 @@
 #define ACE_SIZEOF_VOID_P 8
 #define ACE_SIZEOF_WCHAR 4
 
-typedef unsigned long ACE_UINT64;
-typedef   signed long ACE_INT64;
-
 #define ACE_SSIZE_T_FORMAT_SPECIFIER_ASCII  "%ld"
 #define ACE_SIZE_T_FORMAT_SPECIFIER_ASCII "%lu"
 
@@ -149,9 +140,6 @@ typedef   signed long ACE_INT64;
 #define ACE_SIZEOF_SHORT 2
 #define ACE_SIZEOF_VOID_P 4
 #define ACE_SIZEOF_WCHAR 4
-
-typedef unsigned long long ACE_UINT64;
-typedef   signed long long ACE_INT64;
 
 #else
 # error unknown CPU architecture

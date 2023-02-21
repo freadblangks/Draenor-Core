@@ -2,8 +2,6 @@
 /**
  *  @file   Stack_Trace.cpp
  *
- *  $Id: Stack_Trace.cpp 91286 2010-08-05 09:04:31Z johnnyw $
- *
  *  @brief  Encapsulate string representation of stack trace.
  *
  *  Some platform-specific areas of this code have been adapted from
@@ -22,7 +20,6 @@
  *
  *  If you add support for a new platform, please add a bullet to the
  *  above list with durable references to the origins of your code.
- *
  */
 //=============================================================================
 
@@ -30,6 +27,8 @@
 #include "ace/Min_Max.h"
 #include "ace/OS_NS_string.h"
 #include "ace/OS_NS_stdio.h"
+
+ACE_BEGIN_VERSIONED_NAMESPACE_DECL
 
 /*
   This is ugly, simply because it's very platform-specific.
@@ -58,7 +57,16 @@ determine_starting_frame (ssize_t initial_frame, ssize_t offset)
   return ACE_MAX( initial_frame + offset, static_cast<ssize_t>(0));
 }
 
-#if (defined(__GLIBC__) || defined(ACE_HAS_EXECINFO_H)) && (__GNUC__ > 3 || (__GNUC__ == 3 && __GNUC_MINOR__ >= 3))
+#if defined(ACE_FACE_SAFETY_BASE) && !defined(ACE_FACE_DEV)
+void
+ACE_Stack_Trace::generate_trace (ssize_t starting_frame_offset, size_t num_frames)
+{
+  ACE_UNUSED_ARG (starting_frame_offset);
+  ACE_UNUSED_ARG (num_frames);
+  ACE_OS::strcpy (&this->buf_[0], UNABLE_TO_GET_TRACE);
+}
+
+#elif (defined(__GLIBC__) || defined(ACE_HAS_EXECINFO_H))
 // This is the code for glibc
 #  include <execinfo.h>
 
@@ -126,9 +134,9 @@ static ACE_Stack_Trace_stackstate* ACE_Stack_Trace_stateptr = 0;
 
 static void
 ACE_Stack_Trace_Add_Frame_To_Buf (INSTR *caller,
-                                  unsigned int func,
-                                  unsigned int nargs,
-                                  unsigned int *args)
+                                  INSTR *func,
+                                  int nargs,
+                                  ACE_VX_USR_ARG_T *args)
 {
   if (ACE_Stack_Trace_stateptr == 0)
     return;
@@ -146,20 +154,21 @@ ACE_Stack_Trace_Add_Frame_To_Buf (INSTR *caller,
   // These are references so that the structure gets updated
   // in the code below.
   char*& buf = stackstate->buf;
-  unsigned int& len = stackstate->buflen;
+  size_t& len = stackstate->buflen;
 
   // At some point try using symFindByValue() to lookup func (and caller?)
   // to print out symbols rather than simply addresses.
 
   // VxWorks can pass -1 for "nargs" if there was an error
-  if (nargs == static_cast<unsigned int> (-1)) nargs = 0;
+  if (nargs == -1)
+    nargs = 0;
 
-  len += ACE_OS::sprintf (&buf[len], "%#10x: %#10x (", (int)caller, func);
-  for (unsigned int i = 0; i < nargs; ++i)
+  len += ACE_OS::sprintf (&buf[len], "%p: %p (", caller, func);
+  for (int i = 0; i < nargs; ++i)
     {
       if (i != 0)
         len += ACE_OS::sprintf (&buf[len], ", ");
-      len += ACE_OS::sprintf(&buf [len], "%#x", args [i]);
+      len += ACE_OS::sprintf(&buf[len], "0x" ACE_VX_ARG_FORMAT, args[i]);
     }
 
   len += ACE_OS::sprintf(&buf[len], ")\n");
@@ -183,7 +192,7 @@ ACE_Stack_Trace::generate_trace (ssize_t starting_frame_offset,
 
   REG_SET regs;
 
-  taskRegsGet ((int)taskIdSelf(), &regs);
+  taskRegsGet (taskIdSelf(), &regs);
   // Maybe we should take a lock here to guard stateptr?
   ACE_Stack_Trace_stateptr = &state;
   trcStack (&regs, (FUNCPTR)ACE_Stack_Trace_Add_Frame_To_Buf, taskIdSelf ());
@@ -197,7 +206,7 @@ ACE_Stack_Trace::generate_trace (ssize_t starting_frame_offset,
 
 // See memEdrLib.c in VxWorks RTP sources for an example of stack tracing.
 
-static STATUS ace_vx_rtp_pc_validate (INSTR *pc, TRC_OS_CTX *pOsCtx)
+static STATUS ace_vx_rtp_pc_validate (INSTR *pc, TRC_OS_CTX *)
 {
   return ALIGNED (pc, sizeof (INSTR)) ? OK : ERROR;
 }
@@ -222,7 +231,12 @@ ACE_Stack_Trace::generate_trace (ssize_t starting_frame_offset,
   TRC_OS_CTX osCtx;
   osCtx.stackBase = desc.td_pStackBase;
   osCtx.stackEnd = desc.td_pStackEnd;
+#if (ACE_VXWORKS < 0x690)
   osCtx.pcValidateRtn = reinterpret_cast<FUNCPTR> (ace_vx_rtp_pc_validate);
+#else
+  // reinterpret_cast causes an error
+  osCtx.pcValidateRtn = ace_vx_rtp_pc_validate;
+#endif
 
   char *fp = _WRS_FRAMEP_FROM_JMP_BUF (regs);
   INSTR *pc = _WRS_RET_PC_FROM_JMP_BUF (regs);
@@ -250,8 +264,8 @@ ACE_Stack_Trace::generate_trace (ssize_t starting_frame_offset,
           const char *fnName = "(no symbols)";
 
           static const int N_ARGS = 12;
-          int buf[N_ARGS];
-          int *pArgs = 0;
+          ACE_VX_USR_ARG_T buf[N_ARGS];
+          ACE_VX_USR_ARG_T *pArgs = 0;
           int numArgs =
             trcLibFuncs.lvlArgsGet (prevPc, prevFn, prevFp,
                                     buf, N_ARGS, &pArgs);
@@ -262,7 +276,7 @@ ACE_Stack_Trace::generate_trace (ssize_t starting_frame_offset,
           size_t len = ACE_OS::strlen (this->buf_);
           size_t space = SYMBUFSIZ - len - 1;
           char *cursor = this->buf_ + len;
-          size_t written = ACE_OS::snprintf (cursor, space, "%x %s",
+          size_t written = ACE_OS::snprintf (cursor, space, "%p %s",
                                              prevFn, fnName);
           cursor += written;
           space -= written;
@@ -272,7 +286,9 @@ ACE_Stack_Trace::generate_trace (ssize_t starting_frame_offset,
             {
               if (arg == 0) *cursor++ = '(', --space;
               written = ACE_OS::snprintf (cursor, space,
-                                          (arg < numArgs - 1) ? "%x, " : "%x",
+                                          (arg < numArgs - 1) ?
+                                          ACE_VX_ARG_FORMAT ", " :
+                                          ACE_VX_ARG_FORMAT,
                                           pArgs[arg]);
               cursor += written;
               space -= written;
@@ -647,6 +663,22 @@ cs_operate(int (*func)(struct frame_state const *, void *), void *usrarg,
   fs.sf.AddrFrame.Mode = AddrModeFlat;
   fs.sf.AddrBStore.Mode = AddrModeFlat;
   fs.sf.AddrStack.Mode = AddrModeFlat;
+#  elif defined (_M_ARM)
+  DWORD machine = IMAGE_FILE_MACHINE_ARM;
+  fs.sf.AddrPC.Offset = c.Pc;
+  fs.sf.AddrFrame.Offset = c.R11;
+  fs.sf.AddrStack.Offset = c.Sp;
+  fs.sf.AddrPC.Mode = AddrModeFlat;
+  fs.sf.AddrFrame.Mode = AddrModeFlat;
+  fs.sf.AddrStack.Mode = AddrModeFlat;
+#  elif defined (_M_ARM64)
+  DWORD machine = IMAGE_FILE_MACHINE_ARM64;
+  fs.sf.AddrPC.Offset = c.Pc;
+  fs.sf.AddrFrame.Offset = c.Fp;
+  fs.sf.AddrStack.Offset = c.Sp;
+  fs.sf.AddrPC.Mode = AddrModeFlat;
+  fs.sf.AddrFrame.Mode = AddrModeFlat;
+  fs.sf.AddrStack.Mode = AddrModeFlat;
 #  endif
 
   fs.pSym = (PSYMBOL_INFO) GlobalAlloc (GMEM_FIXED,
@@ -719,3 +751,4 @@ ACE_Stack_Trace::generate_trace (ssize_t, size_t)
 }
 #endif
 
+ACE_END_VERSIONED_NAMESPACE_DECL

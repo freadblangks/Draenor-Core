@@ -70,7 +70,9 @@ PidFile = ""
 
 #
 #    UseProcessors
-#        Description: Processors mask for Windows based multi-processor systems.
+#        Description: Processors mask for Windows and Linux based multi-processor systems.
+#        Example:     A computer with 2 CPUs:
+#                     1 - 1st CPU only, 2 - 2nd CPU only, 3 - 1st and 2nd CPU, because 1 | 2 is 3
 #        Default:     0  - (Selected by OS)
 #                     1+ - (Bit mask value of selected processors)
 
@@ -78,7 +80,8 @@ UseProcessors = 0
 
 #
 #    ProcessPriority
-#        Description: Process priority setting for Windows based systems.
+#        Description: Process priority setting for Windows and Linux based systems.
+#        Details:     On Linux, a nice value of -15 is used. On Windows, process is set to HIGH class.
 #        Default:     1 - (High)
 #                     0 - (Normal)
 
@@ -225,6 +228,11 @@ LoginDatabase.WorkerThreads = 1
 Appender.Console=1,2,0
 Appender.Auth=2,2,0,Auth.log,w
 
+#  Logger config values: Given a logger "name"
+#    Logger.name
+#        Description: Defines 'What to log'
+#        Format:      LogLevel,AppenderList
+#
 #                     LogLevel
 #                         0 - (Disabled)
 #                         1 - (Trace)
@@ -237,30 +245,5 @@ Appender.Auth=2,2,0,Auth.log,w
 #                     AppenderList: List of appenders linked to logger
 #                     (Using spaces as separator).
 #
-#    Appenders
-#        Description: List of Appenders to read from config
-#                     (Using spaces as separator).
-#        Default:     "Console Server"
 
-Appenders=Console Auth
-
-#  Logger config values: Given a logger "name"
-#    Logger.name
-#        Description: Defines 'What to log'
-#        Format:      Type,LogLevel,AppenderList
-#                     Type
-#                         0 - Default. Each type that has no config will
-#                             rely on this one. Core will create this logger
-#                             (disabled) if it's not configured
-#                         7 - Network input/output,
-#                        30 - Authserver
-
-Logger.Root=0,3,Console Auth
-
-#
-#    Loggers
-#        Description: List of Loggers to read from config
-#                     (Using spaces as separator).
-#        Default:     "root"
-
-Loggers=Root
+Logger.root=3,Console Auth

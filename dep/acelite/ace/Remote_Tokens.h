@@ -4,9 +4,7 @@
 /**
  *  @file    Remote_Tokens.h
  *
- *  $Id: Remote_Tokens.h 92345 2010-10-24 12:39:33Z johnnyw $
- *
- *  @author Douglas C. Schmidt (schmidt@cs.wustl.edu)
+ *  @author Douglas C. Schmidt (d.schmidt@vanderbilt.edu)
  *  @author Tim Harrison (harrison@cs.wustl.edu)
  */
 //=============================================================================
@@ -42,7 +40,7 @@ ACE_BEGIN_VERSIONED_NAMESPACE_DECL
  * distributed token operations.  It is similar to the
  * ACE_Token_Proxy.
  * @todo
- * Distributed sleep_hooks have not been implemented.  <owner_id>
+ * Distributed sleep_hooks have not been implemented. <owner_id>
  * is not implemented.
  */
 class ACE_Export ACE_Remote_Token_Proxy : public ACE_Token_Proxy
@@ -139,7 +137,7 @@ public:
   static void set_server_address (const ACE_INET_Addr &server_address);
 
   /// Dump the state of the class.
-  void dump (void) const;
+  void dump () const;
 
 protected:
 
@@ -177,7 +175,7 @@ public:
                     int debug = 0);
 
   /// Dump the state of the class.
-  void dump (void) const;
+  void dump () const;
 
   /// Return deep copy.
   virtual ACE_Token_Proxy *clone (void) const;
@@ -213,7 +211,7 @@ public:
   ACE_Remote_RLock (const ACE_Remote_RLock &mutex);
 
   /// Dump the state of the class.
-  void dump (void) const;
+  void dump () const;
 
   /// Returns ACE_RW_Token::RLOCK;
   virtual int type (void) const;
@@ -251,7 +249,7 @@ public:
   ACE_Remote_WLock (const ACE_Remote_WLock &mutex);
 
   /// Dump the state of the class.
-  void dump (void) const;
+  void dump () const;
 
   /// Returns ACE_RW_Token::WLOCK;
   virtual int type (void) const;
@@ -295,7 +293,7 @@ public:
   static void set_server_address (const ACE_INET_Addr &server_address);
 
   /// Dump the state of the class.
-  void dump (void) const;
+  void dump () const;
 
 protected:
   /// The address of the Token Server used by all instances of

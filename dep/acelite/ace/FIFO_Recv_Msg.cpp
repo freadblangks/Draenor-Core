@@ -1,21 +1,20 @@
-// $Id: FIFO_Recv_Msg.cpp 91286 2010-08-05 09:04:31Z johnnyw $
-
 #include "ace/FIFO_Recv_Msg.h"
 
-#include "ace/Log_Msg.h"
+#include "ace/Log_Category.h"
+#if defined (ACE_HAS_ALLOC_HOOKS)
+# include "ace/Malloc_Base.h"
+#endif /* ACE_HAS_ALLOC_HOOKS */
 
 #if !defined (__ACE_INLINE__)
 #include "ace/FIFO_Recv_Msg.inl"
 #endif /* __ACE_INLINE__ */
-
-
 
 ACE_BEGIN_VERSIONED_NAMESPACE_DECL
 
 ACE_ALLOC_HOOK_DEFINE(ACE_FIFO_Recv_Msg)
 
 void
-ACE_FIFO_Recv_Msg::dump (void) const
+ACE_FIFO_Recv_Msg::dump () const
 {
 #if defined (ACE_HAS_DUMP)
   ACE_TRACE ("ACE_FIFO_Recv_Msg::dump");
@@ -43,7 +42,7 @@ ACE_FIFO_Recv_Msg::open (const ACE_TCHAR *fifo_name,
                               sa);
 }
 
-ACE_FIFO_Recv_Msg::ACE_FIFO_Recv_Msg (void)
+ACE_FIFO_Recv_Msg::ACE_FIFO_Recv_Msg ()
 {
   ACE_TRACE ("ACE_FIFO_Recv_Msg::ACE_FIFO_Recv_Msg");
 }
@@ -61,7 +60,7 @@ ACE_FIFO_Recv_Msg::ACE_FIFO_Recv_Msg (const ACE_TCHAR *fifo_name,
                                      perms,
                                      persistent,
                                      sa) == -1)
-    ACE_ERROR ((LM_ERROR,  ACE_TEXT ("%p\n"),  ACE_TEXT ("ACE_FIFO_Recv_Msg")));
+    ACELIB_ERROR ((LM_ERROR,  ACE_TEXT ("%p\n"),  ACE_TEXT ("ACE_FIFO_Recv_Msg")));
 }
 
 ACE_END_VERSIONED_NAMESPACE_DECL

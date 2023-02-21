@@ -4,9 +4,7 @@
 /**
  *  @file    SOCK_Stream.h
  *
- *  $Id: SOCK_Stream.h 80826 2008-03-04 14:51:23Z wotte $
- *
- *  @author Douglas C. Schmidt <schmidt@cs.wustl.edu>
+ *  @author Douglas C. Schmidt <d.schmidt@vanderbilt.edu>
  */
 //=============================================================================
 
@@ -42,13 +40,13 @@ class ACE_Export ACE_SOCK_Stream : public ACE_SOCK_IO
 public:
   // Initialization and termination methods.
   /// Constructor.
-  ACE_SOCK_Stream (void);
+  ACE_SOCK_Stream ();
 
   /// Constructor (sets the underlying ACE_HANDLE with @a h).
   ACE_SOCK_Stream (ACE_HANDLE h);
 
   /// Destructor.
-  ~ACE_SOCK_Stream (void);
+  ~ACE_SOCK_Stream ();
 
   /** @name Counted send/receive methods
    *
@@ -78,7 +76,10 @@ public:
    *                 wait indefinitely or until an error occurs for the
    *                 specified number of bytes to be transferred.
    *                 To avoid any waiting, specify a timeout value with
-   *                 0 seconds.
+   *                 0 seconds. Note that the timeout period restarts on
+   *                 each retried operation issued; therefore, an operation
+   *                 that requires multiples retries may take longer than the
+   *                 specified timeout to complete.
    * @param bytes_transferred If non-0, points to a location which receives
    *                 the total number of bytes transferred before the method
    *                 returns, even if it's less than the number requested.
@@ -152,23 +153,23 @@ public:
 
   // = Selectively close endpoints.
   /// Close down the reader.
-  int close_reader (void);
+  int close_reader ();
 
   /// Close down the writer.
-  int close_writer (void);
+  int close_writer ();
 
   /**
    * Close down the socket (we need this to make things work correctly
    * on Win32, which requires use to do a close_writer() before doing
    * the close to avoid losing data).
    */
-  int close (void);
+  int close ();
 
   // = Meta-type info
   typedef ACE_INET_Addr PEER_ADDR;
 
   /// Dump the state of an object.
-  void dump (void) const;
+  void dump () const;
 
   /// Declare the dynamic allocation hooks.
   ACE_ALLOC_HOOK_DECLARE;

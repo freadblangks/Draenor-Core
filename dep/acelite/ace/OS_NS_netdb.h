@@ -4,9 +4,7 @@
 /**
  *  @file   OS_NS_netdb.h
  *
- *  $Id: OS_NS_netdb.h 80826 2008-03-04 14:51:23Z wotte $
- *
- *  @author Douglas C. Schmidt <schmidt@cs.wustl.edu>
+ *  @author Douglas C. Schmidt <d.schmidt@vanderbilt.edu>
  *  @author Jesper S. M|ller<stophph@diku.dk>
  *  @author and a cast of thousands...
  *
@@ -26,6 +24,7 @@
 # endif /* ACE_LACKS_PRAGMA_ONCE */
 
 #include "ace/os_include/os_netdb.h"
+#include "ace/os_include/sys/os_socket.h"
 #include /**/ "ace/ACE_export.h"
 
 #if defined (ACE_EXPORT_MACRO)
@@ -38,20 +37,12 @@ ACE_BEGIN_VERSIONED_NAMESPACE_DECL
 namespace ACE_OS
 {
 
-#if defined (ACE_VXWORKS) && defined (ACE_LACKS_GETHOSTBYADDR)
-  extern ACE_Export
-#else
   ACE_NAMESPACE_INLINE_FUNCTION
-#endif /* ACE_VXWORKS */
   struct hostent *gethostbyaddr (const char *addr,
                                  int length,
                                  int type);
 
-#if defined (ACE_VXWORKS) && defined (ACE_LACKS_GETHOSTBYADDR)
-  extern ACE_Export
-#else
   ACE_NAMESPACE_INLINE_FUNCTION
-#endif /* ACE_VXWORKS */
   struct hostent *gethostbyaddr_r (const char *addr,
                                    int length,
                                    int type,
@@ -59,18 +50,10 @@ namespace ACE_OS
                                    ACE_HOSTENT_DATA buffer,
                                    int *h_errnop);
 
-#if defined (ACE_VXWORKS) && defined (ACE_LACKS_GETHOSTBYNAME)
-  extern ACE_Export
-#else
   ACE_NAMESPACE_INLINE_FUNCTION
-#endif /* ACE_VXWORKS */
   struct hostent *gethostbyname (const char *name);
 
-#if defined (ACE_VXWORKS) && defined (ACE_LACKS_GETHOSTBYNAME)
-  extern ACE_Export
-#else
   ACE_NAMESPACE_INLINE_FUNCTION
-#endif /* ACE_VXWORKS */
   struct hostent *gethostbyname_r (const char *name,
                                    struct hostent *result,
                                    ACE_HOSTENT_DATA buffer,
@@ -121,6 +104,36 @@ namespace ACE_OS
                                    const char *proto,
                                    struct servent *result,
                                    ACE_SERVENT_DATA buf);
+
+  ACE_NAMESPACE_INLINE_FUNCTION
+  int getaddrinfo (const char *name, const char *service,
+                   const addrinfo *hints, addrinfo **result);
+
+  ACE_NAMESPACE_INLINE_FUNCTION
+  void freeaddrinfo (addrinfo *result);
+
+  ACE_NAMESPACE_INLINE_FUNCTION
+  const ACE_TCHAR *gai_strerror (int errcode);
+
+  ACE_NAMESPACE_INLINE_FUNCTION
+  int getnameinfo (const sockaddr *addr, ACE_SOCKET_LEN addr_len,
+                   char *host, ACE_SOCKET_LEN host_len,
+                   char *service, ACE_SOCKET_LEN service_len,
+                   unsigned int flags);
+
+#ifdef ACE_LACKS_GETADDRINFO
+  extern ACE_Export
+  int getaddrinfo_emulation (const char *name, addrinfo **result);
+
+  extern ACE_Export
+  void freeaddrinfo_emulation (addrinfo *result);
+#endif
+
+#ifdef ACE_LACKS_GETNAMEINFO
+  extern ACE_Export
+  int getnameinfo_emulation (const sockaddr *addr, ACE_SOCKET_LEN addr_len,
+                             char *host, ACE_SOCKET_LEN host_len);
+#endif
 
 # if defined (ACE_MT_SAFE) && (ACE_MT_SAFE != 0) && defined (ACE_LACKS_NETDB_REENTRANT_FUNCTIONS)
   extern ACE_Export

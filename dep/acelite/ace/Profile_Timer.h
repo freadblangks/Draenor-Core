@@ -4,9 +4,7 @@
 /**
  *  @file    Profile_Timer.h
  *
- *  $Id: Profile_Timer.h 80826 2008-03-04 14:51:23Z wotte $
- *
- *  @author Douglas C. Schmidt <schmidt@cs.wustl.edu>
+ *  @author Douglas C. Schmidt <d.schmidt@vanderbilt.edu>
  */
 //==========================================================================
 
@@ -34,7 +32,6 @@ ACE_BEGIN_VERSIONED_NAMESPACE_DECL
 class ACE_Export ACE_Profile_Timer
 {
 public:
-
   /**
    * @class ACE_Elapsed_Time
    *
@@ -56,7 +53,6 @@ public:
 
   typedef ACE_Rusage Rusage;
 
-  // = Initialization and termination methods.
   /// Default constructor. Clears all time values to 0.
   ACE_Profile_Timer (void);
 
@@ -82,7 +78,7 @@ public:
   void get_rusage (ACE_Profile_Timer::Rusage &rusage);
 
   /// Dump the state of an object.
-  void dump (void) const;
+  void dump () const;
 
   /// Declare the dynamic allocation hooks.
   ACE_ALLOC_HOOK_DECLARE;
@@ -101,14 +97,14 @@ private:
   ACE_Profile_Timer::Rusage last_usage_;
 
 #if defined (ACE_HAS_PRUSAGE_T)
-  /// Substract two timestructs and store their difference.
+  /// Subtract two timestructs and store their difference.
   void subtract (timespec_t &tdiff, timespec_t &t0, timespec_t &t1);
 
   /// I/O handle for /proc file system.
   ACE_HANDLE proc_handle_;
 
 #elif defined (ACE_HAS_GETRUSAGE)
-  /// Substract two timestructs and store their difference.
+  /// Subtract two timestructs and store their difference.
   void subtract (timeval &tdiff,
                  timeval &t0,
                  timeval &t1);

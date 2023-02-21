@@ -28,6 +28,7 @@ if(SCRIPTS)
   include(Kalimdor/CMakeLists.txt)
   include(Outland/CMakeLists.txt)
   include(Northrend/CMakeLists.txt)
+  include(Events/CMakeLists.txt)
   include(Pandaria/CMakeLists.txt)
   include(PetBattle/CMakeLists.txt)
   include(Fun/CMakeLists.txt)
@@ -38,28 +39,6 @@ if(SCRIPTS)
   include(Classic/CMakeLists.txt)
   include(Instant-100/CMakeLists.txt)
 endif()
-
-
-MACRO( auto_group ProjectDirectory ProjectSources )
-    SET( DirectorySources "${ProjectSources}" )
-    FOREACH( Source ${DirectorySources} )
-        if ("${Source}" MATCHES "(/)+")
-            STRING( REGEX REPLACE "${ProjectDirectory}" "" RelativePath "${Source}" )
-            STRING( REGEX REPLACE "[\\\\/][^\\\\/]*$" "" RelativePath "${RelativePath}" )
-            STRING( REGEX REPLACE "^[\\\\/]" "" RelativePath "${RelativePath}" )
-            STRING( REGEX REPLACE "/" "\\\\\\\\" RelativePath "${RelativePath}" )
-            SOURCE_GROUP( "${RelativePath}" FILES ${Source} )
-        else()
-            SOURCE_GROUP( "" FILES ${Source} )
-        endif()
-    ENDFOREACH( Source )
-ENDMACRO( auto_group )
-
-auto_group("${CMAKE_CURRENT_SOURCE_DIR}" "${scripts_STAT_SRCS}")
-
-set(scripts_STAT_SRCS
-  ${scripts_STAT_SRCS}
-)
 
 message(STATUS "SCRIPT PREPARATION COMPLETE")
 message("")
@@ -175,6 +154,8 @@ include_directories(
   ${MYSQL_INCLUDE_DIR}
   ${MSFRAMEWORK_INCLUDE_DIR}
 )
+
+GroupSources(${CMAKE_CURRENT_SOURCE_DIR})
 
 add_library(scripts STATIC
   ${scripts_STAT_SRCS}

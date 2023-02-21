@@ -4,9 +4,7 @@
 /**
  *  @file   config-lite.h
  *
- *  $Id: config-lite.h 85832 2009-06-28 16:14:59Z johnnyw $
- *
- *  @author (Originally in OS.h)Doug Schmidt <schmidt@cs.wustl.edu>
+ *  @author (Originally in OS.h)Doug Schmidt <d.schmidt@vanderbilt.edu>
  *  @author Jesper S. M|ller<stophph@diku.dk>
  *  @author and a cast of thousands...
  *
@@ -26,12 +24,6 @@
 #if !defined (ACE_LACKS_PRAGMA_ONCE)
 # pragma once
 #endif /* ACE_LACKS_PRAGMA_ONCE */
-
-// Empty ACE_OS namespace to help identify compiler errors more
-// easily.      -- @@ Do we really need this?
-ACE_BEGIN_VERSIONED_NAMESPACE_DECL
-namespace ACE_OS {}
-ACE_END_VERSIONED_NAMESPACE_DECL
 
 // ============================================================================
 // UNICODE macros (to be added later)
@@ -54,7 +46,7 @@ ACE_END_VERSIONED_NAMESPACE_DECL
 // For use by <ACE_OS::exit>.
 extern "C"
 {
-  typedef void (*ACE_EXIT_HOOK) (void);
+  typedef void (*ACE_EXIT_HOOK) ();
 }
 
 // Signature for registering a cleanup function that is used by the
@@ -91,11 +83,11 @@ typedef void (*ACE_INIT_LOG_MSG_HOOK) (ACE_OS_Log_Msg_Attributes &attr
 typedef void (*ACE_INHERIT_LOG_MSG_HOOK) (ACE_OS_Thread_Descriptor*,
                                           ACE_OS_Log_Msg_Attributes &);
 
-typedef void (*ACE_CLOSE_LOG_MSG_HOOK) (void);
+typedef void (*ACE_CLOSE_LOG_MSG_HOOK) ();
 
 typedef void (*ACE_SYNC_LOG_MSG_HOOK) (const ACE_TCHAR *prog_name);
 
-typedef ACE_OS_Thread_Descriptor *(*ACE_THR_DESC_LOG_MSG_HOOK) (void);
+typedef ACE_OS_Thread_Descriptor *(*ACE_THR_DESC_LOG_MSG_HOOK) ();
 
 ACE_END_VERSIONED_NAMESPACE_DECL
 
@@ -122,23 +114,15 @@ ACE_END_VERSIONED_NAMESPACE_DECL
 // Once all C++ compilers support the standard reverse_iterator
 // adapters, we can drop this generator macro or at least drop the
 // MSVC++ or Sun Studio preprocessor conditional blocks.
-#if defined (__SUNPRO_CC) && __SUNPRO_CC <= 0x5100 \
+#if defined (__SUNPRO_CC) && __SUNPRO_CC <= 0x5140 \
       && !defined (_STLPORT_VERSION)
   // If we're not using the stlport4 C++ library (which has standard
   // iterators), we need to ensure this is included in order to test
   // the _RWSTD_NO_CLASS_PARTIAL_SPEC feature test macro below.
 # include <Cstd/stdcomp.h>
-#endif /* __SUNPRO_CC <= 0x5100 */
-#if (defined (_MSC_VER) && (_MSC_VER <= 1310) && defined (_WIN64)) \
-    || defined (ACE_HAS_BROKEN_STD_REVERSE_ITERATOR)
-  // VC 7.1 and the latest 64-bit platform SDK still don't define a standard
-  // compliant reverse_iterator adapter.
-# define ACE_DECLARE_STL_REVERSE_ITERATORS \
-  typedef std::reverse_iterator<iterator, value_type> reverse_iterator; \
-  typedef std::reverse_iterator<const_iterator, \
-                                value_type const> const_reverse_iterator;
-#elif defined (__SUNPRO_CC) && __SUNPRO_CC <= 0x5100 \
-      && defined (_RWSTD_NO_CLASS_PARTIAL_SPEC)
+#endif /* __SUNPRO_CC <= 0x5110 */
+#if defined (__SUNPRO_CC) && __SUNPRO_CC <= 0x5140 \
+    && defined (_RWSTD_NO_CLASS_PARTIAL_SPEC)
 # define ACE_DECLARE_STL_REVERSE_ITERATORS \
   typedef std::reverse_iterator<iterator, \
                                 std::input_iterator_tag, \
@@ -157,7 +141,6 @@ ACE_END_VERSIONED_NAMESPACE_DECL
   typedef std::reverse_iterator<iterator>       reverse_iterator; \
   typedef std::reverse_iterator<const_iterator> const_reverse_iterator;
 #endif  /* _MSC_VER && _WIN64 */
-
 
 #include /**/ "ace/post.h"
 

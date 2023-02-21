@@ -1,4 +1,4 @@
-# Copyright (C) 2008-2012 TrinityCore <http://www.trinitycore.org/>
+# Copyright (C) 2008-2020 TrinityCore <http://www.trinitycore.org/>
 #
 # This file is free software; as a special exception the author gives
 # unlimited permission to copy and/or distribute it, with or without
@@ -47,16 +47,17 @@ ENDMACRO( auto_group )
 
 auto_group("${CMAKE_CURRENT_SOURCE_DIR}" "${authserver_SRCS}")
 
-set(authserver_SRCS
-  ${authserver_SRCS}
-)
-
 if( WIN32 )
-set(authserver_SRCS
+  set(authserver_SRCS
     ${authserver_SRCS}
     ${sources_Debugging}
-    authserver.rc
-)
+  )
+  if ( MSVC )
+    set(authserver_SRCS
+      ${authserver_SRCS}
+      authserver.rc
+    )
+  endif ()
 endif()
 
 include_directories(
@@ -84,6 +85,8 @@ include_directories(
   ${MSFRAMEWORK_INCLUDE_DIR}
 )
 
+GroupSources(${CMAKE_CURRENT_SOURCE_DIR})
+
 add_executable(authserver
   ${authserver_SRCS}
   ${authserver_PCH_SRC}
@@ -110,6 +113,7 @@ target_link_libraries(authserver
   ${OSX_LIBS}
   ${CURL_LIBRARIES}
   ${MSFRAMEWORK_LIBRARIES}
+  ${Boost_LIBRARIES}
 )
 
 if( WIN32 )

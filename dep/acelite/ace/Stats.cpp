@@ -1,5 +1,3 @@
-// $Id: Stats.cpp 91286 2010-08-05 09:04:31Z johnnyw $
-
 #include "ace/Stats.h"
 
 #if !defined (__ACE_INLINE__)
@@ -14,7 +12,7 @@
 ACE_BEGIN_VERSIONED_NAMESPACE_DECL
 
 ACE_UINT32
-ACE_Stats_Value::fractional_field (void) const
+ACE_Stats_Value::fractional_field () const
 {
   if (precision () == 0)
     {
@@ -68,15 +66,8 @@ ACE_Stats::mean (ACE_Stats_Value &m,
 {
   if (number_of_samples_ > 0)
     {
-#if defined ACE_LACKS_LONGLONG_T
-      // If ACE_LACKS_LONGLONG_T, then ACE_UINT64 is a user-defined class.
-      // To prevent having to construct a static of that class, declare it
-      // on the stack, and construct it, in each function that needs it.
-      const ACE_U_LongLong ACE_STATS_INTERNAL_OFFSET (0, 8);
-#else  /* ! ACE_LACKS_LONGLONG_T */
       const ACE_UINT64 ACE_STATS_INTERNAL_OFFSET =
         ACE_UINT64_LITERAL (0x100000000);
-#endif /* ! ACE_LACKS_LONGLONG_T */
 
       ACE_UINT64 sum = ACE_STATS_INTERNAL_OFFSET;
       ACE_Unbounded_Queue_Iterator<ACE_INT32> i (samples_);
@@ -199,7 +190,7 @@ ACE_Stats::std_dev (ACE_Stats_Value &std_dev,
 
 
 void
-ACE_Stats::reset (void)
+ACE_Stats::reset ()
 {
   overflow_ = 0u;
   number_of_samples_ = 0u;
@@ -226,13 +217,13 @@ ACE_Stats::print_summary (const u_int precision,
       // Build a format string, in case the C library doesn't support %*u.
       ACE_TCHAR format[32];
       if (tmp_precision == 0)
-        ACE_OS::sprintf (format, ACE_TEXT ("%%%d"), tmp_precision);
+        ACE_OS::snprintf (format, 32, ACE_TEXT ("%%%d"), tmp_precision);
       else
-        ACE_OS::sprintf (format, ACE_TEXT ("%%d.%%0%du"), tmp_precision);
+        ACE_OS::snprintf (format, 32, ACE_TEXT ("%%d.%%0%du"), tmp_precision);
 
       ACE_Stats_Value u (tmp_precision);
       ((ACE_Stats *) this)->mean (u, scale_factor);
-      ACE_OS::sprintf (mean_string, format, u.whole (), u.fractional ());
+      ACE_OS::snprintf (mean_string, 128, format, u.whole (), u.fractional ());
 
       ACE_Stats_Value sd (tmp_precision);
       if (((ACE_Stats *) this)->std_dev (sd, scale_factor))
@@ -244,7 +235,8 @@ ACE_Stats::print_summary (const u_int precision,
         {
           success = 1;
         }
-      ACE_OS::sprintf (std_dev_string, format, sd.whole (), sd.fractional ());
+      ACE_OS::snprintf (std_dev_string, 128, format, sd.whole (),
+                        sd.fractional ());
 
       ACE_Stats_Value minimum (tmp_precision), maximum (tmp_precision);
       if (min_ != 0)
@@ -257,10 +249,10 @@ ACE_Stats::print_summary (const u_int precision,
           const ACE_UINT64 m (max_);
           quotient (m, scale_factor, maximum);
         }
-      ACE_OS::sprintf (min_string, format,
-                       minimum.whole (), minimum.fractional ());
-      ACE_OS::sprintf (max_string, format,
-                       maximum.whole (), maximum.fractional ());
+      ACE_OS::snprintf (min_string, 128, format,
+                        minimum.whole (), minimum.fractional ());
+      ACE_OS::snprintf (max_string, 128, format,
+                        maximum.whole (), maximum.fractional ());
     }
 
   if (success == 1)

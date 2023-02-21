@@ -4,8 +4,6 @@
 /**
  *  @file    MEM_Stream.h
  *
- *  $Id: MEM_Stream.h 92069 2010-09-28 11:38:59Z johnnyw $
- *
  *  @author Nanbor Wang <nanbor@cs.wustl.edu>
  */
 //=============================================================================
@@ -13,7 +11,10 @@
 
 #ifndef ACE_MEM_STREAM_H
 #define ACE_MEM_STREAM_H
+
 #include /**/ "ace/pre.h"
+
+#include /**/ "ace/ACE_export.h"
 
 #include "ace/MEM_IO.h"
 
@@ -53,7 +54,6 @@ class ACE_MEM_Connector;
 class ACE_Export ACE_MEM_Stream : public ACE_MEM_IO
 {
 public:
-
   friend class ACE_MEM_Acceptor;
   friend class ACE_MEM_Connector;
 
@@ -98,7 +98,7 @@ public:
   typedef ACE_Addr PEER_ADDR;
 
   /// Dump the state of an object.
-  void dump (void) const;
+  void dump () const;
 
   /// Declare the dynamic allocation hooks.
   ACE_ALLOC_HOOK_DECLARE;

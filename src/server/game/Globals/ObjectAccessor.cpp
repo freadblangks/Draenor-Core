@@ -36,8 +36,8 @@ Creature** ObjectAccessor::m_CreaturesCache;
 
 ObjectAccessor::ObjectAccessor()
 {
-    k_PlayerCacheMaxGuid    = ConfigMgr::GetIntDefault("PlayersCache.Size",    1000000);
-    k_CreaturesCacheMaxGuid = ConfigMgr::GetIntDefault("CreaturesCache.Size", 30000000);
+    k_PlayerCacheMaxGuid    = sConfigMgr->GetIntDefault("PlayersCache.Size",    1000000);
+    k_CreaturesCacheMaxGuid = sConfigMgr->GetIntDefault("CreaturesCache.Size", 30000000);
 
     m_PlayersCache = new Player*[k_PlayerCacheMaxGuid];
     memset(m_PlayersCache, 0, sizeof(Player*) * k_PlayerCacheMaxGuid);
@@ -325,7 +325,7 @@ void ObjectAccessor::RemoveCorpse(Corpse* corpse)
             return;
 
         // build mapid*cellid -> guid_set map
-        CellCoord cellCoord = JadeCore::ComputeCellCoord(corpse->GetPositionX(), corpse->GetPositionY());
+        CellCoord cellCoord = Trinity::ComputeCellCoord(corpse->GetPositionX(), corpse->GetPositionY());
         sObjectMgr->DeleteCorpseCellData(corpse->GetMapId(), cellCoord.GetId(), GUID_LOPART(corpse->GetOwnerGUID()));
 
         i_player2corpse.erase(iter);
@@ -344,7 +344,7 @@ void ObjectAccessor::AddCorpse(Corpse* corpse)
         i_player2corpse[corpse->GetOwnerGUID()] = corpse;
 
         // build mapid*cellid -> guid_set map
-        CellCoord cellCoord = JadeCore::ComputeCellCoord(corpse->GetPositionX(), corpse->GetPositionY());
+        CellCoord cellCoord = Trinity::ComputeCellCoord(corpse->GetPositionX(), corpse->GetPositionY());
         sObjectMgr->AddCorpseCellData(corpse->GetMapId(), cellCoord.GetId(), GUID_LOPART(corpse->GetOwnerGUID()), corpse->GetInstanceId());
     }
 }
@@ -383,7 +383,7 @@ Corpse* ObjectAccessor::ConvertCorpseForPlayer(uint64 player_guid, bool insignia
         return NULL;
     }
 
-    sLog->outDebug(LOG_FILTER_GENERAL, "Deleting Corpse and spawned bones.");
+    TC_LOG_DEBUG("misc", "Deleting Corpse and spawned bones.");
 
     // Map can be NULL
     Map* map = corpse->FindMap();

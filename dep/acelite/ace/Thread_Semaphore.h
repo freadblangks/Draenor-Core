@@ -4,11 +4,9 @@
 /**
  *  @file    Thread_Semaphore.h
  *
- *  $Id: Thread_Semaphore.h 86731 2009-09-17 12:23:48Z johnnyw $
- *
  *   Moved from Synch.h.
  *
- *  @author Douglas C. Schmidt <schmidt@cs.wustl.edu>
+ *  @author Douglas C. Schmidt <d.schmidt@vanderbilt.edu>
  */
 //==========================================================================
 
@@ -47,11 +45,11 @@ public:
                         void * = 0,
                         int max = 0x7FFFFFFF);
 
-  /// Default dtor.
-  ~ACE_Thread_Semaphore (void);
+  /// Default destructor.
+  ~ACE_Thread_Semaphore ();
 
   /// Dump the state of an object.
-  void dump (void) const;
+  void dump () const;
 
   /// Declare the dynamic allocation hooks.
   ACE_ALLOC_HOOK_DECLARE;

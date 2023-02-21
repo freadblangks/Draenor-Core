@@ -4,11 +4,8 @@
 /**
  *  @file    Env_Value_T.h
  *
- *  $Id: Env_Value_T.h 91626 2010-09-07 10:59:20Z johnnyw $
- *
  *  Template to encapsulate getting a value from an environment variable
  *  and using a supplied default value if not in the environment.
- *
  *
  *  @author Chris Cleeland (derived from work by Carlos O'Ryan)
  */
@@ -45,28 +42,28 @@ public:
   /**
    * Default constructor which isn't bound to a specific environment
    * variable name or a default value.  Before being useful it must
-   * <open>'d.
+   * open()'d.
    */
-  ACE_Env_Value (void);
+  ACE_Env_Value ();
 
   /// Constructor that calls open().
   ACE_Env_Value (const ACE_TCHAR *varname, const T &vardefault);
 
   /// Destroy the value.
-  ~ACE_Env_Value (void);
+  ~ACE_Env_Value ();
 
   /// Returns the value as type T.
-  operator T (void);
+  operator T ();
 
   /// The constructor, read @a varname from the environment, using
   /// @a defval as its value if it is not defined.
   void open (const ACE_TCHAR *varname, const T &defval);
 
   /// Returns the name of the variable being tracked.
-  const ACE_TCHAR *varname (void) const;
+  const ACE_TCHAR *varname () const;
 
 private:
-  void fetch_value (void);
+  void fetch_value ();
 
   const ACE_TCHAR *varname_;
   T value_;

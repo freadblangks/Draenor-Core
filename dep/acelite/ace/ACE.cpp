@@ -1,5 +1,3 @@
-// $Id: ACE.cpp 92298 2010-10-21 11:15:17Z johnnyw $
-
 #include "ace/ACE.h"
 
 #include "ace/Basic_Types.h"
@@ -8,7 +6,8 @@
 #include "ace/SString.h"
 #include "ace/Version.h"
 #include "ace/Message_Block.h"
-#include "ace/Log_Msg.h"
+#include "ace/Log_Category.h"
+#include "ace/Flag_Manip.h"
 #include "ace/OS_NS_sys_select.h"
 #include "ace/OS_NS_string.h"
 #include "ace/OS_NS_strings.h"
@@ -24,10 +23,6 @@
 #include "ace/OS_NS_fcntl.h"
 #include "ace/OS_TLI.h"
 #include "ace/Truncate.h"
-
-#if defined (ACE_VXWORKS) && (ACE_VXWORKS < 0x620)
-extern "C" int maxFiles;
-#endif /* ACE_VXWORKS */
 
 #if !defined (__ACE_INLINE__)
 #include "ace/ACE.inl"
@@ -68,7 +63,7 @@ ACE::out_of_handles (int error)
 #elif defined (HPUX)
       // On HPUX, we need to check for EADDRNOTAVAIL also.
       error == EADDRNOTAVAIL ||
-#elif defined (linux)
+#elif defined (ACE_LINUX)
       // On linux, we need to check for ENOENT also.
       error == ENOENT ||
       // For RedHat5.2, need to check for EINVAL too.
@@ -96,25 +91,31 @@ ACE::out_of_handles (int error)
 }
 
 u_int
-ACE::major_version (void)
+ACE::major_version ()
 {
   return ACE_MAJOR_VERSION;
 }
 
 u_int
-ACE::minor_version (void)
+ACE::minor_version ()
 {
   return ACE_MINOR_VERSION;
 }
 
 u_int
-ACE::beta_version (void)
+ACE::beta_version ()
 {
-  return ACE_BETA_VERSION;
+  return ACE_MICRO_VERSION;
+}
+
+u_int
+ACE::micro_version ()
+{
+  return ACE_MICRO_VERSION;
 }
 
 const ACE_TCHAR *
-ACE::compiler_name (void)
+ACE::compiler_name ()
 {
 #ifdef ACE_CC_NAME
   return ACE_CC_NAME;
@@ -124,7 +125,7 @@ ACE::compiler_name (void)
 }
 
 u_int
-ACE::compiler_major_version (void)
+ACE::compiler_major_version ()
 {
 #ifdef ACE_CC_MAJOR_VERSION
   return ACE_CC_MAJOR_VERSION;
@@ -134,7 +135,7 @@ ACE::compiler_major_version (void)
 }
 
 u_int
-ACE::compiler_minor_version (void)
+ACE::compiler_minor_version ()
 {
 #ifdef ACE_CC_MINOR_VERSION
   return ACE_CC_MINOR_VERSION;
@@ -144,7 +145,7 @@ ACE::compiler_minor_version (void)
 }
 
 u_int
-ACE::compiler_beta_version (void)
+ACE::compiler_beta_version ()
 {
 #ifdef ACE_CC_BETA_VERSION
   return ACE_CC_BETA_VERSION;
@@ -161,9 +162,11 @@ ACE::nibble2hex (u_int n)
 }
 
 bool
-ACE::debug (void)
+ACE::debug ()
 {
-  static const char* debug = ACE_OS::getenv ("ACE_DEBUG");
+  //FUZZ: disable check_for_ace_log_categories
+  static const char *debug = ACE_OS::getenv ("ACE_DEBUG");
+  //FUZZ: enable check_for_ace_log_categories
   return (ACE::debug_ != 0) ? ACE::debug_ : (debug != 0 ? (*debug != '0') : false);
 }
 
@@ -914,7 +917,7 @@ ACE::recv_n_i (ACE_HANDLE handle,
 // number of (char *ptr, int len) tuples.  However, the count N is the
 // *total* number of trailing arguments, *not* a couple of the number
 // of tuple pairs!
-
+#if !defined (ACE_LACKS_VA_FUNCTIONS)
 ssize_t
 ACE::recv (ACE_HANDLE handle, size_t n, ...)
 {
@@ -924,9 +927,16 @@ ACE::recv (ACE_HANDLE handle, size_t n, ...)
 #if defined (ACE_HAS_ALLOCA)
   iovp = (iovec *) alloca (total_tuples * sizeof (iovec));
 #else
+# ifdef ACE_HAS_ALLOC_HOOKS
+  ACE_ALLOCATOR_RETURN (iovp, (iovec *)
+                        ACE_Allocator::instance ()->malloc (total_tuples *
+                                                            sizeof (iovec)),
+                        -1);
+# else
   ACE_NEW_RETURN (iovp,
                   iovec[total_tuples],
                   -1);
+# endif /* ACE_HAS_ALLOC_HOOKS */
 #endif /* !defined (ACE_HAS_ALLOCA) */
 
   va_start (argp, n);
@@ -939,11 +949,17 @@ ACE::recv (ACE_HANDLE handle, size_t n, ...)
 
   ssize_t const result = ACE_OS::recvv (handle, iovp, total_tuples);
 #if !defined (ACE_HAS_ALLOCA)
+# ifdef ACE_HAS_ALLOC_HOOKS
+  ACE_Allocator::instance ()->free (iovp);
+# else
   delete [] iovp;
+# endif /* ACE_HAS_ALLOC_HOOKS */
 #endif /* !defined (ACE_HAS_ALLOCA) */
   va_end (argp);
   return result;
 }
+#endif /* ACE_LACKS_VA_FUNCTIONS */
+
 
 ssize_t
 ACE::recvv (ACE_HANDLE handle,
@@ -998,7 +1014,6 @@ ACE::recvv_n_i (ACE_HANDLE handle,
               if (result != -1)
                 {
                   // Blocking subsided.  Continue data transfer.
-                  n = 0;
                   continue;
                 }
             }
@@ -1017,7 +1032,8 @@ ACE::recvv_n_i (ACE_HANDLE handle,
         {
           char *base = static_cast<char *> (iov[s].iov_base);
           iov[s].iov_base = base + n;
-          iov[s].iov_len = iov[s].iov_len - n;
+          // This blind cast is safe because n < iov_len, after above loop.
+          iov[s].iov_len = iov[s].iov_len - static_cast<u_long> (n);
         }
     }
 
@@ -1061,7 +1077,6 @@ ACE::recvv_n_i (ACE_HANDLE handle,
                 {
                   // Blocking subsided in <timeout> period.  Continue
                   // data transfer.
-                  n = 0;
                   continue;
                 }
             }
@@ -1083,7 +1098,8 @@ ACE::recvv_n_i (ACE_HANDLE handle,
         {
           char *base = reinterpret_cast<char *> (iov[s].iov_base);
           iov[s].iov_base = base + n;
-          iov[s].iov_len = iov[s].iov_len - n;
+          // This blind cast is safe because n < iov_len, after above loop.
+          iov[s].iov_len = iov[s].iov_len - static_cast<u_long> (n);
         }
     }
 
@@ -1532,7 +1548,7 @@ ACE::t_snd_n_i (ACE_HANDLE handle,
         {
           // Check for possible blocking.
           if (n == -1 &&
-              errno == EWOULDBLOCK || errno == ENOBUFS)
+              (errno == EWOULDBLOCK || errno == ENOBUFS))
             {
               // Wait upto <timeout> for the blocking to subside.
               int const rtn = ACE::handle_write_ready (handle, timeout);
@@ -1687,7 +1703,7 @@ ACE::send_n_i (ACE_HANDLE handle,
 // the ints (basically, an varargs version of writev).  The count N is
 // the *total* number of trailing arguments, *not* a couple of the
 // number of tuple pairs!
-
+#if !defined (ACE_LACKS_VA_FUNCTIONS)
 ssize_t
 ACE::send (ACE_HANDLE handle, size_t n, ...)
 {
@@ -1697,9 +1713,16 @@ ACE::send (ACE_HANDLE handle, size_t n, ...)
 #if defined (ACE_HAS_ALLOCA)
   iovp = (iovec *) alloca (total_tuples * sizeof (iovec));
 #else
+# ifdef ACE_HAS_ALLOC_HOOKS
+  ACE_ALLOCATOR_RETURN (iovp, (iovec *)
+                        ACE_Allocator::instance ()->malloc (total_tuples *
+                                                            sizeof (iovec)),
+                        -1);
+# else
   ACE_NEW_RETURN (iovp,
                   iovec[total_tuples],
                   -1);
+# endif /* ACE_HAS_ALLOC_HOOKS */
 #endif /* !defined (ACE_HAS_ALLOCA) */
 
   va_start (argp, n);
@@ -1712,11 +1735,16 @@ ACE::send (ACE_HANDLE handle, size_t n, ...)
 
   ssize_t result = ACE_OS::sendv (handle, iovp, total_tuples);
 #if !defined (ACE_HAS_ALLOCA)
+# ifdef ACE_HAS_ALLOC_HOOKS
+  ACE_Allocator::instance ()->free (iovp);
+# else
   delete [] iovp;
+# endif /* ACE_HAS_ALLOC_HOOKS */
 #endif /* !defined (ACE_HAS_ALLOCA) */
   va_end (argp);
   return result;
 }
+#endif /* ACE_LACKS_VA_FUNCTIONS */
 
 ssize_t
 ACE::sendv (ACE_HANDLE handle,
@@ -1776,7 +1804,6 @@ ACE::sendv_n_i (ACE_HANDLE handle,
               if (result != -1)
                 {
                   // Blocking subsided.  Continue data transfer.
-                  n = 0;
                   continue;
                 }
             }
@@ -1795,7 +1822,8 @@ ACE::sendv_n_i (ACE_HANDLE handle,
         {
           char *base = reinterpret_cast<char *> (iov[s].iov_base);
           iov[s].iov_base = base + n;
-          iov[s].iov_len = iov[s].iov_len - n;
+          // This blind cast is safe because n < iov_len, after above loop.
+          iov[s].iov_len = iov[s].iov_len - static_cast<u_long> (n);
         }
     }
 
@@ -1845,7 +1873,6 @@ ACE::sendv_n_i (ACE_HANDLE handle,
                 {
                   // Blocking subsided in <timeout> period.  Continue
                   // data transfer.
-                  n = 0;
                   continue;
                 }
             }
@@ -1867,7 +1894,8 @@ ACE::sendv_n_i (ACE_HANDLE handle,
         {
           char *base = reinterpret_cast<char *> (iov[s].iov_base);
           iov[s].iov_base = base + n;
-          iov[s].iov_len = iov[s].iov_len - n;
+          // This blind cast is safe because n < iov_len, after above loop.
+          iov[s].iov_len = iov[s].iov_len - static_cast<u_long> (n);
         }
     }
 
@@ -2109,7 +2137,8 @@ ACE::readv_n (ACE_HANDLE handle,
         {
           char *base = reinterpret_cast<char *> (iov[s].iov_base);
           iov[s].iov_base = base + n;
-          iov[s].iov_len = iov[s].iov_len - n;
+          // This blind cast is safe because n < iov_len, after above loop.
+          iov[s].iov_len = iov[s].iov_len - static_cast<u_long> (n);
         }
     }
 
@@ -2151,7 +2180,8 @@ ACE::writev_n (ACE_HANDLE handle,
         {
           char *base = reinterpret_cast<char *> (iov[s].iov_base);
           iov[s].iov_base = base + n;
-          iov[s].iov_len = iov[s].iov_len - n;
+          // This blind cast is safe because n < iov_len, after above loop.
+          iov[s].iov_len = iov[s].iov_len - static_cast<u_long> (n);
         }
     }
 
@@ -2161,9 +2191,9 @@ ACE::writev_n (ACE_HANDLE handle,
 int
 ACE::handle_ready (ACE_HANDLE handle,
                    const ACE_Time_Value *timeout,
-                   int read_ready,
-                   int write_ready,
-                   int exception_ready)
+                   bool read_ready,
+                   bool write_ready,
+                   bool exception_ready)
 {
 #if defined (ACE_HAS_POLL)
   ACE_UNUSED_ARG (exception_ready);
@@ -2284,6 +2314,7 @@ ACE::format_hexdump (const char *buffer,
 
   // We can fit 16 bytes output in text mode per line, 4 chars per byte.
   size_t maxlen = (obuf_sz / 68) * 16;
+  const ACE_TCHAR *const obuf_start = obuf;
 
   if (size > maxlen)
     size = maxlen;
@@ -2298,22 +2329,20 @@ ACE::format_hexdump (const char *buffer,
       for (j = 0 ; j < 16; j++)
         {
           c = (u_char) buffer[(i << 4) + j];    // or, buffer[i*16+j]
-          ACE_OS::sprintf (obuf,
+          ACE_OS::snprintf (obuf, obuf_sz - (obuf - obuf_start),
                            ACE_TEXT ("%02x "),
                            c);
           obuf += 3;
           if (j == 7)
             {
-              ACE_OS::sprintf (obuf,
-                               ACE_TEXT (" "));
-              ++obuf;
+              *obuf++ = ACE_TEXT (' ');
             }
-          textver[j] = ACE_OS::ace_isprint (c) ? c : '.';
+          textver[j] = ACE_OS::ace_isprint (c) ? c : u_char ('.');
         }
 
       textver[j] = 0;
 
-      ACE_OS::sprintf (obuf,
+      ACE_OS::snprintf (obuf, obuf_sz - (obuf - obuf_start),
 #if !defined (ACE_WIN32) && defined (ACE_USES_WCHAR)
                        ACE_TEXT ("  %ls\n"),
 #else
@@ -2330,35 +2359,31 @@ ACE::format_hexdump (const char *buffer,
       for (i = 0 ; i < size % 16; i++)
         {
           c = (u_char) buffer[size - size % 16 + i];
-          ACE_OS::sprintf (obuf,
+          ACE_OS::snprintf (obuf, obuf_sz - (obuf - obuf_start),
                            ACE_TEXT ("%02x "),
                            c);
           obuf += 3;
           if (i == 7)
             {
-              ACE_OS::sprintf (obuf,
-                               ACE_TEXT (" "));
-              ++obuf;
+              *obuf++ = ACE_TEXT (' ');
             }
-          textver[i] = ACE_OS::ace_isprint (c) ? c : '.';
+          textver[i] = ACE_OS::ace_isprint (c) ? c : u_char ('.');
         }
 
       for (i = size % 16; i < 16; i++)
         {
-          ACE_OS::sprintf (obuf,
+          ACE_OS::snprintf (obuf, obuf_sz - (obuf - obuf_start),
                            ACE_TEXT ("   "));
           obuf += 3;
           if (i == 7)
             {
-              ACE_OS::sprintf (obuf,
-                               ACE_TEXT (" "));
-              ++obuf;
+              *obuf++ = ACE_TEXT (' ');
             }
           textver[i] = ' ';
         }
 
       textver[i] = 0;
-      ACE_OS::sprintf (obuf,
+      ACE_OS::snprintf (obuf, obuf_sz - (obuf - obuf_start),
 #if !defined (ACE_WIN32) && defined (ACE_USES_WCHAR)
                        ACE_TEXT ("  %ls\n"),
 #else
@@ -2369,10 +2394,10 @@ ACE::format_hexdump (const char *buffer,
   return size;
 }
 
-// Returns the current timestamp in the form
-// "hour:minute:second:microsecond."  The month, day, and year are
-// also stored in the beginning of the date_and_time array.
-
+/// Returns the current timestamp in the form
+/// "hour:minute:second:microsecond."  The month, day, and year are
+/// also stored in the beginning of the date_and_time array
+/// using ISO-8601 format.
 ACE_TCHAR *
 ACE::timestamp (ACE_TCHAR date_and_time[],
                 size_t date_and_timelen,
@@ -2384,10 +2409,12 @@ ACE::timestamp (ACE_TCHAR date_and_time[],
                          return_pointer_to_first_digit);
 }
 
-// Returns the given timestamp in the form
-// "hour:minute:second:microsecond."  The month, day, and year are
-// also stored in the beginning of the date_and_time array.
-
+/// Returns the given timestamp in the form
+/// "hour:minute:second:microsecond."  The month, day, and year are
+/// also stored in the beginning of the date_and_time array
+/// using ISO-8601 format.
+/// 012345678901234567890123456
+/// 2010-12-02 12:56:00.123456<nul>
 ACE_TCHAR *
 ACE::timestamp (const ACE_Time_Value& time_value,
                 ACE_TCHAR date_and_time[],
@@ -2396,96 +2423,35 @@ ACE::timestamp (const ACE_Time_Value& time_value,
 {
   //ACE_TRACE ("ACE::timestamp");
 
-  if (date_and_timelen < 35)
+  // This magic number is from the formatting statement
+  // farther down this routine.
+  if (date_and_timelen < 27)
     {
       errno = EINVAL;
       return 0;
     }
 
-#if defined (WIN32)
-  if (time_value == ACE_Time_Value::zero)
-  {
-    // Emulate Unix.  Win32 does NOT support all the UNIX versions
-    // below, so DO we need this ifdef.
-    static const ACE_TCHAR *day_of_week_name[] =
-      {
-        ACE_TEXT ("Sun"),
-        ACE_TEXT ("Mon"),
-        ACE_TEXT ("Tue"),
-        ACE_TEXT ("Wed"),
-        ACE_TEXT ("Thu"),
-        ACE_TEXT ("Fri"),
-        ACE_TEXT ("Sat")
-      };
-
-    static const ACE_TCHAR *month_name[] =
-      {
-        ACE_TEXT ("Jan"),
-        ACE_TEXT ("Feb"),
-        ACE_TEXT ("Mar"),
-        ACE_TEXT ("Apr"),
-        ACE_TEXT ("May"),
-        ACE_TEXT ("Jun"),
-        ACE_TEXT ("Jul"),
-        ACE_TEXT ("Aug"),
-        ACE_TEXT ("Sep"),
-        ACE_TEXT ("Oct"),
-        ACE_TEXT ("Nov"),
-        ACE_TEXT ("Dec")
-      };
-
-    SYSTEMTIME local;
-    ::GetLocalTime (&local);
-
-    ACE_OS::sprintf (date_and_time,
-                    ACE_TEXT ("%3s %3s %2d %04d %02d:%02d:%02d.%06d"),
-                    day_of_week_name[local.wDayOfWeek],
-                    month_name[local.wMonth - 1],
-                    (int) local.wDay,
-                    (int) local.wYear,
-                    (int) local.wHour,
-                    (int) local.wMinute,
-                    (int) local.wSecond,
-                    (int) (local.wMilliseconds * 1000));
-    return &date_and_time[15 + (return_pointer_to_first_digit != 0)];
-  }
-#endif  /* WIN32 */
-  ACE_TCHAR timebuf[26]; // This magic number is based on the ctime(3c) man page.
   ACE_Time_Value cur_time =
     (time_value == ACE_Time_Value::zero) ?
         ACE_Time_Value (ACE_OS::gettimeofday ()) : time_value;
   time_t secs = cur_time.sec ();
-
-  ACE_OS::ctime_r (&secs,
-                   timebuf,
-                   sizeof timebuf / sizeof (ACE_TCHAR));
-  // date_and_timelen > sizeof timebuf!
-  ACE_OS::strsncpy (date_and_time,
-                    timebuf,
-                    date_and_timelen);
-  ACE_TCHAR yeartmp[5];
-  ACE_OS::strsncpy (yeartmp,
-                    &date_and_time[20],
-                    5);
-  ACE_TCHAR timetmp[9];
-  ACE_OS::strsncpy (timetmp,
-                    &date_and_time[11],
-                    9);
-  ACE_OS::sprintf (&date_and_time[11],
-#  if defined (ACE_USES_WCHAR)
-                   ACE_TEXT ("%ls %ls.%06ld"),
-#  else
-                   ACE_TEXT ("%s %s.%06ld"),
-#  endif /* ACE_USES_WCHAR */
-                   yeartmp,
-                   timetmp,
-                   cur_time.usec ());
-  date_and_time[33] = '\0';
-  return &date_and_time[15 + (return_pointer_to_first_digit != 0)];
+  struct tm tms;
+  ACE_OS::localtime_r (&secs, &tms);
+  ACE_OS::snprintf (date_and_time,
+                    date_and_timelen,
+                    ACE_TEXT ("%4.4d-%2.2d-%2.2d %2.2d:%2.2d:%2.2d.%06ld"),
+                    tms.tm_year + 1900,
+                    tms.tm_mon + 1,
+                    tms.tm_mday,
+                    tms.tm_hour,
+                    tms.tm_min,
+                    tms.tm_sec,
+                    static_cast<long> (cur_time.usec()));
+  date_and_time[date_and_timelen - 1] = '\0';
+  return &date_and_time[10 + (return_pointer_to_first_digit != 0)];
 }
 
-// This function rounds the request to a multiple of the page size.
-
+/// This function rounds the request to a multiple of the page size.
 size_t
 ACE::round_to_pagesize (size_t len)
 {
@@ -2608,7 +2574,13 @@ ACE::handle_timed_complete (ACE_HANDLE h,
 
   else
 # if defined (ACE_HAS_POLL)
-    need_to_check = (fds.revents & POLLIN);
+    {
+      // The "official" bit for failed connect is POLLIN. However, POLLERR
+      // is often set and there are occasional cases seen with some kernels
+      // where only POLLERR is set on a failed connect.
+      need_to_check = (fds.revents & POLLIN) || (fds.revents & POLLERR);
+      known_failure = (fds.revents & POLLERR);
+    }
 # else
     need_to_check = true;
 # endif /* ACE_HAS_POLL */
@@ -2661,8 +2633,7 @@ ACE::handle_timed_complete (ACE_HANDLE h,
   return h;
 }
 
-// Wait up to <timeout> amount of time to accept a connection.
-
+/// Wait up to @a timeout amount of time to accept a connection.
 int
 ACE::handle_timed_accept (ACE_HANDLE listener,
                           ACE_Time_Value *timeout,
@@ -2731,9 +2702,8 @@ ACE::handle_timed_accept (ACE_HANDLE listener,
     }
 }
 
-// Make the current process a UNIX daemon.  This is based on Stevens
-// code from APUE.
-
+/// Make the current process a UNIX daemon.  This is based on Stevens
+/// code from APUE.
 int
 ACE::daemonize (const ACE_TCHAR pathname[],
                 bool close_all_handles,
@@ -2819,7 +2789,7 @@ ACE::fork (const ACE_TCHAR *program_name,
             {
             case 0: // grandchild returns 0.
               return 0;
-            case -1: // assumes all errnos are < 256
+            case static_cast<pid_t>(-1): // assumes all errnos are < 256
               ACE_OS::_exit (errno);
             default:  // child terminates, orphaning grandchild
               ACE_OS::_exit (0);
@@ -2849,7 +2819,7 @@ ACE::fork (const ACE_TCHAR *program_name,
 }
 
 int
-ACE::max_handles (void)
+ACE::max_handles ()
 {
   ACE_TRACE ("ACE::max_handles");
 #if defined (RLIMIT_NOFILE) && !defined (ACE_LACKS_RLIMIT)
@@ -2865,10 +2835,8 @@ ACE::max_handles (void)
 # endif /* RLIM_INFINITY */
 #endif /* RLIMIT_NOFILE && !ACE_LACKS_RLIMIT */
 
-#if defined (_SC_OPEN_MAX)
-  return ACE_OS::sysconf (_SC_OPEN_MAX);
-#elif defined (ACE_VXWORKS) && (ACE_VXWORKS < 0x620)
-  return maxFiles;
+#if defined (_SC_OPEN_MAX) && !defined (ACE_LACKS_SYSCONF)
+  return static_cast<int> (ACE_OS::sysconf (_SC_OPEN_MAX));
 #elif defined (FD_SETSIZE)
   return FD_SETSIZE;
 #else
@@ -2915,7 +2883,7 @@ ACE::set_handle_limit (int new_limit,
 #if !defined (ACE_LACKS_RLIMIT) && defined (RLIMIT_NOFILE)
       rl.rlim_cur = new_limit;
       return ACE_OS::setrlimit (RLIMIT_NOFILE, &rl);
-#elif defined (ACE_LACKS_RLIMIT_NOFILE)
+#elif !defined (RLIMIT_NOFILE)
       return 0;
 #else
       // Must return EINVAL errno.
@@ -2939,7 +2907,7 @@ ACE::set_handle_limit (int new_limit,
   return 0;
 }
 
-// Euclid's greatest common divisor algorithm.
+/// Euclid's greatest common divisor algorithm.
 u_long
 ACE::gcd (u_long x, u_long y)
 {
@@ -2954,7 +2922,7 @@ ACE::gcd (u_long x, u_long y)
 }
 
 
-// Calculates the minimum enclosing frame size for the given values.
+/// Calculates the minimum enclosing frame size for the given values.
 u_long
 ACE::minimum_frame_size (u_long period1, u_long period2)
 {
@@ -3155,7 +3123,9 @@ ACE::sock_error (int error)
       return ACE_TEXT ("destination address required");
       /* NOTREACHED */
     default:
-      ACE_OS::sprintf (unknown_msg, ACE_TEXT ("unknown error: %d"), error);
+      ACE_OS::snprintf (unknown_msg,
+                        sizeof unknown_msg / sizeof unknown_msg[0],
+                        ACE_TEXT ("unknown error: %d"), error);
       return unknown_msg;
       /* NOTREACHED */
     }
@@ -3239,9 +3209,15 @@ ACE::strndup (const char *str, size_t n)
     continue;
 
   char *s;
+#if defined (ACE_HAS_ALLOC_HOOKS)
+  ACE_ALLOCATOR_RETURN (s,
+                        (char *) ACE_Allocator::instance()->malloc (len + 1),
+                        0);
+#else
   ACE_ALLOCATOR_RETURN (s,
                         (char *) ACE_OS::malloc (len + 1),
                         0);
+#endif /* ACE_HAS_ALLOC_HOOKS */
   return ACE_OS::strsncpy (s, str, len + 1);
 }
 
@@ -3260,11 +3236,18 @@ ACE::strndup (const wchar_t *str, size_t n)
        len++)
     continue;
 
-  wchar_t *s;
+  size_t const size = (len + 1) * sizeof (wchar_t);
+  wchar_t *s = 0;
+#if defined (ACE_HAS_ALLOC_HOOKS)
   ACE_ALLOCATOR_RETURN (s,
-                        static_cast<wchar_t *> (
-            ACE_OS::malloc ((len + 1) * sizeof (wchar_t))),
+                        static_cast<wchar_t*> (
+                          ACE_Allocator::instance ()->malloc (size)),
                         0);
+#else
+  ACE_ALLOCATOR_RETURN (s,
+                        static_cast<wchar_t*> (ACE_OS::malloc (size)),
+                        0);
+#endif /* ACE_HAS_ALLOC_HOOKS */
   return ACE_OS::strsncpy (s, str, len + 1);
 }
 #endif /* ACE_HAS_WCHAR */
@@ -3284,9 +3267,17 @@ ACE::strnnew (const char *str, size_t n)
     continue;
 
   char *s;
+
+#if defined (ACE_HAS_ALLOC_HOOKS)
+  ACE_ALLOCATOR_RETURN (s,
+                        static_cast<char*> (ACE_Allocator::instance ()->malloc (sizeof (char) * (len + 1))),
+                        0);
+#else
   ACE_NEW_RETURN (s,
                   char[len + 1],
                   0);
+#endif /* ACE_HAS_ALLOC_HOOKS */
+
   return ACE_OS::strsncpy (s, str, len + 1);
 }
 
@@ -3339,13 +3330,17 @@ ACE::strnew (const char *s)
   if (s == 0)
     return 0;
   char *t = 0;
+#if defined (ACE_HAS_ALLOC_HOOKS)
+  ACE_ALLOCATOR_RETURN (t,
+                        static_cast<char*> (ACE_Allocator::instance ()->malloc (sizeof (char) * (ACE_OS::strlen (s) + 1))),
+    0);
+#else
   ACE_NEW_RETURN (t,
                   char [ACE_OS::strlen (s) + 1],
                   0);
-  if (t == 0)
-    return 0;
-  else
-    return ACE_OS::strcpy (t, s);
+#endif  /* ACE_HAS_ALLOC_HOOKS */
+
+  return ACE_OS::strcpy (t, s);
 }
 
 #if defined (ACE_HAS_WCHAR)
@@ -3354,14 +3349,20 @@ ACE::strnew (const wchar_t *s)
 {
   if (s == 0)
     return 0;
+
+  size_t const n = ACE_OS::strlen (s) + 1;
   wchar_t *t = 0;
-  ACE_NEW_RETURN (t,
-                  wchar_t[ACE_OS::strlen (s) + 1],
-                  0);
-  if (t == 0)
-    return 0;
-  else
-    return ACE_OS::strcpy (t, s);
+#if defined (ACE_HAS_ALLOC_HOOKS)
+  ACE_ALLOCATOR_RETURN (t,
+                        static_cast<wchar_t*> (
+                          ACE_Allocator::instance ()->malloc (
+                            sizeof (wchar_t) * (n))),
+                        0);
+#else
+  ACE_NEW_RETURN (t, wchar_t[n], 0);
+#endif  /* ACE_HAS_ALLOC_HOOKS */
+
+  return ACE_OS::strcpy (t, s);
 }
 #endif /* ACE_HAS_WCHAR */
 
@@ -3400,7 +3401,7 @@ namespace
             // characters are allowed as the range endpoints.  These characters
             // are the same values in both signed and unsigned chars so we
             // don't have to account for any "pathological cases."
-            for (char range = p[-1] + 1; range <= p[1]; ++range)
+            for (char range = static_cast<char> (p[-1] + 1); range <= p[1]; ++range)
               {
                 if (equal_char (s, range, case_sensitive))
                   {

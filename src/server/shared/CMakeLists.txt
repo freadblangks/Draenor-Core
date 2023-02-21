@@ -17,6 +17,7 @@ file(GLOB_RECURSE sources_Configuration Configuration/*.cpp Configuration/*.h)
 file(GLOB_RECURSE sources_Cryptography Cryptography/*.cpp Cryptography/*.h)
 file(GLOB_RECURSE sources_Database Database/*.cpp Database/*.h Database/*.hpp)
 file(GLOB_RECURSE sources_DataStores DataStores/*.cpp DataStores/*.h)
+file(GLOB_RECURSE sources_Debugging Debugging/*.cpp Debugging/*.h)
 file(GLOB_RECURSE sources_Dynamic Dynamic/*.cpp Dynamic/*.h)
 file(GLOB_RECURSE sources_Logging Logging/*.cpp Logging/*.h Logging/*.hpp)
 file(GLOB_RECURSE sources_Packets Packets/*.cpp Packets/*.h)
@@ -25,6 +26,11 @@ file(GLOB_RECURSE sources_Utilities Utilities/*.cpp Utilities/*.h Utilities/*.hp
 file(GLOB_RECURSE sources_Reporting Reporting/*.cpp Reporting/*.hpp Reporting/*.hxx)
 
 file(GLOB sources_localdir *.cpp *.h)
+
+# Manually set sources for Debugging directory as we don't want to include WheatyExceptionReport in shared project
+# It needs to be included both in authserver and worldserver for the static global variable to be properly initialized
+# and to handle crash logs on windows
+set(sources_Debugging Debugging/Errors.cpp Debugging/Errors.h)
 
 #
 # Build shared sourcelist
@@ -43,6 +49,7 @@ set(shared_STAT_SRCS
   ${sources_Cryptography}
   ${sources_Database}
   ${sources_DataStores}
+  ${sources_Debugging}
   ${sources_Dynamic}
   ${sources_Logging}
   ${sources_Packets}
@@ -50,28 +57,6 @@ set(shared_STAT_SRCS
   ${sources_Utilities}
   ${sources_Reporting}
   ${sources_localdir}
-  Debugging/Errors.h
-)
-
-MACRO( auto_group ProjectDirectory ProjectSources )
-	SET( DirectorySources "${ProjectSources}" )
-	FOREACH( Source ${DirectorySources} )
-		if ("${Source}" MATCHES "(/)+")
-			STRING( REGEX REPLACE "${ProjectDirectory}" "" RelativePath "${Source}" )
-			STRING( REGEX REPLACE "[\\\\/][^\\\\/]*$" "" RelativePath "${RelativePath}" )
-			STRING( REGEX REPLACE "^[\\\\/]" "" RelativePath "${RelativePath}" )
-			STRING( REGEX REPLACE "/" "\\\\\\\\" RelativePath "${RelativePath}" )
-			SOURCE_GROUP( "${RelativePath}" FILES ${Source} )
-		else()
-			SOURCE_GROUP( "" FILES ${Source} )
-		endif()
-	ENDFOREACH( Source )
-ENDMACRO( auto_group )
-
-auto_group("${CMAKE_CURRENT_SOURCE_DIR}" "${shared_STAT_SRCS}")
-
-set(shared_STAT_SRCS
-  ${shared_STAT_SRCS}
 )
 
 include_directories(
@@ -100,6 +85,8 @@ include_directories(
   ${MYSQL_INCLUDE_DIR}
   ${OPENSSL_INCLUDE_DIR}
 )
+
+GroupSources(${CMAKE_CURRENT_SOURCE_DIR})
 
 add_library(shared STATIC
   ${shared_STAT_SRCS}

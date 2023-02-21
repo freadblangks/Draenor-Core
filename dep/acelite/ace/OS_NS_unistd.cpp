@@ -1,5 +1,3 @@
-// $Id: OS_NS_unistd.cpp 91286 2010-08-05 09:04:31Z johnnyw $
-
 #include "ace/OS_NS_unistd.h"
 
 #if !defined (ACE_HAS_INLINED_OSCALLS)
@@ -15,28 +13,14 @@
 #include "ace/Object_Manager_Base.h"
 #include "ace/Auto_Ptr.h"
 #include "ace/os_include/sys/os_pstat.h"
-#include "ace/os_include/sys/os_sysctl.h"
+#if defined (ACE_HAS_SYSCTL)
+# include "ace/os_include/sys/os_sysctl.h"
+#endif /* ACE_HAS_SYSCTL */
 
 #if defined ACE_HAS_VXCPULIB
 # include "vxCpuLib.h"
 # include "cpuset.h"
 #endif /* ACE_HAS_VXCPULIB */
-
-#if defined (ACE_NEEDS_FTRUNCATE)
-extern "C" int
-ftruncate (ACE_HANDLE handle, long len)
-{
-  struct flock fl;
-  fl.l_whence = 0;
-  fl.l_len = 0;
-  fl.l_start = len;
-  fl.l_type = F_WRLCK;
-
-  return ACE_OS::fcntl (handle, F_FREESP, reinterpret_cast <long> (&fl));
-}
-#endif /* ACE_NEEDS_FTRUNCATE */
-
-/*****************************************************************************/
 
 ACE_BEGIN_VERSIONED_NAMESPACE_DECL
 
@@ -89,7 +73,11 @@ ACE_OS::argv_to_string (int argc,
         {
           if (argv_p == argv)
             {
+#if defined (ACE_HAS_ALLOC_HOOKS)
+              argv_p = (ACE_TCHAR **) ACE_Allocator::instance()->malloc (argc * sizeof (ACE_TCHAR *));
+#else
               argv_p = (ACE_TCHAR **) ACE_OS::malloc (argc * sizeof (ACE_TCHAR *));
+#endif /* ACE_HAS_ALLOC_HOOKS */
               if (argv_p == 0)
                 {
                   errno = ENOMEM;
@@ -100,7 +88,11 @@ ACE_OS::argv_to_string (int argc,
           argv_p[i] = ACE_OS::strenvdup (argv[i]);
           if (argv_p[i] == 0)
             {
+#if defined (ACE_HAS_ALLOC_HOOKS)
+              ACE_Allocator::instance()->free (argv_p);
+#else
               ACE_OS::free (argv_p);
+#endif /* ACE_HAS_ALLOC_HOOKS */
               errno = ENOMEM;
               return 0;
             }
@@ -117,7 +109,11 @@ ACE_OS::argv_to_string (int argc,
         {
           if (argv_p == argv)
             {
+#if defined (ACE_HAS_ALLOC_HOOKS)
+              argv_p = (ACE_TCHAR **) ACE_Allocator::instance()->malloc (argc * sizeof (ACE_TCHAR *));
+#else
               argv_p = (ACE_TCHAR **) ACE_OS::malloc (argc * sizeof (ACE_TCHAR *));
+#endif /* ACE_HAS_ALLOC_HOOKS */
               if (argv_p == 0)
                 {
                   errno = ENOMEM;
@@ -134,11 +130,20 @@ ACE_OS::argv_to_string (int argc,
                   ++quotes;
             }
           argv_p[i] =
+#if defined (ACE_HAS_ALLOC_HOOKS)
+            (ACE_TCHAR *) ACE_Allocator::instance()->malloc ((ACE_OS::strlen (temp) + quotes + 3)
+                                                             * sizeof (ACE_TCHAR));
+#else
             (ACE_TCHAR *) ACE_OS::malloc ((ACE_OS::strlen (temp) + quotes + 3)
                                           * sizeof (ACE_TCHAR));
+#endif /* ACE_HAS_ALLOC_HOOKS */
           if (argv_p[i] == 0)
             {
+#if defined (ACE_HAS_ALLOC_HOOKS)
+              ACE_Allocator::instance()->free (argv_p);
+#else
               ACE_OS::free (argv_p);
+#endif /* ACE_HAS_ALLOC_HOOKS */
               errno = ENOMEM;
               return 0;
             }
@@ -163,7 +168,11 @@ ACE_OS::argv_to_string (int argc,
 
           *end = ACE_TEXT ('\0');
           if (temp != argv[i])
+#if defined (ACE_HAS_ALLOC_HOOKS)
+            ACE_Allocator::instance()->free (temp);
+#else
             ACE_OS::free (temp);
+#endif /* ACE_HAS_ALLOC_HOOKS */
         }
       buf_len += ACE_OS::strlen (argv_p[i]);
 
@@ -174,9 +183,15 @@ ACE_OS::argv_to_string (int argc,
   // Step through all argv params and copy each one into buf; separate
   // each param with white space.
 
+#if defined (ACE_HAS_ALLOC_HOOKS)
+  ACE_ALLOCATOR_RETURN (buf,
+                        static_cast<ACE_TCHAR*>(ACE_Allocator::instance()->malloc(sizeof(ACE_TCHAR) * (buf_len + 1))),
+                        0);
+#else
   ACE_NEW_RETURN (buf,
                   ACE_TCHAR[buf_len + 1],
                   0);
+#endif /* ACE_HAS_ALLOC_HOOKS */
 
   // Initial null charater to make it a null string.
   buf[0] = ACE_TEXT ('\0');
@@ -186,7 +201,11 @@ ACE_OS::argv_to_string (int argc,
     {
       end = ACE_OS::strecpy (end, argv_p[i]);
       if (argv_p[i] != argv[i])
+#if defined (ACE_HAS_ALLOC_HOOKS)
+        ACE_Allocator::instance()->free (argv_p[i]);
+#else
         ACE_OS::free (argv_p[i]);
+#endif /* ACE_HAS_ALLOC_HOOKS */
 
       // Replace the null char that strecpy put there with white
       // space.
@@ -196,7 +215,11 @@ ACE_OS::argv_to_string (int argc,
   *end = ACE_TEXT ('\0');
 
   if (argv_p != argv)
+#if defined (ACE_HAS_ALLOC_HOOKS)
+    ACE_Allocator::instance()->free (argv_p);
+#else
     ACE_OS::free (argv_p);
+#endif /* ACE_HAS_ALLOC_HOOKS */
 
   // The number of arguments.
   return argc;
@@ -336,7 +359,7 @@ ACE_OS::fork_exec (ACE_TCHAR *argv[])
 
       switch (result)
         {
-        case -1:
+        case static_cast<pid_t>(-1):
           // Error.
           return -1;
         case 0:
@@ -360,14 +383,14 @@ ACE_OS::fork_exec (ACE_TCHAR *argv[])
           if (ACE_OS::execv (argv[0], argv) == -1)
             {
               // The OS layer should not print stuff out
-              // ACE_ERROR ((LM_ERROR,
+              // ACELIB_ERROR ((LM_ERROR,
               //             "%p Exec failed\n"));
 
               // If the execv fails, this child needs to exit.
               ACE_OS::exit (errno);
             }
 #   endif /* ACE_HAS_WCHAR */
-
+          return result;
         default:
           // Server process.  The fork succeeded.
           return result;
@@ -376,7 +399,7 @@ ACE_OS::fork_exec (ACE_TCHAR *argv[])
 }
 
 long
-ACE_OS::num_processors (void)
+ACE_OS::num_processors ()
 {
   ACE_OS_TRACE ("ACE_OS::num_processors");
 
@@ -410,7 +433,7 @@ ACE_OS::num_processors (void)
 }
 
 long
-ACE_OS::num_processors_online (void)
+ACE_OS::num_processors_online ()
 {
   ACE_OS_TRACE ("ACE_OS::num_processors_online");
 
@@ -623,7 +646,7 @@ ACE_OS::pread (ACE_HANDLE handle,
 
   return bytes_read;
 
-# endif /* ACE_HAD_P_READ_WRITE */
+# endif /* ACE_HAS_P_READ_WRITE */
 }
 
 ssize_t
@@ -723,8 +746,11 @@ ACE_OS::pwrite (ACE_HANDLE handle,
   return (ssize_t) bytes_written;
 
 #   else /* ACE_WIN32 */
-
+#     if defined (ACE_HAS_NON_CONST_PWRITE)
+  return ::pwrite (handle, const_cast<void*> (buf), nbytes, offset);
+#     else
   return ::pwrite (handle, buf, nbytes, offset);
+#     endif
 #   endif /* ACE_WIN32 */
 # else /* ACE_HAS_P_READ_WRITE */
 
@@ -823,14 +849,26 @@ ACE_OS::string_to_argv (ACE_TCHAR *buf,
   // Make sure that the buffer we're copying into is always large
   // enough.
   if (cp - buf >= ACE_DEFAULT_ARGV_BUFSIZ)
+#if defined (ACE_HAS_ALLOC_HOOKS)
+  ACE_ALLOCATOR_RETURN(argp,
+                       static_cast<ACE_TCHAR *>(ACE_Allocator::instance()->malloc(sizeof (ACE_TCHAR) * (cp - buf + 1))),
+                       -1);
+#else
     ACE_NEW_RETURN (argp,
                     ACE_TCHAR[cp - buf + 1],
                     -1);
+#endif /* ACE_HAS_ALLOC_HOOKS */
 
   // Make a new argv vector of argc + 1 elements.
+#if defined (ACE_HAS_ALLOC_HOOKS)
+  ACE_ALLOCATOR_RETURN(argv,
+                       static_cast<ACE_TCHAR **>(ACE_Allocator::instance()->malloc(sizeof (ACE_TCHAR*) * (argc + 1))),
+                       -1);
+#else
   ACE_NEW_RETURN (argv,
                   ACE_TCHAR *[argc + 1],
                   -1);
+#endif /* ACE_HAS_ALLOC_HOOKS */
 
   ACE_TCHAR *ptr = buf;
 
@@ -870,7 +908,11 @@ ACE_OS::string_to_argv (ACE_TCHAR *buf,
           if (argv[i] == 0)
             {
               if (argp != arg)
+#if defined (ACE_HAS_ALLOC_HOOKS)
+                ACE_Allocator::instance()->free(argp);
+#else
                 delete [] argp;
+#endif /* ACE_HAS_ALLOC_HOOKS */
               errno = ENOMEM;
               return -1;
             }
@@ -884,7 +926,11 @@ ACE_OS::string_to_argv (ACE_TCHAR *buf,
             {
               if (argp != arg)
                 {
+#if defined (ACE_HAS_ALLOC_HOOKS)
+                  ACE_Allocator::instance()->free(argp);
+#else
                   delete [] argp;
+#endif /* ACE_HAS_ALLOC_HOOKS */
                 }
 
               errno = ENOMEM;
@@ -895,7 +941,11 @@ ACE_OS::string_to_argv (ACE_TCHAR *buf,
 
   if (argp != arg)
     {
+#if defined (ACE_HAS_ALLOC_HOOKS)
+      ACE_Allocator::instance()->free(argp);
+#else
       delete [] argp;
+#endif /* ACE_HAS_ALLOC_HOOKS */
     }
 
   argv[argc] = 0;

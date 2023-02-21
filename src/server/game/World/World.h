@@ -18,6 +18,7 @@
 #include <ace/Atomic_Op.h>
 #include "SharedDefines.h"
 #include "QueryResult.h"
+#include <ace/Null_Mutex.h>
 #include "Callback.h"
 #include "TimeDiffMgr.h"
 #include "DatabaseWorkerPool.h"
@@ -427,6 +428,7 @@ enum WorldIntConfigs
     CONFIG_ACCOUNT_BIND_SHOP_GROUP_MASK,
     CONFIG_ACCOUNT_BIND_ALLOWED_GROUP_MASK,
     CONFIG_ONLY_MAP,
+    CONFIG_CREATURE_PICKPOCKET_REFILL,
     INT_CONFIG_VALUE_COUNT
 };
 
@@ -696,7 +698,7 @@ struct MotdText
 class World
 {
     public:
-        static std::atomic<unsigned int> m_worldLoopCounter;
+        static ACE_Atomic_Op<ACE_Thread_Mutex, uint32> m_worldLoopCounter;
 
         World();
         ~World();
@@ -849,7 +851,7 @@ class World
         /// Get the maximum skill level a player can reach
         uint16 GetConfigMaxSkillValue() const
         {
-            uint8 lvl = uint8(getIntConfig(CONFIG_MAX_PLAYER_LEVEL));
+            uint16 lvl = uint16(getIntConfig(CONFIG_MAX_PLAYER_LEVEL));
 
             if (lvl >= 1 && lvl < 10)
                 return 75;

@@ -1,10 +1,9 @@
-// $Id: TP_Reactor.cpp 91286 2010-08-05 09:04:31Z johnnyw $
-
 #include "ace/TP_Reactor.h"
 #include "ace/Thread.h"
 #include "ace/Timer_Queue.h"
 #include "ace/Sig_Handler.h"
-#include "ace/Log_Msg.h"
+#include "ace/Log_Category.h"
+#include "ace/Functor_T.h"
 #include "ace/OS_NS_sys_time.h"
 
 #if !defined (__ACE_INLINE__)
@@ -101,7 +100,7 @@ ACE_TP_Reactor::ACE_TP_Reactor (ACE_Sig_Handler *sh,
   : ACE_Select_Reactor (sh, tq, ACE_DISABLE_NOTIFY_PIPE_DEFAULT, 0, mask_signals, s_queue)
 {
   ACE_TRACE ("ACE_TP_Reactor::ACE_TP_Reactor");
-  this->supress_notify_renew (1);
+  this->supress_notify_renew (true);
 }
 
 ACE_TP_Reactor::ACE_TP_Reactor (size_t max_number_of_handles,
@@ -113,7 +112,7 @@ ACE_TP_Reactor::ACE_TP_Reactor (size_t max_number_of_handles,
   : ACE_Select_Reactor (max_number_of_handles, restart, sh, tq, ACE_DISABLE_NOTIFY_PIPE_DEFAULT, 0, mask_signals, s_queue)
 {
   ACE_TRACE ("ACE_TP_Reactor::ACE_TP_Reactor");
-  this->supress_notify_renew (1);
+  this->supress_notify_renew (true);
 }
 
 int
@@ -161,7 +160,10 @@ ACE_TP_Reactor::handle_events (ACE_Time_Value *max_wait_time)
 
   // After getting the lock just just for deactivation..
   if (this->deactivated_)
-    return -1;
+    {
+      errno = ESHUTDOWN;
+      return -1;
+    }
 
   // Update the countdown to reflect time waiting for the token.
   countdown.update ();
@@ -303,47 +305,17 @@ int
 ACE_TP_Reactor::handle_timer_events (int & /*event_count*/,
                                      ACE_TP_Token_Guard &guard)
 {
-  if (this->timer_queue_ == 0 || this->timer_queue_->is_empty())
-    { // Empty timer queue so cannot have any expired timers.
-      return 0;
-    }
+  using Guard_Release = ACE_Member_Function_Command<ACE_TP_Token_Guard>;
 
-  // Get the current time
-  ACE_Time_Value cur_time (this->timer_queue_->gettimeofday () +
-                           this->timer_queue_->timer_skew ());
-
-  // Look for a node in the timer queue whose timer <= the present
-  // time.
-  ACE_Timer_Node_Dispatch_Info info;
-
-  if (this->timer_queue_->dispatch_info (cur_time, info))
-    {
-      const void *upcall_act = 0;
-
-      // Preinvoke.
-      this->timer_queue_->preinvoke (info, cur_time, upcall_act);
-
-      // Release the token before dispatching notifies...
-      guard.release_token ();
-
-      // call the functor
-      this->timer_queue_->upcall (info, cur_time);
-
-      // Postinvoke
-      this->timer_queue_->postinvoke (info, cur_time, upcall_act);
-
-      // We have dispatched a timer
-      return 1;
-    }
-
-  return 0;
+  Guard_Release release(guard, &ACE_TP_Token_Guard::release_token);
+  return this->timer_queue_->expire_single(release);
 }
 
 int
 ACE_TP_Reactor::handle_notify_events (int & /*event_count*/,
                                       ACE_TP_Token_Guard &guard)
 {
-  // Get the handle on which notify calls could have occured
+  // Get the handle on which notify calls could have occurred
   ACE_HANDLE notify_handle = this->get_notify_handle ();
 
   int result = 0;
@@ -633,7 +605,7 @@ ACE_TP_Reactor::post_process_socket_event (ACE_EH_Dispatch_Info &dispatch_info,
 }
 
 int
-ACE_TP_Reactor::resumable_handler (void)
+ACE_TP_Reactor::resumable_handler ()
 {
   return 1;
 }
@@ -651,7 +623,7 @@ ACE_TP_Reactor::notify_handle (ACE_HANDLE,
                                ACE_Event_Handler *eh,
                                ACE_EH_PTMF)
 {
-  ACE_ERROR ((LM_ERROR,
+  ACELIB_ERROR ((LM_ERROR,
               ACE_TEXT ("ACE_TP_Reactor::notify_handle: ")
               ACE_TEXT ("Wrong version of notify_handle() got called\n")));
 
@@ -660,7 +632,7 @@ ACE_TP_Reactor::notify_handle (ACE_HANDLE,
 }
 
 ACE_HANDLE
-ACE_TP_Reactor::get_notify_handle (void)
+ACE_TP_Reactor::get_notify_handle ()
 {
   // Call the notify handler to get a handle on which we would have a
   // notify waiting

@@ -4,11 +4,9 @@
 /**
  *  @file    Null_Condition.h
  *
- *  $Id: Null_Condition.h 91626 2010-09-07 10:59:20Z johnnyw $
- *
  *   Moved from Synch.h.
  *
- *  @author Douglas C. Schmidt <schmidt@cs.wustl.edu>
+ *  @author Douglas C. Schmidt <d.schmidt@vanderbilt.edu>
  */
 //==========================================================================
 
@@ -17,6 +15,7 @@
 #include /**/ "ace/pre.h"
 
 #include "ace/Null_Mutex.h"
+#include "ace/Condition_T.h"
 
 #if !defined (ACE_LACKS_PRAGMA_ONCE)
 # pragma once
@@ -27,26 +26,33 @@
 ACE_BEGIN_VERSIONED_NAMESPACE_DECL
 
 class ACE_Time_Value;
+class ACE_Condition_Attributes;
+template <class MUTEX> class ACE_Condition;
 
 /**
- * @class ACE_Null_Condition
- *
- * @brief Implement a do nothing ACE_Condition variable wrapper,
- * i.e., all methods are no ops.  This class is necessary since
- * some C++ compilers are *very* lame...
+ * @brief ACE_Condition template specialization written using
+ * ACE_Null_Mutexes. Implements a do nothing ACE_Condition
+ * specialization, i.e., all methods are no ops.
  */
-class ACE_Null_Condition
+template <>
+class ACE_Condition<ACE_Null_Mutex>
 {
 public:
-  ACE_Null_Condition (const ACE_Null_Mutex &m,
-                      const ACE_TCHAR * = 0,
-                      void * = 0)
+  ACE_Condition (const ACE_Null_Mutex &m,
+                 const ACE_TCHAR * = 0,
+                 void * = 0)
     : mutex_ ((ACE_Null_Mutex &) m) {}
 
-  ~ACE_Null_Condition (void) {}
+  ACE_Condition (const ACE_Null_Mutex &m,
+                 const ACE_Condition_Attributes &,
+                 const ACE_TCHAR * = 0,
+                 void * = 0)
+  : mutex_ ((ACE_Null_Mutex &) m) {}
+
+  ~ACE_Condition () {}
 
   /// Returns 0.
-  int remove (void) {return 0;}
+  int remove () {return 0;}
 
   /// Returns -1 with @c errno == @c ETIME.
   int wait (const ACE_Time_Value * = 0) {errno = ETIME; return -1;}
@@ -56,14 +62,14 @@ public:
             const ACE_Time_Value * = 0) {errno = ETIME; return -1;}
 
   /// Returns 0.
-  int signal (void) {return 0;}
+  int signal () {return 0;}
 
   /// Returns 0.
-  int broadcast (void) {return 0;}
-  ACE_Null_Mutex &mutex (void) {return this->mutex_;};
+  int broadcast () {return 0;}
+  ACE_Null_Mutex &mutex () {return this->mutex_;};
 
   /// Dump the state of an object.
-  void dump (void) const {}
+  void dump () const {}
 
   // ACE_ALLOC_HOOK_DECLARE;
   // Declare the dynamic allocation hooks.
@@ -73,9 +79,11 @@ protected:
 
 private:
   // = Prevent assignment and initialization.
-  void operator= (const ACE_Null_Condition &);
-  ACE_Null_Condition (const ACE_Null_Condition &);
+  void operator= (const ACE_Condition<ACE_Null_Mutex> &);
+  ACE_Condition (const ACE_Condition<ACE_Null_Mutex> &);
 };
+
+typedef ACE_Condition<ACE_Null_Mutex> ACE_Null_Condition;
 
 ACE_END_VERSIONED_NAMESPACE_DECL
 

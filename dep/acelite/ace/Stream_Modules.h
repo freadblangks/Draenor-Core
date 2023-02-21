@@ -4,9 +4,7 @@
 /**
  *  @file    Stream_Modules.h
  *
- *  $Id: Stream_Modules.h 80826 2008-03-04 14:51:23Z wotte $
- *
- *  @author Douglas C. Schmidt <schmidt@cs.wustl.edu>
+ *  @author Douglas C. Schmidt <d.schmidt@vanderbilt.edu>
  */
 //=============================================================================
 
@@ -47,29 +45,29 @@ ACE_BEGIN_VERSIONED_NAMESPACE_DECL
  *           stream.
  * - Writer: The block is passed to the next module in the stream.
  */
-template <ACE_SYNCH_DECL>
-class ACE_Stream_Head : public ACE_Task<ACE_SYNCH_USE>
+template <ACE_SYNCH_DECL, class TIME_POLICY = ACE_System_Time_Policy>
+class ACE_Stream_Head : public ACE_Task<ACE_SYNCH_USE, TIME_POLICY>
 {
 public:
   /// Construction
-  ACE_Stream_Head (void);
+  ACE_Stream_Head ();
 
   /// Destruction
-  ~ACE_Stream_Head (void);
+  virtual ~ACE_Stream_Head ();
 
   // = ACE_Task hooks
   virtual int open (void *a = 0);
   virtual int close (u_long flags = 0);
   virtual int put (ACE_Message_Block *msg, ACE_Time_Value * = 0);
-  virtual int svc (void);
+  virtual int svc ();
 
   // = Dynamic linking hooks
   virtual int init (int argc, ACE_TCHAR *argv[]);
   virtual int info (ACE_TCHAR **info_string, size_t length) const;
-  virtual int fini (void);
+  virtual int fini ();
 
   /// Dump the state of an object.
-  void dump (void) const;
+  void dump () const;
 
   /// Declare the dynamic allocation hooks.
   ACE_ALLOC_HOOK_DECLARE;
@@ -85,29 +83,29 @@ private:
  *
  * @brief Standard module that acts as the head of a stream.
  */
-template <ACE_SYNCH_DECL>
-class ACE_Stream_Tail : public ACE_Task<ACE_SYNCH_USE>
+template <ACE_SYNCH_DECL, class TIME_POLICY = ACE_System_Time_Policy>
+class ACE_Stream_Tail : public ACE_Task<ACE_SYNCH_USE, TIME_POLICY>
 {
 public:
   /// Construction
-  ACE_Stream_Tail (void);
+  ACE_Stream_Tail ();
 
   /// Destruction
-  ~ACE_Stream_Tail (void);
+  virtual ~ACE_Stream_Tail ();
 
   // = ACE_Task hooks
   virtual int open (void *a = 0);
   virtual int close (u_long flags = 0);
   virtual int put (ACE_Message_Block *msg, ACE_Time_Value * = 0);
-  virtual int svc (void);
+  virtual int svc ();
 
   // = Dynamic linking hooks
   virtual int init (int argc, ACE_TCHAR *argv[]);
   virtual int info (ACE_TCHAR **info_string, size_t length) const;
-  virtual int fini (void);
+  virtual int fini ();
 
   /// Dump the state of an object.
-  void dump (void) const;
+  void dump () const;
 
   /// Declare the dynamic allocation hooks.
   ACE_ALLOC_HOOK_DECLARE;
@@ -124,29 +122,29 @@ private:
  * @brief Standard module that acts as a "no op", simply passing on all
  * data to its adjacent neighbor.
  */
-template <ACE_SYNCH_DECL>
-class ACE_Thru_Task : public ACE_Task<ACE_SYNCH_USE>
+template <ACE_SYNCH_DECL, class TIME_POLICY = ACE_System_Time_Policy>
+class ACE_Thru_Task : public ACE_Task<ACE_SYNCH_USE, TIME_POLICY>
 {
 public:
   /// Construction
-  ACE_Thru_Task (void);
+  ACE_Thru_Task ();
 
   /// Destruction
-  ~ACE_Thru_Task (void);
+  virtual ~ACE_Thru_Task ();
 
   // = ACE_Task hooks
   virtual int open (void *a = 0);
   virtual int close (u_long flags = 0);
   virtual int put (ACE_Message_Block *msg, ACE_Time_Value * = 0);
-  virtual int svc (void);
+  virtual int svc ();
 
   // = Dynamic linking hooks
   virtual int init (int argc, ACE_TCHAR *argv[]);
   virtual int info (ACE_TCHAR **info_string, size_t length) const;
-  virtual int fini (void);
+  virtual int fini ();
 
   /// Dump the state of an object.
-  void dump (void) const;
+  void dump () const;
 
   /// Declare the dynamic allocation hooks.
   ACE_ALLOC_HOOK_DECLARE;

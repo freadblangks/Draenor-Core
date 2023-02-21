@@ -4,11 +4,9 @@
 /**
  *  @file    Barrier.h
  *
- *  $Id: Barrier.h 92069 2010-09-28 11:38:59Z johnnyw $
- *
  *   Moved from Synch.h.
  *
- *  @author Douglas C. Schmidt <schmidt@cs.wustl.edu>
+ *  @author Douglas C. Schmidt <d.schmidt@vanderbilt.edu>
  */
 //==========================================================================
 
@@ -61,7 +59,7 @@ struct ACE_Export ACE_Sub_Barrier
                    const ACE_TCHAR *name = 0,
                    void *arg = 0);
 
-  ~ACE_Sub_Barrier (void);
+  ~ACE_Sub_Barrier ();
 
   /// True if this generation of the barrier is done.
   ACE_Condition_Thread_Mutex barrier_finished_;
@@ -70,7 +68,7 @@ struct ACE_Export ACE_Sub_Barrier
   int running_threads_;
 
   /// Dump the state of an object.
-  void dump (void) const;
+  void dump () const;
 
   /// Declare the dynamic allocation hooks.
   ACE_ALLOC_HOOK_DECLARE;
@@ -101,8 +99,8 @@ public:
                const ACE_TCHAR *name = 0,
                void *arg = 0);
 
-  /// Default dtor.
-  ~ACE_Barrier (void);
+  /// Default destructor.
+  ~ACE_Barrier ();
 
   /// Block the caller until all @c count threads have called @c wait and
   /// then allow all the caller threads to continue in parallel.
@@ -110,7 +108,7 @@ public:
   /// @retval 0 after successfully waiting for all threads to wait.
   /// @retval -1 if an error occurs or the barrier is shut
   /// down (@sa shutdown ()).
-  int wait (void);
+  int wait ();
 
   /// Shut the barrier down, aborting the wait of all waiting threads.
   /// Any threads waiting on the barrier when it is shut down will return with
@@ -119,10 +117,10 @@ public:
   /// @retval 0 for success, -1 if already shut down.
   ///
   /// @since ACE beta 5.4.9.
-  int shutdown (void);
+  int shutdown ();
 
   /// Dump the state of an object.
-  void dump (void) const;
+  void dump () const;
 
   /// Declare the dynamic allocation hooks.
   ACE_ALLOC_HOOK_DECLARE;
@@ -170,11 +168,11 @@ public:
   /// Create a Thread_Barrier, passing in the optional @a name.
   ACE_Thread_Barrier (unsigned int count, const ACE_TCHAR *name = 0);
 
-  /// Default dtor.
-  ~ACE_Thread_Barrier (void);
+  /// Default destructor.
+  ~ACE_Thread_Barrier ();
 
   /// Dump the state of an object.
-  void dump (void) const;
+  void dump () const;
 
   /// Declare the dynamic allocation hooks.
   ACE_ALLOC_HOOK_DECLARE;

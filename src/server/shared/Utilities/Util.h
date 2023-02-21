@@ -78,6 +78,10 @@ nullable_string PackDBBinary(void const* unpackedData, uint32 unpackedCount);
 
 void stripLineInvisibleChars(std::string &src);
 
+int32 MoneyStringToMoney(const std::string& moneyString);
+
+struct tm* localtime_r(const time_t* time, struct tm* result);
+
 std::string secsToTimeString(uint64 timeInSecs, bool shortText = false, bool hoursOnly = false);
 uint32 TimeStringToSecs(const std::string& timestring);
 std::string TimeToTimestampStr(time_t t);
@@ -300,6 +304,10 @@ inline wchar_t wcharToUpper(wchar_t wchar)
         return wchar_t(uint16(wchar)-0x0020);
     if (wchar == 0x0451)                                     // CYRILLIC SMALL LETTER IO
         return wchar_t(0x0401);
+    if (wchar == 0x0153)                                     // LATIN SMALL LIGATURE OE
+        return wchar_t(0x0152);
+    if (wchar == 0x00FF)                                     // LATIN SMALL LETTER Y WITH DIAERESIS
+        return wchar_t(0x0178);
 
     return wchar;
 }
@@ -326,6 +334,10 @@ inline wchar_t wcharToLower(wchar_t wchar)
         return wchar_t(0x00DF);
     if (wchar == 0x0401)                                     // CYRILLIC CAPITAL LETTER IO
         return wchar_t(0x0451);
+    if (wchar == 0x0152)                                     // LATIN CAPITAL LIGATURE OE
+        return wchar_t(0x0153);
+    if (wchar == 0x0178)                                     // LATIN CAPITAL LETTER Y WITH DIAERESIS
+        return wchar_t(0x00FF);
     if (wchar >= 0x0410 && wchar <= 0x042F)                  // CYRILLIC CAPITAL LETTER A - CYRILLIC CAPITAL LETTER YA
         return wchar_t(uint16(wchar)+0x0020);
 

@@ -1,13 +1,10 @@
 // -*- C++ -*-
-//
-// $Id: OS_NS_errno.inl 80826 2008-03-04 14:51:23Z wotte $
-
 #include "ace/config-all.h"    /* Need ACE_TRACE */
 
 ACE_BEGIN_VERSIONED_NAMESPACE_DECL
 
 ACE_INLINE int
-ACE_OS::last_error (void)
+ACE_OS::last_error ()
 {
   // ACE_OS_TRACE ("ACE_OS::last_error");
 
@@ -17,8 +14,8 @@ ACE_OS::last_error (void)
   // C++ socket wrapper facades.  On Windows, some things that would
   // use errno on UNIX require ::GetLastError(), so this method tries
   // to shield the rest of ACE from having to know about this.
-  int lerror = ::GetLastError ();
-  int lerrno = errno;
+  int const lerror = ::GetLastError ();
+  int const lerrno = errno;
   return lerrno == 0 ? lerror : lerrno;
 #else
   return errno;
@@ -36,7 +33,7 @@ ACE_OS::last_error (int error)
 }
 
 ACE_INLINE int
-ACE_OS::set_errno_to_last_error (void)
+ACE_OS::set_errno_to_last_error ()
 {
 # if defined (ACE_WIN32)
   return errno = ::GetLastError ();
@@ -46,7 +43,7 @@ ACE_OS::set_errno_to_last_error (void)
 }
 
 ACE_INLINE int
-ACE_OS::set_errno_to_wsa_last_error (void)
+ACE_OS::set_errno_to_wsa_last_error ()
 {
 # if defined (ACE_WIN32)
   return errno = ::WSAGetLastError ();

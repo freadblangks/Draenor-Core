@@ -1,20 +1,5 @@
 // -*- C++ -*-
-//
-// $Id: Handle_Set.inl 80826 2008-03-04 14:51:23Z wotte $
-
-#include "ace/Log_Msg.h"
-
-// todo: This should be cleaned up a bit.
-// memset for FD_ZERO on OpenBSD and Solaris w/ gcc 2.95.3
-#include "ace/os_include/os_string.h"
-
-// FreeBSD 4.8-RC? for bzero() used by FD_ZERO
-#include "ace/os_include/os_strings.h"
-
-// IRIX5 defines bzero() in this odd file... used by FD_ZERO
-#if defined (ACE_HAS_BSTRING)
-#  include /**/ <bstring.h>
-#endif /* ACE_HAS_BSTRING */
+#include "ace/Log_Category.h"
 
 // AIX defines bzero() in this odd file... used by FD_ZERO
 #if defined (ACE_HAS_STRINGS)
@@ -26,7 +11,7 @@ ACE_BEGIN_VERSIONED_NAMESPACE_DECL
 // Initialize the bitmask to all 0s and reset the associated fields.
 
 ACE_INLINE void
-ACE_Handle_Set::reset (void)
+ACE_Handle_Set::reset ()
 {
   ACE_TRACE ("ACE_Handle_Set::reset");
   this->max_handle_ =
@@ -68,7 +53,7 @@ ACE_Handle_Set::operator = (const ACE_Handle_Set &rhs)
 // Returns the number of the large bit.
 
 ACE_INLINE ACE_HANDLE
-ACE_Handle_Set::max_set (void) const
+ACE_Handle_Set::max_set () const
 {
   ACE_TRACE ("ACE_Handle_Set::max_set");
   return this->max_handle_;
@@ -80,17 +65,16 @@ ACE_INLINE int
 ACE_Handle_Set::is_set (ACE_HANDLE handle) const
 {
   ACE_TRACE ("ACE_Handle_Set::is_set");
+
+  fd_set *set = const_cast<fd_set*> (&this->mask_);
+  int ret = FD_ISSET (handle, set);
+
 #if defined (ACE_HAS_BIG_FD_SET)
-  return FD_ISSET (handle,
-                   &this->mask_)
-    && this->size_ > 0;
-#elif defined (ACE_HAS_NONCONST_FD_ISSET)
-  return FD_ISSET (handle,
-                   const_cast<fd_set*> (&this->mask_));
-#else
-  return FD_ISSET (handle,
-                   &this->mask_);
-#endif /* ACE_HAS_BIG_FD_SET */
+  ret = ret && this->size_ > 0;
+#elif defined (ACE_VXWORKS) && ACE_VXWORKS >= 0x690
+  ret = ret != 0;
+#endif
+  return ret;
 }
 
 // Enables the handle.
@@ -102,11 +86,11 @@ ACE_Handle_Set::set_bit (ACE_HANDLE handle)
   if ((handle != ACE_INVALID_HANDLE)
       && (!this->is_set (handle)))
     {
-#if defined (ACE_WIN32)
+#if defined (ACE_HANDLE_SET_USES_FD_ARRAY)
       FD_SET ((SOCKET) handle,
               &this->mask_);
       ++this->size_;
-#else /* ACE_WIN32 */
+#else /* ACE_HANDLE_SET_USES_FD_ARRAY */
 #if defined (ACE_HAS_BIG_FD_SET)
       if (this->size_ == 0)
         FD_ZERO (&this->mask_);
@@ -121,7 +105,7 @@ ACE_Handle_Set::set_bit (ACE_HANDLE handle)
 
       if (handle > this->max_handle_)
         this->max_handle_ = handle;
-#endif /* ACE_WIN32 */
+#endif /* ACE_HANDLE_SET_USES_FD_ARRAY */
     }
 }
 
@@ -139,24 +123,24 @@ ACE_Handle_Set::clr_bit (ACE_HANDLE handle)
               &this->mask_);
       --this->size_;
 
-#if !defined (ACE_WIN32)
+#if !defined (ACE_HANDLE_SET_USES_FD_ARRAY)
       if (handle == this->max_handle_)
         this->set_max (this->max_handle_);
-#endif /* !ACE_WIN32 */
+#endif /* !ACE_HANDLE_SET_USES_FD_ARRAY */
     }
 }
 
 // Returns a count of the number of enabled bits.
 
 ACE_INLINE int
-ACE_Handle_Set::num_set (void) const
+ACE_Handle_Set::num_set () const
 {
   ACE_TRACE ("ACE_Handle_Set::num_set");
-#if defined (ACE_WIN32)
+#if defined (ACE_HANDLE_SET_USES_FD_ARRAY)
   return this->mask_.fd_count;
-#else /* !ACE_WIN32 */
+#else /* !ACE_HANDLE_SET_USES_FD_ARRAY */
   return this->size_;
-#endif /* ACE_WIN32 */
+#endif /* ACE_HANDLE_SET_USES_FD_ARRAY */
 }
 
 // Returns a pointer to the underlying fd_set.
@@ -175,7 +159,7 @@ ACE_Handle_Set::operator fd_set *()
 // Returns a pointer to the underlying fd_set.
 
 ACE_INLINE fd_set *
-ACE_Handle_Set::fdset (void)
+ACE_Handle_Set::fdset ()
 {
   ACE_TRACE ("ACE_Handle_Set::fdset");
 
@@ -186,7 +170,7 @@ ACE_Handle_Set::fdset (void)
 }
 
 ACE_INLINE
-ACE_Handle_Set_Iterator::~ACE_Handle_Set_Iterator (void)
+ACE_Handle_Set_Iterator::~ACE_Handle_Set_Iterator ()
 {
 }
 

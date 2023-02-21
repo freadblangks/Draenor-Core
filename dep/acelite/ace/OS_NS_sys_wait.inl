@@ -1,7 +1,4 @@
 // -*- C++ -*-
-//
-// $Id: OS_NS_sys_wait.inl 91781 2010-09-15 12:49:15Z johnnyw $
-
 #include "ace/OS_NS_errno.h"
 #include "ace/Global_Macros.h"
 
@@ -13,7 +10,7 @@ ACE_OS::wait (int *status)
   ACE_OS_TRACE ("ACE_OS::wait");
 #if defined (ACE_LACKS_WAIT)
   ACE_UNUSED_ARG (status);
-  ACE_NOTSUP_RETURN (0);
+  ACE_NOTSUP_RETURN (-1);
 #else
   ACE_OSCALL_RETURN (::wait (status), pid_t, -1);
 #endif /* ACE_LACKS_WAIT */
@@ -32,7 +29,7 @@ ACE_OS::waitpid (pid_t pid,
   ACE_UNUSED_ARG (wait_options);
   ACE_UNUSED_ARG (handle);
 
-  ACE_NOTSUP_RETURN (0);
+  ACE_NOTSUP_RETURN (-1);
 #elif defined (ACE_WIN32)
   int blocking_period = ACE_BIT_ENABLED (wait_options, WNOHANG)
     ? 0 /* don't hang */
@@ -76,10 +73,6 @@ ACE_OS::waitpid (pid_t pid,
   if (handle == 0)
     ::CloseHandle (phandle);
   return result;
-#elif defined(ACE_TANDEM_T1248_PTHREADS)
-  ACE_UNUSED_ARG (handle);
-  ACE_OSCALL_RETURN (::spt_waitpid (pid, status, wait_options),
-                     pid_t, -1);
 #else
   ACE_UNUSED_ARG (handle);
   ACE_OSCALL_RETURN (::waitpid (pid, status, wait_options),

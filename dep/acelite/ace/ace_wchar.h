@@ -4,8 +4,6 @@
 /**
  *  @file    ace_wchar.h
  *
- *  $Id: ace_wchar.h 91688 2010-09-09 11:21:50Z johnnyw $
- *
  *  @author Darrell Brunsch <brunsch@uci.edu>
  */
 //=============================================================================
@@ -148,14 +146,14 @@ ACE_BEGIN_VERSIONED_NAMESPACE_DECL
 class ACE_Wide_To_Ascii
 {
 public:
-  /// Ctor must take a wchar string.
+  /// Constructor must take a wchar string.
   ACE_Wide_To_Ascii (const wchar_t *s);
 
-  /// Dtor will free up the memory.
-  ~ACE_Wide_To_Ascii (void);
+  /// Destructor will free up the memory.
+  ~ACE_Wide_To_Ascii ();
 
   /// Return the internal char* representation.
-  char *char_rep (void);
+  char *char_rep ();
 
   /// Converts an wchar_t string to ascii and returns a new string.
   static char *convert (const wchar_t *wstr);
@@ -169,7 +167,7 @@ private:
 #endif /* ACE_HAS_ICONV */
 
   /// Disallow these operation.
-  ACE_Wide_To_Ascii (void);
+  ACE_Wide_To_Ascii ();
   ACE_Wide_To_Ascii (ACE_Wide_To_Ascii &);
   ACE_Wide_To_Ascii& operator= (ACE_Wide_To_Ascii &);
 };
@@ -186,14 +184,14 @@ private:
 class ACE_Ascii_To_Wide
 {
 public:
-  /// Ctor must take a wchar string.
+  /// Constructor must take a wchar string.
   ACE_Ascii_To_Wide (const char *s);
 
-  /// Dtor will free up the memory.
-  ~ACE_Ascii_To_Wide (void);
+  /// Destructor will free up the memory.
+  ~ACE_Ascii_To_Wide ();
 
   /// Return the internal wchar* representation.
-  wchar_t *wchar_rep (void);
+  wchar_t *wchar_rep ();
 
   /// Converts an char string to unicode/wide and returns a new string.
   static wchar_t *convert (const char *str);
@@ -207,7 +205,7 @@ private:
 #endif /* ACE_HAS_ICONV */
 
   /// Disallow these operation.
-  ACE_Ascii_To_Wide (void);
+  ACE_Ascii_To_Wide ();
   ACE_Ascii_To_Wide (ACE_Ascii_To_Wide &);
   ACE_Ascii_To_Wide operator= (ACE_Ascii_To_Wide &);
 };
@@ -230,6 +228,7 @@ ACE_END_VERSIONED_NAMESPACE_DECL
 #define ACE_TEXT_CreateFileMapping               ::CreateFileMappingW
 #define ACE_TEXT_CreateMutex                     ::CreateMutexW
 #define ACE_TEXT_CreateProcess                   ::CreateProcessW
+#define ACE_TEXT_CreateProcessAsUser             ::CreateProcessAsUserW
 #define ACE_TEXT_CreateSemaphore                 ::CreateSemaphoreW
 #define ACE_TEXT_CreateService                   ::CreateServiceW
 #define ACE_TEXT_ExpandEnvironmentStrings        ::ExpandEnvironmentStringsW
@@ -275,6 +274,7 @@ ACE_END_VERSIONED_NAMESPACE_DECL
 #define ACE_TEXT_PdhExpandCounterPath            ::PdhExpandCounterPathW
 #define ACE_TEXT_PdhOpenQuery                    ::PdhOpenQueryW
 #define ACE_TEXT_PdhAddCounter                   ::PdhAddCounterW
+#define ACE_TEXT_gai_strerror                    ::gai_strerrorW
 
 #else /* ACE_USES_WCHAR */
 #define ACE_LPSTR                                LPSTR
@@ -289,6 +289,7 @@ ACE_END_VERSIONED_NAMESPACE_DECL
 #define ACE_TEXT_CreateFileMapping               ::CreateFileMappingA
 #define ACE_TEXT_CreateMutex                     ::CreateMutexA
 #define ACE_TEXT_CreateProcess                   ::CreateProcessA
+#define ACE_TEXT_CreateProcessAsUser             ::CreateProcessAsUserA
 #define ACE_TEXT_CreateSemaphore                 ::CreateSemaphoreA
 #define ACE_TEXT_CreateService                   ::CreateServiceA
 #define ACE_TEXT_ExpandEnvironmentStrings        ::ExpandEnvironmentStringsA
@@ -334,6 +335,7 @@ ACE_END_VERSIONED_NAMESPACE_DECL
 #define ACE_TEXT_PdhExpandCounterPath            ::PdhExpandCounterPathA
 #define ACE_TEXT_PdhOpenQuery                    ::PdhOpenQueryA
 #define ACE_TEXT_PdhAddCounter                   ::PdhAddCounterA
+#define ACE_TEXT_gai_strerror                    ::gai_strerrorA
 #endif /* ACE_USES_WCHAR */
 #endif /* ACE_WIN32 */
 

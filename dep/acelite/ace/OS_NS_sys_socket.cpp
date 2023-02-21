@@ -1,12 +1,10 @@
-// $Id: OS_NS_sys_socket.cpp 91286 2010-08-05 09:04:31Z johnnyw $
-
 #include "ace/OS_NS_sys_socket.h"
-
-
 
 #if !defined (ACE_HAS_INLINED_OSCALLS)
 # include "ace/OS_NS_sys_socket.inl"
 #endif /* ACE_HAS_INLINED_OSCALLS */
+
+#include "ace/Containers_T.h"
 
 ACE_BEGIN_VERSIONED_NAMESPACE_DECL
 
@@ -110,7 +108,7 @@ ACE_OS::socket_init (int version_high, int version_low)
         {
           ACE_TCHAR fmt[] = ACE_TEXT ("%s failed, WSAGetLastError returned %d");
           ACE_TCHAR buf[80];  // @@ Eliminate magic number.
-          ACE_OS::sprintf (buf, fmt, ACE_TEXT ("WSAStartup"), error);
+          ACE_OS::snprintf (buf, 80, fmt, ACE_TEXT ("WSAStartup %d"), error);
           ::MessageBox (0, buf, ACE_TEXT ("WSAStartup failed!"), MB_OK);
         }
 #   else
@@ -130,7 +128,7 @@ ACE_OS::socket_init (int version_high, int version_low)
 }
 
 int
-ACE_OS::socket_fini (void)
+ACE_OS::socket_fini ()
 {
 # if defined (ACE_WIN32)
   if (ACE_OS::socket_initialized_ != 0)
@@ -141,7 +139,7 @@ ACE_OS::socket_fini (void)
 #   if defined (ACE_HAS_WINCE)
           ACE_TCHAR fmt[] = ACE_TEXT ("%s failed, WSAGetLastError returned %d");
           ACE_TCHAR buf[80];  // @@ Eliminate magic number.
-          ACE_OS::sprintf (buf, fmt, ACE_TEXT ("WSACleanup"), error);
+          ACE_OS::snprintf (buf, 80, fmt, ACE_TEXT ("WSACleanup %d"), error);
           ::MessageBox (0, buf , ACE_TEXT ("WSACleanup failed!"), MB_OK);
 #   else
           ACE_OS::fprintf (stderr,
@@ -155,5 +153,205 @@ ACE_OS::socket_fini (void)
 # endif /* ACE_WIN32 */
   return 0;
 }
+
+ssize_t
+ACE_OS::sendv_partial_i (ACE_HANDLE handle,
+                         const iovec *buffers,
+                         int n)
+{
+  // the divide and conquer logic should remain consistent
+  // with send_partial_i
+#if defined (ACE_HAS_WINSOCK2) && (ACE_HAS_WINSOCK2 != 0)
+  DWORD bytes_sent = 0;
+  int result = 1;
+  int simulated_n = n;
+  ACE_UINT64 buffer_size = 0;
+  ACE_Array<iovec> iovec_array(simulated_n);
+  int i = 0;
+  for ( ; i < simulated_n; ++i)
+    {
+      iovec_array[i].iov_base = buffers[i].iov_base;
+      iovec_array[i].iov_len = buffers[i].iov_len;
+      buffer_size += buffers[i].iov_len;
+    }
+  // keep dividing the current buffer_size in half and then
+  // attempt to send the modified iovec buffer until some
+  // data is sent, or we get an errno that is not ENOBUFS
+  while (true)
+    {
+      ACE_UINT64 remove_size = buffer_size / 2;
+      buffer_size -= remove_size;
+      for (i = simulated_n - 1; (i >= 0) && (remove_size > 0); --i)
+        {
+          // if the buffer division splits an iovec, we need
+          // to set its iov_len properly
+          if (iovec_array[i].iov_len > remove_size)
+            {
+              iovec_array[i].iov_len -= static_cast<u_long>(remove_size);
+              break;
+            }
+          remove_size -= iovec_array[i].iov_len;
+        }
+
+      simulated_n = i + 1;
+
+      result = ::WSASend ((SOCKET) handle,
+                          (WSABUF *) &(iovec_array[0]),
+                          simulated_n,
+                          &bytes_sent,
+                          0,
+                          0,
+                          0);
+      if (result != SOCKET_ERROR)
+        break;
+
+      ACE_OS::set_errno_to_wsa_last_error ();
+      // if ENOBUFS is received, we apply a divide and
+      // conquer strategy, but if bytes are sent we
+      // cannot guarantee this is the same behavior
+      if ((errno != ENOBUFS) ||
+          (bytes_sent != 0))
+        {
+          return -1;
+        }
+    }
+
+  return (ssize_t) bytes_sent;
+#else
+  ACE_UNUSED_ARG (handle);
+  ACE_UNUSED_ARG (buffers);
+  ACE_UNUSED_ARG (n);
+  ACE_NOTSUP_RETURN (-1);
+#endif /* ACE_HAS_WINSOCK2 */
+}
+
+ssize_t
+ACE_OS::send_partial_i (ACE_HANDLE handle,
+                        const char *buf,
+                        size_t len,
+                        int flags)
+{
+  // the divide and conquer logic should remain consistent
+  // with sendv_partial_i
+#if !defined (ACE_LACKS_SEND) && defined (ACE_WIN32)
+  DWORD bytes_sent = 0;
+  ssize_t result = 1;
+  // keep dividing the current buffer_size in half and then
+  // attempt to send the modified buffer until some data is
+  // sent, or we get an errno that is not ENOBUFS
+  while (true)
+    {
+      len -= len / 2;
+
+      result = (ssize_t) ::send ((SOCKET) handle,
+                                 buf,
+                                 static_cast<int> (len),
+                                 flags);
+      if (result != SOCKET_ERROR)
+        break;
+
+      ACE_OS::set_errno_to_wsa_last_error ();
+      // if ENOBUFS is received, we apply a divide and
+      // conquer strategy, but if bytes are sent we
+      // cannot guarantee this is the same behavior
+      if ((errno != ENOBUFS) ||
+          (bytes_sent != 0))
+        {
+          return -1;
+        }
+    }
+
+  return result;
+#else
+  ACE_UNUSED_ARG (handle);
+  ACE_UNUSED_ARG (buf);
+  ACE_UNUSED_ARG (len);
+  ACE_UNUSED_ARG (flags);
+  ACE_NOTSUP_RETURN (-1);
+#endif /* ACE_LACKS_SEND && ACE_WIN32 */
+}
+
+#if !defined ACE_LACKS_RECVMSG && defined ACE_HAS_WINSOCK2 && ACE_HAS_WINSOCK2
+int ACE_OS::recvmsg_win32_i (ACE_HANDLE handle,
+                             msghdr *msg,
+                             int flags,
+                             unsigned long &bytes_received)
+{
+  static GUID wsaRcvMsgGuid = WSAID_WSARECVMSG;
+  LPFN_WSARECVMSG wsaRcvMsg = 0;
+  unsigned long ioctlN = 0;
+  SOCKET const sock = reinterpret_cast<SOCKET> (handle);
+  if (::WSAIoctl (sock, SIO_GET_EXTENSION_FUNCTION_POINTER,
+                  &wsaRcvMsgGuid, sizeof wsaRcvMsgGuid,
+                  &wsaRcvMsg, sizeof wsaRcvMsg,
+                  &ioctlN, 0, 0))
+    {
+      ACE_OS::set_errno_to_wsa_last_error ();
+      return -1;
+    }
+
+  if (!wsaRcvMsg)
+    ACE_NOTSUP_RETURN (-1);
+
+  WSAMSG wsaMsg =
+  {
+    msg->msg_name,
+    msg->msg_namelen,
+    reinterpret_cast<WSABUF *> (msg->msg_iov),
+    static_cast<unsigned long> (msg->msg_iovlen),
+    {
+      static_cast<unsigned long> (msg->msg_controllen),
+      static_cast<char *> (msg->msg_control),
+    },
+    static_cast<unsigned long> (flags),
+  };
+
+  if (wsaRcvMsg (sock, &wsaMsg, &bytes_received, 0, 0))
+    {
+      ACE_OS::set_errno_to_wsa_last_error ();
+      return -1;
+    }
+
+  msg->msg_namelen = wsaMsg.namelen;
+  msg->msg_controllen = static_cast<int> (wsaMsg.Control.len);
+  return 0;
+}
+
+int ACE_OS::sendmsg_win32_i (ACE_HANDLE handle,
+                             msghdr const *msg,
+                             int flags,
+                             unsigned long &bytes_sent)
+{
+#  if _WIN32_WINNT >= 0x0600
+  WSAMSG wsaMsg =
+  {
+    msg->msg_name,
+    msg->msg_namelen,
+    reinterpret_cast<WSABUF *> (msg->msg_iov),
+    static_cast<unsigned long> (msg->msg_iovlen),
+    {
+      static_cast<unsigned long> (msg->msg_controllen),
+      static_cast<char *> (msg->msg_control),
+    },
+    static_cast<unsigned long> (flags),
+  };
+
+  SOCKET const sock = reinterpret_cast<SOCKET> (handle);
+  if (::WSASendMsg (sock, &wsaMsg, wsaMsg.dwFlags, &bytes_sent, 0, 0))
+    {
+      ACE_OS::set_errno_to_wsa_last_error ();
+      return -1;
+    }
+
+  return 0;
+#  else
+  ACE_UNUSED_ARG (handle);
+  ACE_UNUSED_ARG (msg);
+  ACE_UNUSED_ARG (flags);
+  ACE_UNUSED_ARG (bytes_sent);
+  ACE_NOTSUP_RETURN (-1);
+#  endif
+}
+#endif
 
 ACE_END_VERSIONED_NAMESPACE_DECL

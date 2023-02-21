@@ -4,8 +4,6 @@
 /**
  *  @file    CE_Screen_Output.h
  *
- *  $Id: CE_Screen_Output.h 80826 2008-03-04 14:51:23Z wotte $
- *
  *  @author Si Mong Park  <spark@ociweb.com>
  */
 //=============================================================================
@@ -39,7 +37,7 @@ ACE_BEGIN_VERSIONED_NAMESPACE_DECL
  *
  * This class allows standard text output to be displayed on
  * text window for Windows CE.  Generally, all ACE output will
- * go through under CE if and only if user uses WindozeCE
+ * go through under CE if and only if user uses Windows CE
  * implementation by using main_ce instead of main.
  * Also, for the easier debugging purpose, object pointer of
  * this class can be gotten from ACE_Log_Msg::msg_callback()
@@ -48,7 +46,6 @@ ACE_BEGIN_VERSIONED_NAMESPACE_DECL
 class ACE_Export ACE_CE_Screen_Output : public ACE_Log_Msg_Callback
 {
 public:
-
   ACE_CE_Screen_Output (HWND hEdit);
 
   ACE_CE_Screen_Output (void);
@@ -91,11 +88,9 @@ public:
   ACE_CE_Screen_Output& operator << (FILE* pFile);
 
 private:
-
   ACE_CE_Screen_Output (ACE_CE_Screen_Output&);
 
 private:
-
   HWND handler_;
 
   /// FILE pointer that used to save output to file.  This class does

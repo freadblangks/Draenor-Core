@@ -1,7 +1,4 @@
 // -*- C++ -*-
-//
-// $Id: Select_Reactor_T.inl 82723 2008-09-16 09:35:44Z johnnyw $
-
 #include "ace/Reactor.h"
 #include "ace/Signal.h"
 #include "ace/Sig_Handler.h"
@@ -73,7 +70,6 @@ ACE_Select_Reactor_T<ACE_SELECT_REACTOR_TOKEN>::register_handler (int signum,
 }
 
 #if defined (ACE_WIN32)
-
 template <class ACE_SELECT_REACTOR_TOKEN>
 ACE_INLINE int
 ACE_Select_Reactor_T<ACE_SELECT_REACTOR_TOKEN>::register_handler (ACE_Event_Handler *,
@@ -82,7 +78,6 @@ ACE_Select_Reactor_T<ACE_SELECT_REACTOR_TOKEN>::register_handler (ACE_Event_Hand
   // Don't have an implementation for this yet...
   ACE_NOTSUP_RETURN (-1);
 }
-
 #endif /* ACE_WIN32 */
 
 template <class ACE_SELECT_REACTOR_TOKEN>
@@ -221,7 +216,7 @@ ACE_Select_Reactor_T<ACE_SELECT_REACTOR_TOKEN>::deactivate (int do_stop)
     ACE_MT (ACE_GUARD (ACE_SELECT_REACTOR_TOKEN,
                        ace_mon,
                        this->token_));
-    this->deactivated_ = do_stop;
+    this->deactivated_ = static_cast<sig_atomic_t> (do_stop);
   }
 
   this->wakeup_all_threads ();

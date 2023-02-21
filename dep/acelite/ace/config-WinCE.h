@@ -1,5 +1,3 @@
-// $Id: config-WinCE.h 89494 2010-03-15 20:11:18Z olli $
-
 // Note: For WinCE build, simply use: #include "ace/config-win32.h"
 //       It is same as config.h for Windows NT/2k so that you can
 //       share same files and directories for both WinCE and NT/2k
@@ -27,15 +25,6 @@
 # define ACE_HAS_WINCE 1
 #endif
 
-#if defined (_MSC_VER) && (_MSC_VER < 1400)
-// WinCE prior to Visual Studio 2005 integration doesn't have most of
-// the standard C library time functions. It also doesn't define struct tm.
-// SYSTEMTIME has pretty much the same info though, so we can map it when
-// needed. Define struct tm here and use it when needed. This is taken
-// from the standard C library.
-# define ACE_LACKS_STRUCT_TM
-#endif
-
 // We need these libraries to build:
 #if defined (_MSC_VER)
 #  pragma comment(lib,"corelibc.lib")
@@ -53,6 +42,7 @@
 // the information using getenv.
 #define ACE_DEFAULT_LD_SEARCH_PATH ACE_TEXT (".\\;\\windows")
 
+#define ACE_LACKS_ABORT
 #define ACE_LACKS_FCNTL_H
 #define ACE_LACKS_SYS_TYPES_H
 #define ACE_LACKS_GETCWD
@@ -61,6 +51,7 @@
 #define ACE_LACKS_GMTIME
 #define ACE_LACKS_GMTIME_R
 #define ACE_LACKS_LOCALTIME
+#define ACE_LACKS_STRTOK_R
 #define ACE_LACKS_PERROR
 #define ACE_LACKS_STRFTIME
 #define ACE_LACKS_WIN32_SETFILEPOINTEREX
@@ -73,8 +64,6 @@
 #define ACE_LACKS_TZSET
 #define ACE_LACKS_RAISE
 #define ACE_LACKS_BSEARCH
-
-#define ACE_HAS_POSITION_INDEPENDENT_POINTERS 1
 
 #define ACE_LACKS_MSG_WFMO
 #define ACE_LACKS_UMASK
@@ -104,10 +93,10 @@
 #endif // ! defined(ACE_DEFAULT_THREAD_KEYS)
 
 // FILE stuff isn't always defined in CE
-#if (_MSC_VER < 1400) && !defined (_FILE_DEFINED)
+#if !defined (_FILE_DEFINED)
   typedef void FILE;
 # define _FILE_DEFINED
-#endif  /* _MSC_VER < 1400 && !_FILE_DEFINED */
+#endif  /* !_FILE_DEFINED */
 
 // This was defined in previous versions of CE, but not 2.11
 #define EXCEPTION_ACCESS_VIOLATION STATUS_ACCESS_VIOLATION

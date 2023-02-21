@@ -1,7 +1,4 @@
 // -*- C++ -*-
-//
-// $Id: OS_NS_sys_mman.inl 85429 2009-05-25 09:53:48Z johnnyw $
-
 #include "ace/OS_NS_fcntl.h"
 #include "ace/OS_NS_unistd.h"
 #include "ace/OS_NS_stdio.h"
@@ -11,7 +8,7 @@
 ACE_BEGIN_VERSIONED_NAMESPACE_DECL
 
 #if defined (ACE_HAS_VOIDPTR_MMAP)
-// Needed for some odd OS's (e.g., SGI).
+// Needed for some odd OS's
 typedef void *ACE_MMAP_TYPE;
 #else
 typedef char *ACE_MMAP_TYPE;
@@ -102,11 +99,18 @@ ACE_OS::mmap (void *addr,
                                                      &sa_buffer,
                                                      &sd_buffer);
 
+#  ifdef ACE_WIN64
+      const DWORD len_low = static_cast<DWORD>(len),
+        len_high = static_cast<DWORD>(len >> 32);
+#  else
+      const DWORD len_low = static_cast<DWORD>(len), len_high = 0;
+#  endif
+
       *file_mapping = ACE_TEXT_CreateFileMapping (file_handle,
                                                   attr,
                                                   prot,
-                                                  0,
-                                                  (file_handle == ACE_INVALID_HANDLE) ? len : 0,
+                                                  (file_handle == ACE_INVALID_HANDLE) ? len_high : 0,
+                                                  (file_handle == ACE_INVALID_HANDLE) ? len_low : 0,
                                                   file_mapping_name);
     }
 
@@ -225,7 +229,7 @@ ACE_OS::munmap (void *addr, size_t len)
   ACE_UNUSED_ARG (len);
 
   ACE_WIN32CALL_RETURN (ACE_ADAPT_RETVAL (::UnmapViewOfFile (addr), ace_result_), int, -1);
-#elif !defined (ACE_LACKS_MMAP)
+#elif !defined (ACE_LACKS_MMAP) && !defined (ACE_LACKS_MUNMAP)
   ACE_OSCALL_RETURN (::munmap ((ACE_MMAP_TYPE) addr, len), int, -1);
 #else
   ACE_UNUSED_ARG (addr);
@@ -275,7 +279,7 @@ ACE_OS::shm_unlink (const ACE_TCHAR *path)
 {
   ACE_OS_TRACE ("ACE_OS::shm_unlink");
 #if defined (ACE_HAS_SHM_OPEN)
-#if defined (ACE_VXWORKS) && (ACE_VXWORKS <= 0x670)
+# if defined (ACE_VXWORKS) && (ACE_VXWORKS <= 0x670)
   // With VxWorks the file should just start with / and no other
   // slashes, so replace all other / by _
   ACE_TCHAR buf [MAXPATHLEN + 1];
@@ -290,8 +294,13 @@ ACE_OS::shm_unlink (const ACE_TCHAR *path)
         }
     }
   path = buf;
-#endif
+# endif
+# if defined (ACE_LACKS_SHM_UNLINK)
+  ACE_UNUSED_ARG (path);
+  ACE_NOTSUP_RETURN (-1);
+# else
   ACE_OSCALL_RETURN (::shm_unlink (ACE_TEXT_ALWAYS_CHAR(path)), int, -1);
+# endif /* ACE_LACKS_SHM_UNLINK */
 #else  /* ! ACE_HAS_SHM_OPEN */
   // Just use ::unlink.
   return ACE_OS::unlink (path);

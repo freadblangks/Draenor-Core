@@ -2096,6 +2096,10 @@ class Player : public Unit, public GridObject<Player>
         void AddTimedQuest(uint32 quest_id) { m_timedquests.insert(quest_id); }
         void RemoveTimedQuest(uint32 quest_id) { m_timedquests.erase(quest_id); }
 
+        void SendMusic(uint32 musicId, uint64 source);
+        void SendSound(uint32 soundId, uint64 source);
+        void SendSoundToAll(uint32 soundId, uint64 source);
+
         /*********************************************************/
         /***                   LOAD SYSTEM                     ***/
         /*********************************************************/
@@ -2551,7 +2555,7 @@ class Player : public Unit, public GridObject<Player>
             if (p_Value > 3500)
             {
                 ACE_Stack_Trace trace;
-                sLog->outError(LOG_FILTER_GENERAL, "Suspiciously high personal rating. Rating: %u, Slot: %u, Player: %u, Trace log: %s", p_Value, p_Slot, GUID_LOPART(GetGUID()), trace.c_str());
+                TC_LOG_ERROR("server.worldserver", "Suspiciously high personal rating. Rating: %u, Slot: %u, Player: %u, Trace log: %s", p_Value, p_Slot, GUID_LOPART(GetGUID()), trace.c_str());
             }
 
             UpdateAchievementCriteria(ACHIEVEMENT_CRITERIA_TYPE_HIGHEST_PERSONAL_RATING, p_Value, Arena::GetTypeBySlot(p_Slot));
@@ -2571,7 +2575,7 @@ class Player : public Unit, public GridObject<Player>
             if (value > 3500)
             {
                 ACE_Stack_Trace trace;
-                sLog->outError(LOG_FILTER_GENERAL, "Suspiciously high match maker rating. Rating: %u, Slot: %u, Player: %u, Trace log: %s", value, slot, GUID_LOPART(GetGUID()), trace.c_str());
+                TC_LOG_ERROR("server.worldserver", "Suspiciously high match maker rating. Rating: %u, Slot: %u, Player: %u, Trace log: %s", value, slot, GUID_LOPART(GetGUID()), trace.c_str());
             }
 
             m_ArenaMatchMakerRating[slot] = value;
@@ -3391,6 +3395,7 @@ class Player : public Unit, public GridObject<Player>
         AchievementMgr<Player> const& GetAchievementMgr() const { return m_achievementMgr; }
         void UpdateAchievementCriteria(AchievementCriteriaTypes type, uint64 miscValue1 = 0, uint64 miscValue2 = 0, uint64 miscValue3 = 0, Unit* unit = NULL, bool p_LoginCheck = false);
         void CompletedAchievement(AchievementEntry const* entry);
+        bool HasAchieved(uint32 achievementId) const;
 
         bool HasTitle(uint32 bitIndex);
         bool HasTitle(CharTitlesEntry const* title) { return HasTitle(title->MaskID); }

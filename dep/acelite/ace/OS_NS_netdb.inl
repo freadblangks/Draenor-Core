@@ -1,13 +1,10 @@
 // -*- C++ -*-
-//
-// $Id: OS_NS_netdb.inl 91683 2010-09-09 09:07:49Z johnnyw $
-
 #include "ace/OS_NS_macros.h"
 #include "ace/OS_NS_string.h"
 #include "ace/OS_NS_errno.h"
 
 #if defined (ACE_LACKS_NETDB_REENTRANT_FUNCTIONS)
-# if defined (ACE_MT_SAFE) && (ACE_MT_SAFE != 0)
+# if defined (ACE_MT_SAFE) && (ACE_MT_SAFE != 0) && !defined (HPUX_11)
 #   define ACE_NETDBCALL_RETURN(OP,TYPE,FAILVALUE,TARGET,SIZE) \
   do \
   { \
@@ -25,7 +22,7 @@
         return ace_result_; \
       } \
   } while(0)
-# else /* ! (ACE_MT_SAFE && ACE_MT_SAFE != 0) */
+# else /* ! (ACE_MT_SAFE && ACE_MT_SAFE != 0 && !HPUX_11) */
 #   define ACE_NETDBCALL_RETURN(OP,TYPE,FAILVALUE,TARGET,SIZE) \
   do \
   { \
@@ -41,8 +38,6 @@
 #endif /* ACE_LACKS_NETDB_REENTRANT_FUNCTIONS */
 
 ACE_BEGIN_VERSIONED_NAMESPACE_DECL
-
-#if !(defined (ACE_VXWORKS) && defined (ACE_LACKS_GETHOSTBYADDR))
 
 ACE_INLINE struct hostent *
 ACE_OS::gethostbyaddr (const char *addr, int length, int type)
@@ -86,10 +81,6 @@ ACE_OS::gethostbyaddr (const char *addr, int length, int type)
 # endif /* !ACE_LACKS_GETHOSTBYADDR */
 }
 
-#endif
-
-#if !(defined (ACE_VXWORKS) && defined (ACE_LACKS_GETHOSTBYADDR))
-
 ACE_INLINE struct hostent *
 ACE_OS::gethostbyaddr_r (const char *addr,
                          int length,
@@ -105,7 +96,8 @@ ACE_OS::gethostbyaddr_r (const char *addr,
   ACE_UNUSED_ARG (type);
   ACE_UNUSED_ARG (result);
   ACE_UNUSED_ARG (buffer);
-  ACE_UNUSED_ARG (h_errnop);
+  if (h_errnop)
+    *h_errnop = ENOTSUP;
   ACE_NOTSUP_RETURN (0);
 # elif defined (ACE_HAS_REENTRANT_FUNCTIONS)
 
@@ -143,6 +135,7 @@ ACE_OS::gethostbyaddr_r (const char *addr,
   else
     return (struct hostent *) 0;
 #   elif defined (ACE_VXWORKS)
+  ACE_UNUSED_ARG (h_errnop);
   // VxWorks 6.x has a threadsafe gethostbyaddr() which returns a heap-allocated
   // data structure which needs to be freed with hostentFree()
   //FUZZ: disable check_for_lack_ACE_OS
@@ -233,10 +226,6 @@ ACE_OS::gethostbyaddr_r (const char *addr,
 # endif /* ACE_LACKS_GETHOSTBYADDR_R */
 }
 
-#endif
-
-#if !(defined (ACE_VXWORKS) && defined (ACE_LACKS_GETHOSTBYNAME))
-
 ACE_INLINE struct hostent *
 ACE_OS::gethostbyname (const char *name)
 {
@@ -273,10 +262,6 @@ ACE_OS::gethostbyname (const char *name)
 # endif /* !ACE_LACKS_GETHOSTBYNAME */
 }
 
-#endif
-
-#if !(defined (ACE_VXWORKS) && defined (ACE_LACKS_GETHOSTBYNAME))
-
 ACE_INLINE struct hostent *
 ACE_OS::gethostbyname_r (const char *name,
                          struct hostent *result,
@@ -288,7 +273,8 @@ ACE_OS::gethostbyname_r (const char *name,
   ACE_UNUSED_ARG (name);
   ACE_UNUSED_ARG (result);
   ACE_UNUSED_ARG (buffer);
-  ACE_UNUSED_ARG (h_errnop);
+  if (h_errnop)
+    *h_errnop = ENOTSUP;
   ACE_NOTSUP_RETURN (0);
 # elif defined (ACE_HAS_REENTRANT_FUNCTIONS)
 
@@ -333,6 +319,7 @@ ACE_OS::gethostbyname_r (const char *name,
   else
     return (struct hostent *) 0;
 #   elif defined (ACE_VXWORKS)
+  ACE_UNUSED_ARG (h_errnop);
   // VxWorks 6.x has a threadsafe gethostbyname() which returns a heap-allocated
   // data structure which needs to be freed with hostentFree()
   //FUZZ: disable check_for_lack_ACE_OS
@@ -422,8 +409,6 @@ ACE_OS::gethostbyname_r (const char *name,
   //FUZZ: enable check_for_lack_ACE_OS
 # endif /* defined (ACE_HAS_REENTRANT_FUNCTIONS) */
 }
-
-#endif
 
 ACE_INLINE struct hostent *
 ACE_OS::getipnodebyaddr (const void *src, size_t len, int family)
@@ -748,6 +733,81 @@ ACE_OS::getservbyname_r (const char *svc,
                        0);
   //FUZZ: enable check_for_lack_ACE_OS
 #endif /* defined (ACE_HAS_REENTRANT_FUNCTIONS) */
+}
+
+
+ACE_INLINE int
+ACE_OS::getaddrinfo (const char *name, const char *service,
+                     const addrinfo *hints, addrinfo **result)
+{
+  ACE_OS_TRACE ("ACE_OS::getaddrinfo");
+#ifdef ACE_LACKS_GETADDRINFO
+  ACE_UNUSED_ARG (service);
+  ACE_UNUSED_ARG (hints);
+  return ACE_OS::getaddrinfo_emulation (name, result);
+#else
+  return ::getaddrinfo (name, service, hints, result);
+#endif
+}
+
+ACE_INLINE void
+ACE_OS::freeaddrinfo (addrinfo *result)
+{
+  ACE_OS_TRACE ("ACE_OS::freeaddrinfo");
+#ifdef ACE_LACKS_GETADDRINFO
+  ACE_OS::freeaddrinfo_emulation (result);
+#else
+  ::freeaddrinfo (result);
+#endif
+}
+
+ACE_INLINE const ACE_TCHAR *
+ACE_OS::gai_strerror (int errcode)
+{
+  ACE_OS_TRACE ("ACE_OS::gai_strerror");
+#ifdef ACE_LACKS_GAI_STRERROR
+  switch (errcode)
+    {
+    case EAI_NONAME:
+      return ACE_TEXT ("Name does not resolve to an address");
+    case EAI_AGAIN:
+      return ACE_TEXT ("Temporary failure, try again");
+    case EAI_FAIL:
+      return ACE_TEXT ("Name resolution failed");
+    case EAI_FAMILY:
+      return ACE_TEXT ("Address family not supported");
+    case EAI_MEMORY:
+      return ACE_TEXT ("Out of memory");
+    case EAI_SYSTEM:
+      return ACE_TEXT ("Other error, see errno");
+    case EAI_OVERFLOW:
+      return ACE_TEXT ("Buffer provided by caller was too small");
+    default:
+      return ACE_TEXT ("Unknown error");
+    }
+#elif defined ACE_WIN32
+  return ACE_TEXT_gai_strerror (errcode);
+#else
+  return ACE_TEXT_CHAR_TO_TCHAR (::gai_strerror (errcode));
+#endif
+}
+
+ACE_INLINE int
+ACE_OS::getnameinfo (const sockaddr *addr, ACE_SOCKET_LEN addr_len,
+                     char *host, ACE_SOCKET_LEN host_len,
+                     char *service, ACE_SOCKET_LEN service_len,
+                     unsigned int flags)
+{
+  ACE_OS_TRACE ("ACE_OS::getnameinfo");
+#ifdef ACE_LACKS_GETNAMEINFO
+  ACE_UNUSED_ARG (service);
+  ACE_UNUSED_ARG (service_len);
+  ACE_UNUSED_ARG (flags);
+  return ACE_OS::getnameinfo_emulation (addr, addr_len, host, host_len);
+#else
+  return ::getnameinfo (addr, addr_len, host, host_len,
+                        service, service_len, flags);
+#endif
 }
 
 ACE_END_VERSIONED_NAMESPACE_DECL

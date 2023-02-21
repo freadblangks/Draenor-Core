@@ -4,19 +4,16 @@
 /**
  *  @file    Functor.inl
  *
- *  $Id: Functor.inl 92069 2010-09-28 11:38:59Z johnnyw $
- *
  *  Inlinable method definitions for non-templatized classes
  *  and template specializations implementing the GOF Command Pattern,
  *  and STL-style functors.
- *
  *
  *  @author Chris Gill           <cdgill@cs.wustl.edu>
  *
  * Based on Command Pattern implementations originally done by
  *
  * Carlos O'Ryan        <coryan@cs.wustl.edu>
- * Douglas C. Schmidt   <schmidt@cs.wustl.edu>
+ * Douglas C. Schmidt   <d.schmidt@vanderbilt.edu>
  * Sergio Flores-Gaitan <sergio@cs.wustl.edu>
  *
  * and on STL-style functor implementations originally done by
@@ -37,7 +34,7 @@ ACE_BEGIN_VERSIONED_NAMESPACE_DECL
 // Default constructor.
 
 ACE_INLINE
-ACE_Command_Base::ACE_Command_Base (void)
+ACE_Command_Base::ACE_Command_Base ()
 {
 }
 
@@ -107,14 +104,30 @@ ACE_Hash<unsigned long>::operator () (unsigned long t) const
   return t;
 }
 
+#if (ACE_SIZEOF_LONG == 8)
+ACE_INLINE unsigned long
+ACE_Hash<long long>::operator () (long long t) const
+{
+  return static_cast<unsigned long> (t);
+}
+#endif /* ACE_SIZEOF_LONG == 8 */
+
+#if (ACE_SIZEOF_LONG == 8)
+ACE_INLINE unsigned long
+ACE_Hash<unsigned long long>::operator () (unsigned long long t) const
+{
+  return static_cast<unsigned long> (t);
+}
+#endif /* ACE_SIZEOF_LONG == 8 */
+
 // This #if needs to match the one in Functor.h
-#if !defined (ACE_LACKS_LONGLONG_T) && (ACE_SIZEOF_LONG < 8)
+#if (ACE_SIZEOF_LONG < 8)
 ACE_INLINE unsigned long
 ACE_Hash<ACE_INT64>::operator () (ACE_INT64 t) const
 {
   return static_cast<unsigned long> (t);
 }
-#endif /* !ACE_LACKS_LONGLONG_T && ACE_SIZEOF_LONG < 8 */
+#endif /* ACE_SIZEOF_LONG < 8 */
 
 #if (ACE_SIZEOF_LONG < 8)
 ACE_INLINE unsigned long
@@ -126,7 +139,7 @@ ACE_Hash<ACE_UINT64>::operator () (const ACE_UINT64 &t) const
   return static_cast<unsigned long> (t);
 #endif /* ACE_SIZEOF_LONG */
 }
-#endif /* !ACE_LACKS_UNSIGNEDLONGLONG_T */
+#endif /* ACE_SIZEOF_LONG < 8 */
 
 ACE_INLINE unsigned long
 ACE_Hash<const char *>::operator () (const char *t) const

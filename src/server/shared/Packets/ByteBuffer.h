@@ -12,7 +12,8 @@
 #include "Common.h"
 #include "Debugging/Errors.h"
 #include "Log.h"
-#include "Utilities/ByteConverter.h"
+#include "ByteConverter.h"
+#include "Util.h"
 #include "Guid.h"
 #include <G3D/Vector2.h>
 #include <G3D/Vector3.h>
@@ -112,7 +113,7 @@ class ByteBufferPositionException : public ByteBufferException
 #ifdef DEBUG
             ACE_Stack_Trace trace;
 
-            sLog->outError(LOG_FILTER_GENERAL, "Attempted to %s value with size: " SIZEFMTD " in ByteBuffer (pos: " SIZEFMTD " size: " SIZEFMTD ")\n[Stack trace: %s]" ,
+            TC_LOG_ERROR("server.worldserver", "Attempted to %s value with size: %zu in ByteBuffer (pos: %zu size: %zu)\n[Stack trace: %s]" ,
                 (_add ? "put" : "get"), ValueSize, Pos, Size, trace.c_str());
 #endif
         }
@@ -136,7 +137,7 @@ class ByteBufferSourceException : public ByteBufferException
 #ifdef DEBUG
             ACE_Stack_Trace trace;
 
-            sLog->outError(LOG_FILTER_GENERAL, "Attempted to put a %s in ByteBuffer (pos: " SIZEFMTD " size: " SIZEFMTD ")\n[Stack trace: %s]",
+            TC_LOG_ERROR("server.worldserver", "Attempted to put a %s in ByteBuffer (pos: %zu size: %zu)\n[Stack trace: %s]",
                 (ValueSize > 0 ? "NULL-pointer" : "zero-sized value"), Pos, Size, trace.c_str());
 #endif
         }
@@ -420,7 +421,7 @@ class ByteBuffer
 
             /// Needed for the msvc 2013 support
 #ifdef _MSC_VER
-            return uint32(mktime(&l_Time) + _timezone);
+            return uint32(mktime(&l_Time));
 #else
             return uint32(mktime(&l_Time) + timezone);
 #endif
@@ -839,6 +840,13 @@ class ByteBuffer
             *this << packed;
         }
 
+        void AppendPackedTime(time_t time)
+        {
+            tm lt;
+            localtime_r(&time, &lt);
+            append<uint32>((lt.tm_year - 100) << 24 | lt.tm_mon << 20 | (lt.tm_mday - 1) << 14 | lt.tm_wday << 11 | lt.tm_hour << 6 | lt.tm_min);
+        }
+
         void put(size_t pos, const uint8 *src, size_t cnt)
         {
             if (pos + cnt > size())
@@ -852,7 +860,7 @@ class ByteBuffer
 
         void print_storage() const
         {
-            if (!sLog->ShouldLog(LOG_FILTER_NETWORKIO, LOG_LEVEL_TRACE)) // optimize disabled debug output
+            if (!sLog->ShouldLog("network", LogLevel::LOG_LEVEL_TRACE)) // optimize disabled debug output
                 return;
 
             std::ostringstream o;
@@ -861,12 +869,12 @@ class ByteBuffer
                 o << read<uint8>(i) << " - ";
             o << " ";
 
-            sLog->outTrace(LOG_FILTER_NETWORKIO, "%s", o.str().c_str());
+            TC_LOG_TRACE("network", "%s", o.str().c_str());
         }
 
         void textlike() const
         {
-            if (!sLog->ShouldLog(LOG_FILTER_NETWORKIO, LOG_LEVEL_TRACE)) // optimize disabled debug output
+            if (!sLog->ShouldLog("network", LogLevel::LOG_LEVEL_TRACE)) // optimize disabled debug output
                 return;
 
             std::ostringstream o;
@@ -878,12 +886,12 @@ class ByteBuffer
                 o << buf;
             }
             o << " ";
-            sLog->outTrace(LOG_FILTER_NETWORKIO, "%s", o.str().c_str());
+            TC_LOG_TRACE("network", "%s", o.str().c_str());
         }
 
         void hexlike() const
         {
-            if (!sLog->ShouldLog(LOG_FILTER_NETWORKIO, LOG_LEVEL_TRACE)) // optimize disabled debug output
+            if (!sLog->ShouldLog("network", LogLevel::LOG_LEVEL_TRACE)) // optimize disabled debug output
                 return;
 
             uint32 j = 1, k = 1;
@@ -910,7 +918,7 @@ class ByteBuffer
                 o << buf;
             }
             o << " ";
-            sLog->outTrace(LOG_FILTER_NETWORKIO, "%s", o.str().c_str());
+            TC_LOG_TRACE("network", "%s", o.str().c_str());
         }
 
         size_t GetBitPos() const

@@ -4,8 +4,6 @@
 /**
  * @file Truncate.h
  *
- * $Id: Truncate.h 83306 2008-10-17 12:19:53Z johnnyw $
- *
  * @author Steve Huston  <shuston@riverace.com>
  * @author Ossama Othman <ossama_othman@symantec.com>
  * @author Russell Mora  <russell_mora@symantec.com>
@@ -27,10 +25,6 @@
 #include "ace/If_Then_Else.h"
 #include "ace/Numeric_Limits.h"
 
-#if defined (ACE_LACKS_LONGLONG_T)
-# include "ace/Basic_Types.h"
-#endif  /* ACE_LACKS_LONGLONG_T */
-
 ACE_BEGIN_VERSIONED_NAMESPACE_DECL
 
 namespace ACE_Utils
@@ -38,34 +32,28 @@ namespace ACE_Utils
   template<typename T> struct Sign_Check;
 
   // Specialize the unsigned signed cases.
-  template<> struct Sign_Check<unsigned char>  { ACE_STATIC_CONSTANT (bool, is_signed = 0); };
-  template<> struct Sign_Check<unsigned short> { ACE_STATIC_CONSTANT (bool, is_signed = 0); };
-  template<> struct Sign_Check<unsigned int>   { ACE_STATIC_CONSTANT (bool, is_signed = 0); };
-  template<> struct Sign_Check<unsigned long>  { ACE_STATIC_CONSTANT (bool, is_signed = 0); };
-#if !(defined(ACE_LACKS_LONGLONG_T) || defined(ACE_LACKS_UNSIGNEDLONGLONG_T))
+  template<> struct Sign_Check<unsigned char>  { static bool const is_signed = false; };
+  template<> struct Sign_Check<unsigned short> { static bool const is_signed = false; };
+  template<> struct Sign_Check<unsigned int>   { static bool const is_signed = false; };
+  template<> struct Sign_Check<unsigned long>  { static bool const is_signed = false; };
 # ifdef __GNUC__
   // Silence g++ "-pedantic" warnings regarding use of "long long"
   // type.
   __extension__
 # endif  /* __GNUC__ */
-  template<> struct Sign_Check<unsigned long long> { ACE_STATIC_CONSTANT (bool, is_signed = 0); };
-#else
-  template<> struct Sign_Check<ACE_U_LongLong> { ACE_STATIC_CONSTANT (bool, is_signed = 0); };
-#endif  /* !ACE_LACKS_LONGLONG_T */
+  template<> struct Sign_Check<unsigned long long> { static bool const is_signed = false; };
 
   // Specialize the signed cases.
-  template<> struct Sign_Check<signed char>  { ACE_STATIC_CONSTANT (bool, is_signed = 1); };
-  template<> struct Sign_Check<signed short> { ACE_STATIC_CONSTANT (bool, is_signed = 1); };
-  template<> struct Sign_Check<signed int>   { ACE_STATIC_CONSTANT (bool, is_signed = 1); };
-  template<> struct Sign_Check<signed long>  { ACE_STATIC_CONSTANT (bool, is_signed = 1); };
-#ifndef ACE_LACKS_LONGLONG_T
+  template<> struct Sign_Check<signed char>  { static bool const is_signed = true; };
+  template<> struct Sign_Check<signed short> { static bool const is_signed = true; };
+  template<> struct Sign_Check<signed int>   { static bool const is_signed = true; };
+  template<> struct Sign_Check<signed long>  { static bool const is_signed = true; };
 # ifdef __GNUC__
   // Silence g++ "-pedantic" warnings regarding use of "long long"
   // type.
   __extension__
 # endif  /* __GNUC__ */
-  template<> struct Sign_Check<signed long long> { ACE_STATIC_CONSTANT (bool, is_signed = 1); };
-#endif  /* !ACE_LACKS_LONGLONG_T */
+  template<> struct Sign_Check<signed long long> { static bool const is_signed = true; };
 
   // -----------------------------------------------------
 
@@ -110,7 +98,6 @@ namespace ACE_Utils
     unsigned_type operator() (unsigned_type x) { return x; }
   };
 
-#if !(defined(ACE_LACKS_LONGLONG_T) || defined(ACE_LACKS_UNSIGNEDLONGLONG_T))
 # ifdef __GNUC__
   // Silence g++ "-pedantic" warnings regarding use of "long long"
   // type.
@@ -123,15 +110,6 @@ namespace ACE_Utils
 
     unsigned_type operator() (unsigned_type x) { return x; }
   };
-#else
-  template<>
-  struct To_Unsigned<ACE_U_LongLong>
-  {
-    typedef ACE_U_LongLong unsigned_type;
-
-    unsigned_type operator() (unsigned_type x) { return x; }
-  };
-#endif  /* !ACE_LACKS_LONGLONG_T */
 
   // ----------------
 
@@ -183,7 +161,6 @@ namespace ACE_Utils
     }
   };
 
-#if !(defined(ACE_LACKS_LONGLONG_T) || defined(ACE_LACKS_UNSIGNEDLONGLONG_T))
 # ifdef __GNUC__
   // Silence g++ "-pedantic" warnings regarding use of "long long"
   // type.
@@ -200,7 +177,6 @@ namespace ACE_Utils
       return static_cast<unsigned_type> (x);
     }
   };
-#endif  /* !ACE_LACKS_LONGLONG_T */
 
   // -----------------------------------------------------
 
@@ -295,9 +271,8 @@ namespace ACE_Utils
   template<typename LEFT, typename RIGHT>
   struct Fast_Comparator
   {
-    ACE_STATIC_CONSTANT (
-      bool,
-      USE_LEFT  = ((sizeof (LEFT) > sizeof (RIGHT)
+    static bool const USE_LEFT  =
+                 ((sizeof (LEFT) > sizeof (RIGHT)
                     && (Sign_Check<LEFT>::is_signed == 1
                         || Sign_Check<RIGHT>::is_signed == 0))
 
@@ -313,15 +288,14 @@ namespace ACE_Utils
                        && ((Sign_Check<LEFT>::is_signed == 1
                             && Sign_Check<RIGHT>::is_signed == 1)
                            || (Sign_Check<LEFT>::is_signed == 0
-                               && Sign_Check<RIGHT>::is_signed == 0)))));
+                               && Sign_Check<RIGHT>::is_signed == 0))));
 
-    ACE_STATIC_CONSTANT (
-      bool,
-      USE_RIGHT = (sizeof (RIGHT) > sizeof (LEFT)
+    static bool const USE_RIGHT =
+                  (sizeof (RIGHT) > sizeof (LEFT)
                    && (Sign_Check<RIGHT>::is_signed == 1
-                       || Sign_Check<LEFT>::is_signed == 0)));
+                       || Sign_Check<LEFT>::is_signed == 0));
 
-    ACE_STATIC_CONSTANT (bool, USABLE = (USE_LEFT || USE_RIGHT));
+    static bool const USABLE = (USE_LEFT || USE_RIGHT);
 
     typedef typename ACE::If_Then_Else<
       USE_LEFT,
@@ -394,12 +368,11 @@ namespace ACE_Utils
   template<typename FROM, typename TO>
   struct Truncator
   {
-    ACE_STATIC_CONSTANT (
-      bool,
+    static bool const
       // max FROM always greater than max TO
       MAX_FROM_GT_MAX_TO = (sizeof(FROM) > sizeof (TO)
                             || (sizeof(FROM) == sizeof (TO)
-                                && Sign_Check<FROM>::is_signed == 0)));
+                                && Sign_Check<FROM>::is_signed == 0));
 
     typedef typename ACE::If_Then_Else<
       MAX_FROM_GT_MAX_TO,
@@ -438,28 +411,6 @@ namespace ACE_Utils
     }
   };
 
-
-#if defined (ACE_LACKS_LONGLONG_T) || defined (ACE_LACKS_UNSIGNEDLONGLONG_T)
-  // Partial specialization for the case where we're casting from
-  // ACE_U_LongLong to a smaller integer.  We assume that we're always
-  // truncating from ACE_U_LongLong to a smaller type.  The partial
-  // specialization above handles the case where both the FROM and TO
-  // types are ACE_U_LongLong.
-  template<typename TO>
-  struct Truncator<ACE_U_LongLong, TO>
-  {
-    TO operator() (ACE_U_LongLong const & val)
-    {
-      // If val less than or equal to ACE_Numeric_Limits<TO>::max(),
-      // val.lo() must be less than or equal to
-      // ACE_Numeric_Limits<TO>::max (), as well.
-      return
-        (val > ACE_Numeric_Limits<TO>::max ()
-         ? ACE_Numeric_Limits<TO>::max ()
-         : static_cast<TO> (val.lo ()));
-    }
-  };
-#endif /* ACE_LACKS_LONGLONG_T || ACE_LACKS_UNSIGNEDLONGLONG_T */
 
   // -----------------------------------------------------
   /**

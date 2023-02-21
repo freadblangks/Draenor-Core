@@ -4,9 +4,7 @@
 /**
  *  @file    High_Res_Timer.h
  *
- *  $Id: High_Res_Timer.h 89483 2010-03-15 09:48:01Z johnnyw $
- *
- *  @author Douglas C. Schmidt <schmidt@cs.wustl.edu>
+ *  @author Douglas C. Schmidt <d.schmidt@vanderbilt.edu>
  */
 //==========================================================================
 
@@ -52,7 +50,7 @@ ACE_BEGIN_VERSIONED_NAMESPACE_DECL
  * units/second.  Because it's possible that the units/second
  * changes in the future, it's recommended to use it instead
  * of a "hard coded" solution.
- * Dependend on the platform and used class members, there's a
+ * Dependent on the platform and used class members, there's a
  * maximum elapsed period before overflow (which is not checked).
  * Look at the documentation with some members functions.
  * On some (most?) implementations it's not recommended to measure
@@ -74,8 +72,8 @@ ACE_BEGIN_VERSIONED_NAMESPACE_DECL
  * ACE_hrtime_t values.  Those methods do _not_ check for overflow!
  * @note Gabe <begeddov@proaxis.com> raises this issue regarding
  * <ACE_OS::gethrtime>: on multi-processors, the processor that
- * you query for your <timer.stop> value might not be the one
- * you queried for <timer.start>.  Its not clear how much
+ * you query for your @c timer.stop() value might not be the one
+ * you queried for @c timer.start().  Its not clear how much
  * divergence there would be, if any.
  * This issue is not mentioned in the Solaris 2.5.1 gethrtime
  * man page.
@@ -100,7 +98,11 @@ ACE_BEGIN_VERSIONED_NAMESPACE_DECL
 class ACE_Export ACE_High_Res_Timer
 {
 public:
-  // = Initialization method.
+#if !defined (ACE_WIN32)
+   typedef ACE_UINT32 global_scale_factor_type;
+#else
+   typedef ACE_UINT64 global_scale_factor_type;
+#endif
 
   /**
    * global_scale_factor_ is set to @a gsf.  All High_Res_Timers use
@@ -112,13 +114,13 @@ public:
    * not be set.  Careful, a <scale_factor> of 0 will cause division
    * by zero exceptions.
    * Depending on the platform its units are 1/microsecond or
-   * 1/millisecond. Use <ACE_HR_SCALE_CONVERSION> inside calculations
+   * 1/millisecond. Use @c ACE_HR_SCALE_CONVERSION inside calculations
    * instead a hardcoded value.
    */
-  static void global_scale_factor (ACE_UINT32 gsf);
+  static void global_scale_factor (global_scale_factor_type gsf);
 
   /// Returns the global_scale_factor.
-  static ACE_UINT32 global_scale_factor (void);
+  static global_scale_factor_type global_scale_factor ();
 
 #ifndef  ACE_HR_SCALE_CONVERSION
 #  define ACE_HR_SCALE_CONVERSION (ACE_ONE_SECOND_IN_USECS)
@@ -149,13 +151,13 @@ public:
                                const u_int iterations = 10);
 
   /// Initialize the timer.
-  ACE_High_Res_Timer (void);
+  ACE_High_Res_Timer ();
 
   /// Destructor.
-  ~ACE_High_Res_Timer (void);
+  ~ACE_High_Res_Timer ();
 
   /// Reinitialize the timer.
-  void reset (void);
+  void reset ();
 
   /// Start timing.
   void start (const ACE_OS::ACE_HRTimer_Op = ACE_OS::ACE_HRTIMER_GETTIME);
@@ -164,11 +166,6 @@ public:
   void stop (const ACE_OS::ACE_HRTimer_Op = ACE_OS::ACE_HRTIMER_GETTIME);
 
   /// Set @a tv to the number of microseconds elapsed.
-  /**
-   *  Could overflow within hours on windows with emulated 64 bit int's
-   *  and a fast counter. VC++ and Borland normaly use __int64 and
-   *  so normaly don't have this problem.
-   */
   void elapsed_time (ACE_Time_Value &tv) const;
 
   /// Set @a nanoseconds to the number of nanoseconds elapsed.
@@ -200,7 +197,7 @@ public:
   /// to start_incr and stop_incr.
   void elapsed_time_incr (ACE_Time_Value &tv) const;
 
-  /// Set <nsec> to the number of nanoseconds elapsed between all calls
+  /// Set @a nanoseconds to the number of nanoseconds elapsed between all calls
   /// to start_incr and stop_incr.
   void elapsed_time_incr (ACE_hrtime_t &nanoseconds) const;
 
@@ -216,7 +213,7 @@ public:
                   ACE_HANDLE handle = ACE_STDOUT) const;
 
   /// Dump the state of an object.
-  void dump (void) const;
+  void dump () const;
 
   /// Declare the dynamic allocation hooks.
   ACE_ALLOC_HOOK_DECLARE;
@@ -227,7 +224,7 @@ public:
    * as the gettimeofday function, thereby basing the timer calculations
    * on the high res timer rather than wall clock time.
    */
-  static ACE_Time_Value gettimeofday_hr (void);
+  static ACE_Time_Value gettimeofday_hr ();
 
   /**
    * @deprecated THIS FUNCTION IS DEPRECATED.  PLEASE USE
@@ -249,14 +246,14 @@ public:
   static void hrtime_to_tv (ACE_Time_Value &tv,
                             const ACE_hrtime_t hrt);
 
-#if defined (linux)
+#if defined (ACE_LINUX) && !defined (ACE_LACKS_SSCANF)
   /**
    * This is used to find out the Mhz of the machine for the scale
    * factor.  If there are any problems getting it, we just return 1
    * (the default).
    */
-  static ACE_UINT32 get_cpuinfo (void);
-#endif /* defined (linux) */
+  static ACE_UINT32 get_cpuinfo ();
+#endif /* defined (ACE_LINUX) && !ACE_LACKS_SSCANF */
 
 private:
   /**
@@ -289,7 +286,7 @@ private:
 
   /// Converts ticks to microseconds.  That is, ticks /
   /// global_scale_factor_ == microseconds.
-  static ACE_UINT32 global_scale_factor_;
+  static global_scale_factor_type global_scale_factor_;
 
   /**
    * Indicates the status of the global scale factor,

@@ -1,5 +1,3 @@
-// $Id: Lock_Adapter_T.cpp 80826 2008-03-04 14:51:23Z wotte $
-
 #ifndef ACE_LOCK_ADAPTER_T_CPP
 #define ACE_LOCK_ADAPTER_T_CPP
 
@@ -16,19 +14,8 @@
 
 ACE_BEGIN_VERSIONED_NAMESPACE_DECL
 
-// This constructor isn't inlined, because SunPRO C++ 4.2 + patch
-// 104631-07 has trouble compiling TAO with it inline.
 template <class ACE_LOCKING_MECHANISM>
-ACE_Lock_Adapter<ACE_LOCKING_MECHANISM>::ACE_Lock_Adapter (void)
-  : lock_ (0),
-    delete_lock_ (true)
-{
-  ACE_NEW (this->lock_,
-           ACE_LOCKING_MECHANISM);
-}
-
-template <class ACE_LOCKING_MECHANISM>
-ACE_Lock_Adapter<ACE_LOCKING_MECHANISM>::~ACE_Lock_Adapter (void)
+ACE_Lock_Adapter<ACE_LOCKING_MECHANISM>::~ACE_Lock_Adapter ()
 {
   if (this->delete_lock_)
     delete this->lock_;
@@ -36,14 +23,14 @@ ACE_Lock_Adapter<ACE_LOCKING_MECHANISM>::~ACE_Lock_Adapter (void)
 
 // Explicitly destroy the lock.
 template <class ACE_LOCKING_MECHANISM> int
-ACE_Lock_Adapter<ACE_LOCKING_MECHANISM>::remove (void)
+ACE_Lock_Adapter<ACE_LOCKING_MECHANISM>::remove ()
 {
   return this->lock_->remove ();
 }
 
 // Block the thread until the lock is acquired.
 template <class ACE_LOCKING_MECHANISM> int
-ACE_Lock_Adapter<ACE_LOCKING_MECHANISM>::acquire (void)
+ACE_Lock_Adapter<ACE_LOCKING_MECHANISM>::acquire ()
 {
   return this->lock_->acquire ();
 }
@@ -51,7 +38,7 @@ ACE_Lock_Adapter<ACE_LOCKING_MECHANISM>::acquire (void)
 // Conditionally acquire the lock (i.e., won't block).
 
 template <class ACE_LOCKING_MECHANISM> int
-ACE_Lock_Adapter<ACE_LOCKING_MECHANISM>::tryacquire (void)
+ACE_Lock_Adapter<ACE_LOCKING_MECHANISM>::tryacquire ()
 {
   return this->lock_->tryacquire ();
 }
@@ -59,7 +46,7 @@ ACE_Lock_Adapter<ACE_LOCKING_MECHANISM>::tryacquire (void)
 // Release the lock.
 
 template <class ACE_LOCKING_MECHANISM> int
-ACE_Lock_Adapter<ACE_LOCKING_MECHANISM>::release (void)
+ACE_Lock_Adapter<ACE_LOCKING_MECHANISM>::release ()
 {
   return this->lock_->release ();
 }
@@ -69,7 +56,7 @@ ACE_Lock_Adapter<ACE_LOCKING_MECHANISM>::release (void)
 // <acquire>.
 
 template <class ACE_LOCKING_MECHANISM> int
-ACE_Lock_Adapter<ACE_LOCKING_MECHANISM>::acquire_read (void)
+ACE_Lock_Adapter<ACE_LOCKING_MECHANISM>::acquire_read ()
 {
   return this->lock_->acquire_read ();
 }
@@ -79,7 +66,7 @@ ACE_Lock_Adapter<ACE_LOCKING_MECHANISM>::acquire_read (void)
 // <acquire>.
 
 template <class ACE_LOCKING_MECHANISM> int
-ACE_Lock_Adapter<ACE_LOCKING_MECHANISM>::acquire_write (void)
+ACE_Lock_Adapter<ACE_LOCKING_MECHANISM>::acquire_write ()
 {
   return this->lock_->acquire_write ();
 }
@@ -88,7 +75,7 @@ ACE_Lock_Adapter<ACE_LOCKING_MECHANISM>::acquire_write (void)
 // doesn't support read locks then this just calls <acquire>.
 
 template <class ACE_LOCKING_MECHANISM> int
-ACE_Lock_Adapter<ACE_LOCKING_MECHANISM>::tryacquire_read (void)
+ACE_Lock_Adapter<ACE_LOCKING_MECHANISM>::tryacquire_read ()
 {
   return this->lock_->tryacquire_read ();
 }
@@ -97,7 +84,7 @@ ACE_Lock_Adapter<ACE_LOCKING_MECHANISM>::tryacquire_read (void)
 // doesn't support write locks then this just calls <acquire>.
 
 template <class ACE_LOCKING_MECHANISM> int
-ACE_Lock_Adapter<ACE_LOCKING_MECHANISM>::tryacquire_write (void)
+ACE_Lock_Adapter<ACE_LOCKING_MECHANISM>::tryacquire_write ()
 {
   return this->lock_->tryacquire_write ();
 }
@@ -107,7 +94,7 @@ ACE_Lock_Adapter<ACE_LOCKING_MECHANISM>::tryacquire_write (void)
 // calls <acquire>. Returns 0 on success, -1 on failure.
 
 template <class ACE_LOCKING_MECHANISM> int
-ACE_Lock_Adapter<ACE_LOCKING_MECHANISM>::tryacquire_write_upgrade (void)
+ACE_Lock_Adapter<ACE_LOCKING_MECHANISM>::tryacquire_write_upgrade ()
 {
   return this->lock_->tryacquire_write_upgrade ();
 }

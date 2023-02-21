@@ -4,11 +4,9 @@
 /**
  *  @file    Local_Name_Space_T.h
  *
- *  $Id: Local_Name_Space_T.h 91688 2010-09-09 11:21:50Z johnnyw $
- *
  *  @author Prashant Jain <pjain@cs.wustl.edu>
  *  @author Irfan Pyarali <irfan@wuerl.wustl.edu> and
- *  @author Douglas C. Schmidt <schmidt@cs.wustl.edu>
+ *  @author Douglas C. Schmidt <d.schmidt@vanderbilt.edu>
  */
 //=============================================================================
 
@@ -104,7 +102,6 @@ template <ACE_MEM_POOL_1, class ACE_LOCK>
 class ACE_Local_Name_Space : public ACE_Name_Space
 {
 public:
-  // = Initialization and termination methods.
   /// "Do-nothing" constructor.
   ACE_Local_Name_Space (void);
 
@@ -135,13 +132,13 @@ public:
   /**
    * Overwrite the value or type of an existing name in a
    * ACE_Local_Name_Space or bind a new name to the context, if it
-   * didn't exist yet. (Wide charcter strings interface).
+   * didn't exist yet. (Wide character strings interface).
    */
   virtual int rebind (const ACE_NS_WString &name,
                       const ACE_NS_WString &value,
                       const char *type = "");
 
-  /// Delete a name from a ACE_Local_Name_Space (Wide charcter strings
+  /// Delete a name from a ACE_Local_Name_Space (Wide character strings
   /// Interface).
   virtual int unbind (const ACE_NS_WString &name);
   virtual int unbind_i (const ACE_NS_WString &name);
@@ -207,12 +204,14 @@ public:
                                    const ACE_NS_WString &pattern);
 
   /// Dump the state of the object
-  virtual void dump (void) const;
+  virtual void dump () const;
   virtual void dump_i (void) const;
 
   // = I just know this is going to cause problems on some platform...
   typedef ACE_Allocator_Adapter <ACE_Malloc <ACE_MEM_POOL_2, ACE_LOCK> >
           ALLOCATOR;
+
+  ACE_ALLOC_HOOK_DECLARE;
 
 private:
 #if defined (ACE_WIN32)

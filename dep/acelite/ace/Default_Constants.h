@@ -4,9 +4,7 @@
 /**
  *  @file   Default_Constants.h
  *
- *  $Id: Default_Constants.h 91688 2010-09-09 11:21:50Z johnnyw $
- *
- *  @author Douglas C. Schmidt <schmidt@cs.wustl.edu>
+ *  @author Douglas C. Schmidt <d.schmidt@vanderbilt.edu>
  *  @author Jesper S. M|ller<stophph@diku.dk>
  *  @author and a cast of thousands...
  *
@@ -392,7 +390,7 @@
 
 /// Max udp packet size
 #if !defined (ACE_MAX_UDP_PACKET_SIZE)
-#define ACE_MAX_UDP_PACKET_SIZE 65536
+#define ACE_MAX_UDP_PACKET_SIZE 65507
 #endif
 
 /**
@@ -585,6 +583,10 @@
 #   define ACE_DEV_NULL "/dev/null"
 #   define ACE_SYSCALL_FAILED -1
 # endif /* ACE_WIN32 */
+
+#if !defined (ACE_DEFAULT_ACCEPTOR_USE_SELECT)
+# define ACE_DEFAULT_ACCEPTOR_USE_SELECT 1
+#endif /* ACE_DEFAULT_ACCEPTOR_USE_SELECT */
 
 #include /**/ "ace/post.h"
 #endif /*ACE_DEFAULT_CONSTANTS_H*/

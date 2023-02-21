@@ -1,7 +1,4 @@
 // -*- C++ -*-
-//
-// $Id: OS_NS_unistd.inl 88515 2010-01-13 08:47:38Z johnnyw $
-
 #include "ace/OS_NS_sys_utsname.h"
 #include "ace/OS_NS_string.h"
 #include "ace/OS_NS_errno.h"
@@ -23,12 +20,16 @@
 #  include "ace/os_include/os_unistd.h"
 #endif /* ACE_HAS_ACCESS_EMULATION */
 
-#if defined (ACE_VXWORKS) && (((ACE_VXWORKS >= 0x620) && (ACE_VXWORKS <= 0x680)) || defined (ACE_HAS_VXWORKS551_MEDUSA))
+#if defined (ACE_VXWORKS) && (ACE_VXWORKS <= 0x690)
 #  if defined (__RTP__)
 #    include "ace/os_include/os_strings.h"
 #  else
 #    include "ace/os_include/os_string.h"
 #  endif
+#endif
+
+#ifdef ACE_MQX
+#  include "ace/MQX_Filesystem.h"
 #endif
 
 ACE_BEGIN_VERSIONED_NAMESPACE_DECL
@@ -57,7 +58,11 @@ ACE_OS::access (const char *path, int amode)
 #  endif  /* ACE_HAS_ACCESS_EMULATION */
 #elif defined(ACE_WIN32)
   // Windows doesn't support checking X_OK(6)
-  ACE_OSCALL_RETURN (::access (path, amode & 6), int, -1);
+#  if defined (ACE_ACCESS_EQUIVALENT)
+     ACE_OSCALL_RETURN (ACE_ACCESS_EQUIVALENT (path, amode & 6), int, -1);
+#  else
+     ACE_OSCALL_RETURN (::access (path, amode & 6), int, -1);
+#  endif
 #else
   ACE_OSCALL_RETURN (::access (path, amode), int, -1);
 #endif /* ACE_LACKS_ACCESS */
@@ -89,7 +94,7 @@ ACE_OS::alarm (u_int secs)
 }
 
 ACE_INLINE long
-ACE_OS::getpagesize (void)
+ACE_OS::getpagesize ()
 {
   ACE_OS_TRACE ("ACE_OS::getpagesize");
 #if defined (ACE_WIN32) && !defined (ACE_HAS_PHARLAP)
@@ -107,7 +112,7 @@ ACE_OS::getpagesize (void)
 }
 
 ACE_INLINE long
-ACE_OS::allocation_granularity (void)
+ACE_OS::allocation_granularity ()
 {
 #if defined (ACE_WIN32)
   SYSTEM_INFO sys_info;
@@ -127,6 +132,8 @@ ACE_OS::chdir (const char *path)
   ACE_NOTSUP_RETURN (-1);
 #elif defined (ACE_HAS_NONCONST_CHDIR)
   ACE_OSCALL_RETURN (::chdir (const_cast<char *> (path)), int, -1);
+#elif defined (ACE_CHDIR_EQUIVALENT)
+  ACE_OSCALL_RETURN (ACE_CHDIR_EQUIVALENT (path), int, -1);
 #else
   ACE_OSCALL_RETURN (::chdir (path), int, -1);
 #endif /* ACE_HAS_NONCONST_CHDIR */
@@ -154,6 +161,8 @@ ACE_OS::rmdir (const char *path)
   ACE_WIN32CALL_RETURN (ACE_ADAPT_RETVAL (::RemoveDirectory (ACE_TEXT_CHAR_TO_TCHAR(path)),
                                           ace_result_),
                         int, -1);
+#elif defined (ACE_RMDIR_EQUIVALENT)
+  ACE_OSCALL_RETURN (ACE_RMDIR_EQUIVALENT (path), int, -1);
 #else
   ACE_OSCALL_RETURN (::rmdir (path), int, -1);
 #endif /* ACE_WIN32 */
@@ -186,6 +195,8 @@ ACE_OS::close (ACE_HANDLE handle)
   ACE_OS_TRACE ("ACE_OS::close");
 #if defined (ACE_WIN32)
   ACE_WIN32CALL_RETURN (ACE_ADAPT_RETVAL (::CloseHandle (handle), ace_result_), int, -1);
+#elif defined (ACE_MQX)
+  return MQX_Filesystem::inst ().close (handle);
 #else
   ACE_OSCALL_RETURN (::close (handle), int, -1);
 #endif /* ACE_WIN32 */
@@ -274,7 +285,7 @@ ACE_OS::execv (const char *path,
 
   ACE_NOTSUP_RETURN (-1);
 #elif defined (ACE_WIN32)
-# if defined (__BORLANDC__) /* VSB */
+# if defined (__BORLANDC__)
   return ::execv (path, argv);
 # elif defined (__MINGW32__)
   return ::_execv (path, (char *const *) argv);
@@ -304,7 +315,7 @@ ACE_OS::execve (const char *path,
 
   ACE_NOTSUP_RETURN (-1);
 #elif defined (ACE_WIN32)
-# if defined (__BORLANDC__) /* VSB */
+# if defined (__BORLANDC__)
   return ::execve (path, argv, envp);
 # elif defined (__MINGW32__)
   return ::_execve (path, (char *const *) argv, (char *const *) envp);
@@ -326,13 +337,13 @@ ACE_OS::execvp (const char *file,
                 char *const argv[])
 {
   ACE_OS_TRACE ("ACE_OS::execvp");
-#if defined (ACE_LACKS_EXEC)
+#if defined (ACE_LACKS_EXEC) || defined (ACE_LACKS_EXECVP)
   ACE_UNUSED_ARG (file);
   ACE_UNUSED_ARG (argv);
 
   ACE_NOTSUP_RETURN (-1);
 #elif defined (ACE_WIN32)
-# if defined (__BORLANDC__) /* VSB */
+# if defined (__BORLANDC__)
   return ::execvp (file, argv);
 # elif defined (__MINGW32__)
   return ::_execvp (file, (char *const *) argv);
@@ -350,7 +361,7 @@ ACE_OS::execvp (const char *file,
 }
 
 ACE_INLINE pid_t
-ACE_OS::fork (void)
+ACE_OS::fork ()
 {
   ACE_OS_TRACE ("ACE_OS::fork");
 #if defined (ACE_LACKS_FORK)
@@ -392,6 +403,8 @@ ACE_OS::ftruncate (ACE_HANDLE handle, ACE_OFF_T offset)
     ACE_WIN32CALL_RETURN (ACE_ADAPT_RETVAL (::SetEndOfFile (handle), ace_result_), int, -1);
   else
     ACE_FAIL_RETURN (-1);
+#elif defined (ACE_LACKS_FTRUNCATE)
+  ACE_NOTSUP_RETURN (-1);
 #else
   ACE_OSCALL_RETURN (::ftruncate (handle, offset), int, -1);
 #endif /* ACE_WIN32 */
@@ -405,6 +418,8 @@ ACE_OS::getcwd (char *buf, size_t size)
   ACE_UNUSED_ARG (buf);
   ACE_UNUSED_ARG (size);
   ACE_NOTSUP_RETURN (0);
+#elif defined (ACE_GETCWD_EQUIVALENT)
+  return ACE_GETCWD_EQUIVALENT (buf, static_cast<int> (size));
 #elif defined (ACE_WIN32)
   return ::getcwd (buf, static_cast<int> (size));
 #else
@@ -436,7 +451,7 @@ ACE_OS::getcwd (wchar_t *buf, size_t size)
 #endif /* ACE_HAS_WCHAR */
 
 ACE_INLINE gid_t
-ACE_OS::getgid (void)
+ACE_OS::getgid ()
 {
   ACE_OS_TRACE ("ACE_OS::getgid");
 #if defined (ACE_LACKS_GETGID)
@@ -447,7 +462,7 @@ ACE_OS::getgid (void)
 }
 
 ACE_INLINE gid_t
-ACE_OS::getegid (void)
+ACE_OS::getegid ()
 {
   ACE_OS_TRACE ("ACE_OS::getegid");
 #if defined (ACE_LACKS_GETEGID)
@@ -478,7 +493,7 @@ ACE_OS::getpgid (pid_t pid)
 #if defined (ACE_LACKS_GETPGID)
   ACE_UNUSED_ARG (pid);
   ACE_NOTSUP_RETURN (-1);
-#elif defined (linux) && __GLIBC__ > 1 && __GLIBC_MINOR__ >= 0
+#elif defined (ACE_LINUX) && __GLIBC__ > 1 && __GLIBC_MINOR__ >= 0
   // getpgid() is from SVR4, which appears to be the reason why GLIBC
   // doesn't enable its prototype by default.
   // Rather than create our own extern prototype, just use the one
@@ -490,7 +505,7 @@ ACE_OS::getpgid (pid_t pid)
 }
 
 ACE_INLINE pid_t
-ACE_OS::getpid (void)
+ACE_OS::getpid ()
 {
   // ACE_OS_TRACE ("ACE_OS::getpid");
 #if defined (ACE_LACKS_GETPID)
@@ -498,12 +513,12 @@ ACE_OS::getpid (void)
 #elif defined (ACE_WIN32)
   return ::GetCurrentProcessId ();
 #else
-  ACE_OSCALL_RETURN (::getpid (), int, -1);
+  ACE_OSCALL_RETURN (::getpid (), pid_t, -1);
 #endif /* ACE_LACKS_GETPID */
 }
 
 ACE_INLINE pid_t
-ACE_OS::getppid (void)
+ACE_OS::getppid ()
 {
   ACE_OS_TRACE ("ACE_OS::getppid");
 #if defined (ACE_LACKS_GETPPID)
@@ -514,7 +529,7 @@ ACE_OS::getppid (void)
 }
 
 ACE_INLINE uid_t
-ACE_OS::getuid (void)
+ACE_OS::getuid ()
 {
   ACE_OS_TRACE ("ACE_OS::getuid");
 #if defined (ACE_LACKS_GETUID)
@@ -525,7 +540,7 @@ ACE_OS::getuid (void)
 }
 
 ACE_INLINE uid_t
-ACE_OS::geteuid (void)
+ACE_OS::geteuid ()
 {
   ACE_OS_TRACE ("ACE_OS::geteuid");
 #if defined (ACE_LACKS_GETEUID)
@@ -564,6 +579,17 @@ ACE_OS::hostname (char name[], size_t maxnamelen)
                                             LPDWORD (&maxnamelen)),
                                             ace_result_), int, -1);
   }
+#elif defined (ACE_MQX)
+  const int enet_device = 0;
+  IPCFG_IP_ADDRESS_DATA ip_data;
+  if (ipcfg_get_ip (enet_device, &ip_data))
+  {
+    ACE_OS::snprintf(name, maxnamelen, "%d.%d.%d.%d", IPBYTES(ip_data.ip));
+    return 0;
+  }
+  return -1;
+#elif defined (ACE_LACKS_GETHOSTNAME)
+  ACE_NOTSUP_RETURN (-1);
 #else /* ACE_HAS_PHARLAP */
   ACE_utsname host_info;
 
@@ -666,6 +692,23 @@ ACE_OS::lseek (ACE_HANDLE handle, ACE_OFF_T offset, int whence)
     ACE_FAIL_RETURN (static_cast<ACE_OFF_T> (-1));
   else
     return result;
+#elif defined (ACE_MQX)
+  switch (whence)
+    {
+    case SEEK_SET:
+      whence = IO_SEEK_SET;
+      break;
+    case SEEK_CUR:
+      whence = IO_SEEK_CUR;
+      break;
+    case SEEK_END:
+      whence = IO_SEEK_END;
+      break;
+    default:
+      errno = EINVAL;
+      return static_cast<ACE_OFF_T> (-1);
+    }
+  return static_cast<ACE_OFF_T> (MQX_Filesystem::inst ().lseek (handle, offset, whence));
 #else
   ACE_OSCALL_RETURN (::lseek (handle, offset, whence), ACE_OFF_T, -1);
 #endif /* ACE_WIN32 */
@@ -728,6 +771,10 @@ ACE_OS::read (ACE_HANDLE handle, void *buf, size_t len)
     return (ssize_t) ok_len;
   else
     ACE_FAIL_RETURN (-1);
+
+#elif defined (ACE_MQX)
+  return MQX_Filesystem::inst ().read (handle, reinterpret_cast<unsigned char *> (buf), len);
+
 #else
 
   ssize_t result;
@@ -763,7 +810,6 @@ ACE_OS::read (ACE_HANDLE handle, void *buf, size_t len,
               ACE_OVERLAPPED *overlapped)
 {
   ACE_OS_TRACE ("ACE_OS::read");
-  overlapped = overlapped;
 #if defined (ACE_WIN32)
   DWORD ok_len;
   DWORD short_len = static_cast<DWORD> (len);
@@ -772,6 +818,7 @@ ACE_OS::read (ACE_HANDLE handle, void *buf, size_t len,
   else
     ACE_FAIL_RETURN (-1);
 #else
+  ACE_UNUSED_ARG (overlapped);
   return ACE_OS::read (handle, buf, len);
 #endif /* ACE_WIN32 */
 }
@@ -884,7 +931,7 @@ ACE_OS::setreuid (uid_t ruid, uid_t euid)
 }
 
 ACE_INLINE pid_t
-ACE_OS::setsid (void)
+ACE_OS::setsid ()
 {
   ACE_OS_TRACE ("ACE_OS::setsid");
 #if defined (ACE_LACKS_SETSID)
@@ -922,10 +969,7 @@ ACE_INLINE int
 ACE_OS::sleep (u_int seconds)
 {
   ACE_OS_TRACE ("ACE_OS::sleep");
-#if defined (ACE_WIN32)
-  ::Sleep (seconds * ACE_ONE_SECOND_IN_MSECS);
-  return 0;
-#elif defined (ACE_HAS_CLOCK_GETTIME)
+#if defined (ACE_HAS_CLOCK_GETTIME)
   struct timespec rqtp;
   // Initializer doesn't work with Green Hills 1.8.7
   rqtp.tv_sec = seconds;
@@ -933,6 +977,15 @@ ACE_OS::sleep (u_int seconds)
   //FUZZ: disable check_for_lack_ACE_OS
   ACE_OSCALL_RETURN (::nanosleep (&rqtp, 0), int, -1);
   //FUZZ: enable check_for_lack_ACE_OS
+#elif defined (ACE_LACKS_SLEEP)
+  ACE_UNUSED_ARG (seconds);
+  ACE_NOTSUP_RETURN (-1);
+#elif defined (ACE_WIN32)
+  ::Sleep (seconds * ACE_ONE_SECOND_IN_MSECS);
+  return 0;
+#elif defined (ACE_MQX)
+  _time_delay (seconds * ACE_ONE_SECOND_IN_MSECS);
+  return 0;
 #else
   ACE_OSCALL_RETURN (::sleep (seconds), int, -1);
 #endif /* ACE_WIN32 */
@@ -945,6 +998,9 @@ ACE_OS::sleep (const ACE_Time_Value &tv)
 #if defined (ACE_WIN32)
   ::Sleep (tv.msec ());
   return 0;
+#elif defined (ACE_MQX)
+  _time_delay (tv.msec ());
+  return 0;
 #elif defined (ACE_HAS_CLOCK_GETTIME)
   timespec_t rqtp = tv;
   //FUZZ: disable check_for_lack_ACE_OS
@@ -955,13 +1011,9 @@ ACE_OS::sleep (const ACE_Time_Value &tv)
   // Copy the timeval, because this platform doesn't declare the timeval
   // as a pointer to const.
   timeval tv_copy = tv;
-#  if defined(ACE_TANDEM_T1248_PTHREADS)
-     ACE_OSCALL_RETURN (::spt_select (0, 0, 0, 0, &tv_copy), int, -1);
-#  else
-     //FUZZ: disable check_for_lack_ACE_OS
-     ACE_OSCALL_RETURN (::select (0, 0, 0, 0, &tv_copy), int, -1);
-     //FUZZ: enable check_for_lack_ACE_OS
-#  endif
+  //FUZZ: disable check_for_lack_ACE_OS
+  ACE_OSCALL_RETURN (::select (0, 0, 0, 0, &tv_copy), int, -1);
+  //FUZZ: enable check_for_lack_ACE_OS
 # else  /* ! ACE_HAS_NONCONST_SELECT_TIMEVAL */
   const timeval *tvp = tv;
   //FUZZ: disable check_for_lack_ACE_OS
@@ -1013,7 +1065,16 @@ ACE_OS::swab (const void *src,
   const char *tmp = static_cast<const char*> (src);
   char *from = const_cast<char *> (tmp);
   char *to = static_cast<char *> (dest);
+#  if defined (ACE_HAS_INT_SWAB)
+  int ilength = ACE_Utils::truncate_cast<int> (length);
+#    if defined (ACE_SWAB_EQUIVALENT)
+  ACE_SWAB_EQUIVALENT (from, to, ilength);
+#    else
+  ::swab (from, to, ilength);
+#    endif
+#  else
   ::swab (from, to, length);
+#  endif /* ACE_HAS_INT_SWAB */
 #elif defined (ACE_HAS_CONST_CHAR_SWAB)
   const char *from = static_cast<const char*> (src);
   char *to = static_cast<char *> (dest);
@@ -1112,9 +1173,13 @@ ACE_OS::ualarm (useconds_t usecs, useconds_t interval)
 
 #if defined (ACE_HAS_UALARM)
   return ::ualarm (usecs, interval);
-#elif !defined (ACE_LACKS_UNIX_SIGNALS)
+#elif !defined (ACE_LACKS_UNIX_SIGNALS) && !defined (ACE_LACKS_ALARM)
   ACE_UNUSED_ARG (interval);
+# if defined (ACE_VXWORKS) && ACE_VXWORKS >= 0x690 && defined (_WRS_CONFIG_LP64)
+  return ::alarm (static_cast<unsigned int> (usecs * ACE_ONE_SECOND_IN_USECS));
+# else
   return ::alarm (usecs * ACE_ONE_SECOND_IN_USECS);
+#endif
 #else
   ACE_UNUSED_ARG (usecs);
   ACE_UNUSED_ARG (interval);
@@ -1133,9 +1198,13 @@ ACE_OS::ualarm (const ACE_Time_Value &tv,
   useconds_t interval =
     (tv_interval.sec () * ACE_ONE_SECOND_IN_USECS) + tv_interval.usec ();
   return ::ualarm (usecs, interval);
-#elif !defined (ACE_LACKS_UNIX_SIGNALS)
+#elif !defined (ACE_LACKS_UNIX_SIGNALS) && !defined (ACE_LACKS_ALARM)
   ACE_UNUSED_ARG (tv_interval);
+# if defined (ACE_VXWORKS) && ACE_VXWORKS >= 0x690 && defined (_WRS_CONFIG_LP64)
+  return ::alarm (static_cast<unsigned int> (tv.sec ()));
+# else
   return ::alarm (tv.sec ());
+# endif
 #else
   ACE_UNUSED_ARG (tv_interval);
   ACE_UNUSED_ARG (tv);
@@ -1156,6 +1225,8 @@ ACE_OS::unlink (const char *path)
 # elif defined (ACE_LACKS_UNLINK)
   ACE_UNUSED_ARG (path);
   ACE_NOTSUP_RETURN (-1);
+# elif defined (ACE_UNLINK_EQUIVALENT)
+  ACE_OSCALL_RETURN (ACE_UNLINK_EQUIVALENT (path), int, -1);
 # else
   ACE_OSCALL_RETURN (::unlink (path), int, -1);
 # endif /* ACE_HAS_NONCONST_UNLINK */
@@ -1193,6 +1264,8 @@ ACE_OS::write (ACE_HANDLE handle, const void *buf, size_t nbyte)
     return (ssize_t) bytes_written;
   else
     ACE_FAIL_RETURN (-1);
+#elif defined (ACE_MQX)
+  return MQX_Filesystem::inst ().write (handle, reinterpret_cast<const unsigned char *> (buf), nbyte);
 #else
 # if defined (ACE_HAS_CHARPTR_SOCKOPT)
   ACE_OSCALL_RETURN (::write (handle, static_cast <char *> (const_cast <void *> (buf)), nbyte), ssize_t, -1);
@@ -1209,7 +1282,6 @@ ACE_OS::write (ACE_HANDLE handle,
                ACE_OVERLAPPED *overlapped)
 {
   ACE_OS_TRACE ("ACE_OS::write");
-  overlapped = overlapped;
 #if defined (ACE_WIN32)
   DWORD bytes_written; // This is set to 0 byte WriteFile.
 
@@ -1219,6 +1291,7 @@ ACE_OS::write (ACE_HANDLE handle,
   else
     ACE_FAIL_RETURN (-1);
 #else
+  ACE_UNUSED_ARG (overlapped);
   return ACE_OS::write (handle, buf, nbyte);
 #endif /* ACE_WIN32 */
 }

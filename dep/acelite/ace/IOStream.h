@@ -4,8 +4,6 @@
 /**
  *  @file    IOStream.h
  *
- *  $Id: IOStream.h 92102 2010-09-30 08:14:15Z johnnyw $
- *
  *  @author James CE Johnson <jcej@lads.com>
  *  @author Jim Crossley <jim@lads.com>
  */
@@ -44,24 +42,17 @@ ACE_BEGIN_VERSIONED_NAMESPACE_DECL
 typedef CString ACE_IOStream_String;
 ACE_END_VERSIONED_NAMESPACE_DECL
 #    else
-#      if !defined (ACE_HAS_STDCPP_STL_INCLUDES)
-#include /**/ <String.h>
-ACE_BEGIN_VERSIONED_NAMESPACE_DECL
-typedef String ACE_IOStream_String;
-ACE_END_VERSIONED_NAMESPACE_DECL
-#      else
-#        include /**/ <string>
+#      include /**/ <string>
 
-#        if defined(ACE_USES_STD_NAMESPACE_FOR_STDCPP_LIB)
+#      if defined(ACE_USES_STD_NAMESPACE_FOR_STDCPP_LIB)
 ACE_BEGIN_VERSIONED_NAMESPACE_DECL
 typedef std::string ACE_IOStream_String;
 ACE_END_VERSIONED_NAMESPACE_DECL
-#        else
+#      else
 ACE_BEGIN_VERSIONED_NAMESPACE_DECL
 typedef string ACE_IOStream_String;
 ACE_END_VERSIONED_NAMESPACE_DECL
-#        endif /* ACE_USES_STD_NAMESPACE_FOR_STDCPP_LIB */
-#      endif /* ! ACE_HAS_STDCPP_STL_INCLUDES */
+#      endif /* ACE_USES_STD_NAMESPACE_FOR_STDCPP_LIB */
 #    endif /* ACE_WIN32 && defined (_MSC_VER) */
 
 ACE_BEGIN_VERSIONED_NAMESPACE_DECL
@@ -156,7 +147,7 @@ class ACE_Export ACE_Streambuf : public streambuf
 public:
 
   /**
-   * If the default allocation strategey were used the common buffer
+   * If the default allocation strategy were used the common buffer
    * would be deleted when the object destructs.  Since we are
    * providing separate read/write buffers, it is up to us to manage
    * their memory.
@@ -274,11 +265,11 @@ protected:
    */
   int syncin (void);
 
-  /// syncout is called when the output needs to be flushed.  This is
+  /// syncout() is called when the output needs to be flushed.  This is
   /// easily done by calling the peer's send_n function.
   int syncout (void);
 
-  /// flushbuf is the worker of syncout.  It is a separate function
+  /// flushbuf() is the worker of syncout.  It is a separate function
   /// because it gets used sometimes in different context.
   int flushbuf (void);
 

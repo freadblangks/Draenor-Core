@@ -4,9 +4,7 @@
 /**
  *  @file   OS_NS_string.h
  *
- *  $Id: OS_NS_string.h 91995 2010-09-24 12:45:24Z johnnyw $
- *
- *  @author Douglas C. Schmidt <schmidt@cs.wustl.edu>
+ *  @author Douglas C. Schmidt <d.schmidt@vanderbilt.edu>
  *  @author Jesper S. M|ller<stophph@diku.dk>
  *  @author and a cast of thousands...
  *
@@ -55,12 +53,6 @@ namespace ACE_OS {
   ACE_NAMESPACE_INLINE_FUNCTION
   void *memchr (void *s, int c, size_t len);
 
-#if defined (ACE_LACKS_MEMCHR)
-  /// Emulated memchr - Finds a character in a buffer.
-  extern ACE_Export
-  const void *memchr_emulation (const void *s, int c, size_t len);
-#endif /* ACE_LACKS_MEMCHR */
-
   /// Compares two buffers.
   ACE_NAMESPACE_INLINE_FUNCTION
   int memcmp (const void *t, const void *s, size_t len);
@@ -68,16 +60,6 @@ namespace ACE_OS {
   /// Copies one buffer to another.
   ACE_NAMESPACE_INLINE_FUNCTION
   void *memcpy (void *t, const void *s, size_t len);
-
-#if defined (ACE_HAS_MEMCPY_LOOP_UNROLL)
-/*
- * Version of memcpy where the copy loop is unrolled.
- * On certain platforms this results in better performance.
- * This is determined and set via autoconf.
- */
-  extern ACE_Export
-  void *fast_memcpy (void *t, const void *s, size_t len);
-#endif
 
   /// Moves one buffer to another.
   ACE_NAMESPACE_INLINE_FUNCTION
@@ -202,6 +184,9 @@ namespace ACE_OS {
   /// whose pointer is returned.
   extern ACE_Export
   char *strsignal (int signum);
+
+  extern ACE_Export
+  char *strerror_r (int errnum, char *buf, size_t buflen);
 
   /// Finds the length of a string (char version).
   ACE_NAMESPACE_INLINE_FUNCTION
@@ -339,18 +324,6 @@ namespace ACE_OS {
   wchar_t *strrchr (wchar_t *s, wchar_t c);
 #endif /* ACE_HAS_WCHAR */
 
-#if defined (ACE_LACKS_STRRCHR)
-  /// Emulated strrchr (char version) - Finds the last occurrence of a
-  /// character in a string.
-  extern ACE_Export
-  char *strrchr_emulation (char *s, int c);
-
-  /// Emulated strrchr (const char version) - Finds the last occurrence of a
-  /// character in a string.
-  extern ACE_Export
-  const char *strrchr_emulation (const char *s, int c);
-#endif /* ACE_LACKS_STRRCHR */
-
   /// This is a "safe" c string copy function (char version).
   /**
    * Unlike strncpy() this function will always add a terminating '\0'
@@ -449,11 +422,11 @@ namespace ACE_OS {
   wchar_t *strtok_r (ACE_WCHAR_T *s, const ACE_WCHAR_T *tokens, ACE_WCHAR_T **lasts);
 #endif  // ACE_HAS_WCHAR
 
-#if !defined (ACE_HAS_REENTRANT_FUNCTIONS) || defined (ACE_LACKS_STRTOK_R)
+#if defined (ACE_LACKS_STRTOK_R)
   /// Emulated strtok_r.
   extern ACE_Export
   char *strtok_r_emulation (char *s, const char *tokens, char **lasts);
-#endif /* !ACE_HAS_REENTRANT_FUNCTIONS */
+#endif /* ACE_LACKS_STRTOK_R */
 
 # if defined (ACE_HAS_WCHAR) && defined(ACE_LACKS_WCSTOK)
   /// Emulated strtok_r (wchar_t version).

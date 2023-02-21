@@ -1,10 +1,10 @@
 /* -*- C++ -*- */
-// $Id: config-macosx-leopard.h 91688 2010-09-09 11:21:50Z johnnyw $
-
 // This configuration file is designed to work with the MacOS X operating system.
 
 #ifndef ACE_CONFIG_MACOSX_LEOPARD_H
 #define ACE_CONFIG_MACOSX_LEOPARD_H
+
+#include <Availability.h>
 
 #define ACE_HAS_MAC_OSX
 #define ACE_HAS_NET_IF_DL_H
@@ -16,13 +16,7 @@
 #endif /* ! __ACE_INLINE__ */
 
 #if !defined (ACE_SIZEOF_LONG_DOUBLE)
-# if (__GNUC__ == 3 && __GNUC_MINOR__ == 3)
-   // Size of long double in GCC 3.3 is 8.
-#  define ACE_SIZEOF_LONG_DOUBLE 8
-# else // Else, the compiler is GCC4
-   // For GCC4, the size is 16.
 #  define ACE_SIZEOF_LONG_DOUBLE 16
-# endif // GCC 3.3
 #endif // ACE_SIZEOF_LONG_DOUBLE
 
 #if defined (__GNUG__)
@@ -30,12 +24,6 @@
 #endif /* __GNUG__ */
 
 #define ACE_ISCTYPE_EQUIVALENT __isctype
-
-#ifndef ACE_HAS_NONCONST_FD_ISSET
-#define ACE_HAS_NONCONST_FD_ISSET
-#endif
-
-#define ACE_HAS_WORKING_EXPLICIT_TEMPLATE_DESTRUCTOR
 
 #define ACE_SIZE_T_FORMAT_SPECIFIER_ASCII "%lu"
 
@@ -53,6 +41,7 @@
 
 #define ACE_HAS_GPERF
 #define ACE_HAS_POSIX_SEM
+#define ACE_HAS_SIOCGIFCONF
 
 #define ACE_HAS_SUNOS4_GETTIMEOFDAY
 
@@ -86,6 +75,8 @@
 #define ACE_HAS_SIGWAIT
 
 #define ACE_HAS_AIO_CALLS
+
+#define ACE_HAS_ICMP_SUPPORT 1
 
 //Platform supports sigsuspend()
 #define ACE_HAS_SIGSUSPEND
@@ -176,7 +167,6 @@
 # define ACE_HAS_THREADS
 // And they're even POSIX pthreads
 # define ACE_HAS_PTHREADS
-# define ACE_HAS_PTHREADS_STD
 # define ACE_HAS_PTHREAD_SCHEDPARAM
 # define ACE_HAS_THREAD_SPECIFIC_STORAGE
 #endif  /* ACE_MT_SAFE == 1 */
@@ -205,6 +195,15 @@
 #define ACE_HAS_VOID_UNSETENV
 #endif
 
+#define ACE_LACKS_CONDATTR_SETCLOCK
+
+#ifndef ACE_HAS_IPHONE
+#if __MAC_OS_X_VERSION_MAX_ALLOWED < 101200
+#define ACE_LACKS_CLOCKID_T
+#define ACE_LACKS_CLOCK_MONOTONIC
+#define ACE_LACKS_CLOCK_REALTIME
+#endif
+#endif
 
 // dlcompat package (not part of base Darwin) is needed for dlopen().
 // You may download directly from sourceforge and install or use fink
@@ -222,5 +221,11 @@
 
 // gperf seems to need this
 //#define ACE_HAS_NONSTATIC_OBJECT_MANAGER
+
+#define ACE_IOCTL_TYPE_ARG2 unsigned long
+
+#if defined(__APPLE_CC__) && (__APPLE_CC__ < 1173)
+#error "Compiler must be upgraded, see http://developer.apple.com"
+#endif /* __APPLE_CC__ */
 
 #endif /* ACE_CONFIG_MACOSX_LEOPARD_H */

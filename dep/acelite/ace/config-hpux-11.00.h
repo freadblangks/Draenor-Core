@@ -1,6 +1,4 @@
 /* -*- C++ -*- */
-// $Id: config-hpux-11.00.h 92102 2010-09-30 08:14:15Z johnnyw $
-
 // The following configuration file is designed to work for HP
 // platforms running HP-UX 11.00 using aC++ or gcc (2.95 and up).
 
@@ -44,21 +42,10 @@
 #      endif /* RWSTD_NO_NAMESPACE */
 #    else
 #      define ACE_USES_OLD_IOSTREAMS
-       // There's no support in ACE's use of numeric_limits for those that
-       // aren't in std::
-#      define ACE_LACKS_NUMERIC_LIMITS
 #    endif /* _HP_NAMESPACE_STD */
-
-#    define ACE_HAS_WORKING_EXPLICIT_TEMPLATE_DESTRUCTOR
 
 // Platform lacks streambuf "linebuffered ()".
 #    define ACE_LACKS_LINEBUFFERED_STREAMBUF 1
-
-// Lack of (and broken) support for placement operator delete is a known
-// bug by HP, up until aC++ A.03.55.02.
-#    if (__HP_aCC < 35502)
-#      define ACE_LACKS_PLACEMENT_OPERATOR_DELETE
-#    endif /* __HP_aCC < 35502 */
 
 // Compiler's 'new' throws exceptions on failure, regardless of whether or
 // not exception handling is enabled in the compiler options. Fortunately,
@@ -106,7 +93,6 @@
 #endif /* ACE_HAS_AIO_CALLS */
 
 ////////////////////////////////////////////////////////////////////////////
-//
 // General OS information - see README for more details on what they mean
 //
 ///////////////////////////////////////////////////////////////////////////
@@ -164,11 +150,12 @@
 #define ACE_HAS_CLOCK_GETTIME
 #define ACE_HAS_CLOCK_SETTIME
 
+#define ACE_LACKS_CLOCK_MONOTONIC
+
+#define ACE_LACKS_PTHREAD_SCOPE_PROCESS
+
 // Prototypes for both signal() and struct sigaction are consistent.
 #define ACE_HAS_CONSISTENT_SIGNAL_PROTOTYPES
-
-// Compiler/platform has correctly prototyped header files.
-#define ACE_HAS_CPLUSPLUS_HEADERS
 
 // Compiler/platform has Dirent iterator functions.
 #define ACE_HAS_DIRENT
@@ -205,13 +192,6 @@
 // Compiler/platform supports poll().
 #define ACE_HAS_POLL
 
-/* Platform supports "position-independent" features provided by
-   ACE_Based_Pointer<>. */
-#define ACE_HAS_POSITION_INDEPENDENT_POINTERS 1
-
-/* Platform supports POSIX getpwnam_r() function */
-#define ACE_HAS_POSIX_GETPWNAM_R 1
-
 // Platform supports POSIX O_NONBLOCK semantics.
 #define ACE_HAS_POSIX_NONBLOCK
 
@@ -235,10 +215,9 @@
 
 // HP-UX 11 has reentrant netdb functions.  The catch is that the old
 // functions (gethostbyname, etc.) are thread-safe and the _r versions are
-// not used and will be removed at some point.  So, define things so
-// the _r versions are not used.  This will slow things down a bit due to
-// the extra mutex lock in the ACE_NETDBCALL_RETURN macro, and will be fixed
-// in the future (problem ID P64).
+// obsolescent.  So, define things so the _r versions are not used.
+// OS_NS_netdb.inl ensures no funny lock games are played in the
+// ACE_NETDBCALL_RETURN macro.
 #define ACE_LACKS_NETDB_REENTRANT_FUNCTIONS
 
 /* Platform lacks pri_t (e.g., Tandem NonStop UNIX). */
@@ -319,12 +298,12 @@
 #define ACE_LACKS_SUSECONDS_T
 #define ACE_LACKS_SYS_SYSCTL_H
 
-// @@ TODO: It looks like HP-UX provides strtoll, strtoull, wcstoll and
-//          wcstoull but some more work is needed to plug them in correctly.
-#define ACE_LACKS_STRTOLL
-#define ACE_LACKS_WCSTOLL
-#define ACE_LACKS_STRTOULL
-#define ACE_LACKS_WCSTOULL
+#if !(defined(__STDC_EXT__) || defined(_INCLUDE_LONGLONG) || defined(_INCLUDE_STDC__SOURCE_199901))
+#  define ACE_LACKS_STRTOLL
+#  define ACE_LACKS_WCSTOLL
+#  define ACE_LACKS_STRTOULL
+#  define ACE_LACKS_WCSTOULL
+#endif
 
 #define ACE_LACKS_ISWASCII
 
@@ -347,12 +326,9 @@
 #  define ACE_HAS_3_PARAM_WCSTOK
 #endif
 
-#define ACE_HAS_3_PARAM_READDIR_R
-
 #define ACE_LACKS_STRUCT_LIFNUM
 
 //////////////////////////////////////////////////////////////////////////
-//
 // STREAMS information
 //
 //////////////////////////////////////////////////////////////////////////
@@ -373,7 +349,6 @@
 // #define ACE_HAS_STREAM_PIPES
 
 /////////////////////////////////////////////////////////////////////////
-//
 // TLI/XTI information
 //
 ////////////////////////////////////////////////////////////////////////
@@ -390,7 +365,6 @@
 #define ACE_HAS_SYS_XTI_H 1
 
 /////////////////////////////////////////////////////////////////////////
-//
 // Threads information.
 //
 // Use of threads is controlled by the 'threads' argument to make.  See
@@ -425,6 +399,7 @@
 #  define ACE_HAS_RECURSIVE_MUTEXES
 #  define ACE_HAS_THREAD_SPECIFIC_STORAGE
 #  define ACE_LACKS_PTHREAD_ATTR_SETSTACK
+#  define ACE_LACKS_CONDATTR_SETCLOCK
 #endif /* ACE_HAS_THREADS */
 
 #define ACE_HAS_POSIX_SEM

@@ -4,9 +4,7 @@
 /**
  *  @file Array_Base.h
  *
- *  $Id: Array_Base.h 84477 2009-02-16 13:30:38Z johnnyw $
- *
- *  @author Douglas C. Schmidt <schmidt@cs.wustl.edu>
+ *  @author Douglas C. Schmidt <d.schmidt@vanderbilt.edu>
  */
 //=============================================================================
 
@@ -43,7 +41,6 @@ template<class T>
 class ACE_Array_Base
 {
 public:
-
   // Old/ACE-style traits.
   typedef T TYPE;
   typedef ACE_Array_Iterator<T> ITERATOR;
@@ -61,27 +58,25 @@ public:
 
   ACE_DECLARE_STL_REVERSE_ITERATORS
 
-  // = Initialization and termination methods.
-
   /// Dynamically create an uninitialized array.
   ACE_Array_Base (size_type size = 0,
                   ACE_Allocator * the_allocator = 0);
 
-  /// Dynamically initialize the entire array to the <default_value>.
+  /// Dynamically initialize the entire array to the @a default_value.
   ACE_Array_Base (size_type size,
                   T const & default_value,
                   ACE_Allocator * the_allocator = 0);
 
   /**
    * The copy constructor performs initialization by making an exact
-   * copy of the contents of parameter <s>, i.e., *this == s will
+   * copy of the contents of parameter @a s, i.e., *this == s will
    * return true.
    */
   ACE_Array_Base (ACE_Array_Base<T> const & s);
 
   /**
    * Assignment operator performs an assignment by making an exact
-   * copy of the contents of parameter <s>, i.e., *this == s will
+   * copy of the contents of parameter @a s, i.e., *this == s will
    * return true.  Note that if the <max_size_> of <array_> is >= than
    * <s.max_size_> we can copy it without reallocating.  However, if
    * <max_size_> is < <s.max_size_> we must delete the <array_>,
@@ -90,7 +85,7 @@ public:
   void operator= (ACE_Array_Base<T> const & s);
 
   /// Clean up the array (e.g., delete dynamically allocated memory).
-  ~ACE_Array_Base (void);
+  ~ACE_Array_Base ();
 
   // = Set/get methods.
 
@@ -115,7 +110,7 @@ public:
   int get (T & item, size_type slot) const;
 
   /// Returns the <cur_size_> of the array.
-  size_type size (void) const;
+  size_type size () const;
 
   /**
    * Changes the size of the array to match @a new_size.
@@ -125,7 +120,7 @@ public:
   int size (size_type new_size);
 
   /// Returns the <max_size_> of the array.
-  size_type max_size (void) const;
+  size_type max_size () const;
 
   /**
    * Changes the size of the array to match @a new_size.
@@ -141,10 +136,10 @@ public:
    * Forward iterator accessors.
    */
   //@{
-  iterator begin (void);
-  iterator end   (void);
-  const_iterator begin (void) const;
-  const_iterator end   (void) const;
+  iterator begin ();
+  iterator end   ();
+  const_iterator begin () const;
+  const_iterator end   () const;
   //@}
 
   /**
@@ -153,10 +148,10 @@ public:
    * Reverse iterator accessors.
    */
   //@{
-  reverse_iterator rbegin (void);
-  reverse_iterator rend   (void);
-  const_reverse_iterator rbegin (void) const;
-  const_reverse_iterator rend   (void) const;
+  reverse_iterator rbegin ();
+  reverse_iterator rend   ();
+  const_reverse_iterator rbegin () const;
+  const_reverse_iterator rend   () const;
   //@}
 
   /// Swap the contents of this array with the given @a array in
@@ -207,7 +202,6 @@ template <class T>
 class ACE_Array_Iterator
 {
 public:
-  // = Initialization method.
   ACE_Array_Iterator (ACE_Array_Base<T> &);
 
   // = Iteration methods.
@@ -218,13 +212,13 @@ public:
 
   /// Move forward by one element in the Array.  Returns 0 when all the
   /// items in the Array have been seen, else 1.
-  int advance (void);
+  int advance ();
 
   /// Returns 1 when all items have been seen, else 0.
-  int done (void) const;
+  int done () const;
 
   /// Dump the state of an object.
-  void dump (void) const;
+  void dump () const;
 
   /// Declare the dynamic allocation hooks.
   ACE_ALLOC_HOOK_DECLARE;

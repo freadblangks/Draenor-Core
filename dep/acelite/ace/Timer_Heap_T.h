@@ -4,9 +4,7 @@
 /**
  *  @file    Timer_Heap_T.h
  *
- *  $Id: Timer_Heap_T.h 84619 2009-02-26 12:26:16Z johnnyw $
- *
- *  @author Douglas C. Schmidt <schmidt@cs.wustl.edu>
+ *  @author Douglas C. Schmidt <d.schmidt@vanderbilt.edu>
  */
 //=============================================================================
 
@@ -26,7 +24,7 @@
 ACE_BEGIN_VERSIONED_NAMESPACE_DECL
 
 // Forward declaration
-template <class TYPE, class FUNCTOR, class ACE_LOCK>
+template <class TYPE, class FUNCTOR, class ACE_LOCK, typename TIME_POLICY>
 class ACE_Timer_Heap_T;
 
 /**
@@ -38,31 +36,35 @@ class ACE_Timer_Heap_T;
  * node of a timer queue.  Be aware that it doesn't transverse
  * in the order of timeout values.
  */
-template <class TYPE, class FUNCTOR, class ACE_LOCK>
-class ACE_Timer_Heap_Iterator_T : public ACE_Timer_Queue_Iterator_T<TYPE, FUNCTOR, ACE_LOCK>
+template <class TYPE, class FUNCTOR, class ACE_LOCK, typename TIME_POLICY = ACE_Default_Time_Policy>
+class ACE_Timer_Heap_Iterator_T : public ACE_Timer_Queue_Iterator_T<TYPE>
 {
 public:
+  typedef ACE_Timer_Heap_T<TYPE, FUNCTOR, ACE_LOCK, TIME_POLICY> Heap;
   /// Constructor.
-  ACE_Timer_Heap_Iterator_T (ACE_Timer_Heap_T<TYPE, FUNCTOR, ACE_LOCK> &);
+  ACE_Timer_Heap_Iterator_T (Heap &);
 
   /// Destructor.
-  ~ACE_Timer_Heap_Iterator_T (void);
+  virtual ~ACE_Timer_Heap_Iterator_T ();
 
   /// Positions the iterator at the earliest node in the Timer Queue
-  virtual void first (void);
+  virtual void first ();
 
   /// Positions the iterator at the next node in the Timer Queue
-  virtual void next (void);
+  virtual void next ();
 
   /// Returns true when there are no more nodes in the sequence
-  virtual bool isdone (void) const;
+  virtual bool isdone () const;
 
   /// Returns the node at the current position in the sequence
-  virtual ACE_Timer_Node_T<TYPE> *item (void);
+  virtual ACE_Timer_Node_T<TYPE> *item ();
+
+  /// Declare the dynamic allocation hooks.
+  ACE_ALLOC_HOOK_DECLARE;
 
 protected:
   /// Pointer to the ACE_Timer_Heap that we are iterating over.
-  ACE_Timer_Heap_T<TYPE, FUNCTOR, ACE_LOCK> &timer_heap_;
+  Heap & timer_heap_;
 
   /// Position in the array where the iterator is at
   size_t position_;
@@ -82,16 +84,15 @@ protected:
  * dynamic memory allocation, which is important for real-time
  * systems.
  */
-template <class TYPE, class FUNCTOR, class ACE_LOCK>
-class ACE_Timer_Heap_T : public ACE_Timer_Queue_T<TYPE, FUNCTOR, ACE_LOCK>
+template <class TYPE, class FUNCTOR, class ACE_LOCK, typename TIME_POLICY = ACE_Default_Time_Policy>
+class ACE_Timer_Heap_T : public ACE_Timer_Queue_T<TYPE, FUNCTOR, ACE_LOCK, TIME_POLICY>
 {
 public:
-  typedef ACE_Timer_Heap_Iterator_T<TYPE, FUNCTOR, ACE_LOCK> HEAP_ITERATOR;
-  friend class ACE_Timer_Heap_Iterator_T<TYPE, FUNCTOR, ACE_LOCK>;
+  typedef ACE_Timer_Heap_Iterator_T<TYPE, FUNCTOR, ACE_LOCK, TIME_POLICY> HEAP_ITERATOR;
+  friend class ACE_Timer_Heap_Iterator_T<TYPE, FUNCTOR, ACE_LOCK, TIME_POLICY>;
 
-  typedef ACE_Timer_Queue_T<TYPE, FUNCTOR, ACE_LOCK> INHERITED;
+  typedef ACE_Timer_Queue_T<TYPE, FUNCTOR, ACE_LOCK, TIME_POLICY> Base_Time_Policy;
 
-  // = Initialization and termination methods.
   /**
    * The Constructor creates a heap with specified number of elements.
    * This can also take in a upcall functor and freelist (if 0, then
@@ -109,7 +110,8 @@ public:
   ACE_Timer_Heap_T (size_t size,
                     bool preallocated = false,
                     FUNCTOR *upcall_functor = 0,
-                    ACE_Free_List<ACE_Timer_Node_T <TYPE> > *freelist = 0);
+                    ACE_Free_List<ACE_Timer_Node_T <TYPE> > *freelist = 0,
+                    TIME_POLICY const & time_policy = TIME_POLICY());
 
   /**
    * Default constructor. @c upcall_functor is the instance of the
@@ -119,17 +121,18 @@ public:
    * size will be ACE_DEFAULT_TIMERS and there will be no preallocation.
    */
   ACE_Timer_Heap_T (FUNCTOR *upcall_functor = 0,
-                    ACE_Free_List<ACE_Timer_Node_T <TYPE> > *freelist = 0);
+                    ACE_Free_List<ACE_Timer_Node_T <TYPE> > *freelist = 0,
+                    TIME_POLICY const & time_policy = TIME_POLICY());
 
   /// Destructor.
-  virtual ~ACE_Timer_Heap_T (void);
+  virtual ~ACE_Timer_Heap_T ();
 
   /// True if heap is empty, else false.
-  virtual bool is_empty (void) const;
+  virtual bool is_empty () const;
 
   /// Returns the time of the earliest node in the Timer_Queue.
   /// Must be called on a non-empty queue.
-  virtual const ACE_Time_Value &earliest_time (void) const;
+  virtual const ACE_Time_Value &earliest_time () const;
 
   /**
    * Resets the interval of the timer represented by @a timer_id to
@@ -162,8 +165,13 @@ public:
                       const void **act = 0,
                       int dont_call_handle_close = 1);
 
+  /**
+   * Destroy timer queue. Cancels all timers.
+   */
+  virtual int close ();
+
   /// Returns a pointer to this ACE_Timer_Queue's iterator.
-  virtual ACE_Timer_Queue_Iterator_T<TYPE, FUNCTOR, ACE_LOCK> &iter (void);
+  virtual ACE_Timer_Queue_Iterator_T<TYPE> &iter ();
 
   /**
    * Removes the earliest node from the queue and returns it. Note that
@@ -173,13 +181,16 @@ public:
    * this function is for support of @c ACE_Timer_Queue::expire and
    * should not be used unadvisedly in other conditions.
    */
-  ACE_Timer_Node_T <TYPE> *remove_first (void);
+  ACE_Timer_Node_T <TYPE> *remove_first ();
 
   /// Dump the state of an object.
-  virtual void dump (void) const;
+  virtual void dump () const;
 
   /// Reads the earliest node from the queue and returns it.
-  virtual ACE_Timer_Node_T<TYPE> *get_first (void);
+  virtual ACE_Timer_Node_T<TYPE> *get_first ();
+
+  /// Declare the dynamic allocation hooks.
+  ACE_ALLOC_HOOK_DECLARE;
 
 protected:
 
@@ -209,7 +220,7 @@ protected:
 
   /// Factory method that allocates a new node (uses operator new if
   /// we're *not* preallocating, otherwise uses an internal freelist).
-  virtual ACE_Timer_Node_T<TYPE> *alloc_node (void);
+  virtual ACE_Timer_Node_T<TYPE> *alloc_node ();
 
   /**
    * Factory method that frees a previously allocated node (uses
@@ -231,7 +242,7 @@ private:
    * If preallocation is used, will also double the size of the
    * preallocated array of ACE_Timer_Nodes.
    */
-  void grow_heap (void);
+  void grow_heap ();
 
   /// Restore the heap property, starting at @a slot.
   void reheap_up (ACE_Timer_Node_T<TYPE> *new_node,
@@ -253,10 +264,10 @@ private:
    * timer id returned from this method will never == -1 to avoid
    * conflicts with other failure return values.
    */
-  long timer_id (void);
+  long timer_id ();
 
   /// Pops and returns a new timer id from the freelist.
-  long pop_freelist (void);
+  long pop_freelist ();
 
   /// Pushes @a old_id onto the freelist.
   void push_freelist (long old_id);
@@ -318,10 +329,6 @@ private:
   /// Set of pointers to the arrays of preallocated timer nodes.
   /// Used to delete the allocated memory when required.
   ACE_Unbounded_Set<ACE_Timer_Node_T<TYPE> *> preallocated_node_set_;
-
-  // = Don't allow these operations for now.
-  ACE_UNIMPLEMENTED_FUNC (ACE_Timer_Heap_T (const ACE_Timer_Heap_T<TYPE, FUNCTOR, ACE_LOCK> &))
-  ACE_UNIMPLEMENTED_FUNC (void operator= (const ACE_Timer_Heap_T<TYPE, FUNCTOR, ACE_LOCK> &))
 };
 
 ACE_END_VERSIONED_NAMESPACE_DECL

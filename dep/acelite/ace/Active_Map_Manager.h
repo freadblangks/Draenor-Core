@@ -4,8 +4,6 @@
 /**
  *  @file    Active_Map_Manager.h
  *
- *  $Id: Active_Map_Manager.h 91066 2010-07-12 11:05:04Z johnnyw $
- *
  *  @author Irfan Pyarali
  */
 //=============================================================================
@@ -38,7 +36,7 @@ class ACE_Export ACE_Active_Map_Manager_Key
 {
 public:
   /// Default constructor.
-  ACE_Active_Map_Manager_Key (void);
+  ACE_Active_Map_Manager_Key ();
 
   /**
    * Constructor given the @a slot_index and @a slot_generation number.
@@ -49,26 +47,26 @@ public:
                               ACE_UINT32 slot_generation);
 
   /// Get the slot_index.
-  ACE_UINT32 slot_index (void) const;
+  ACE_UINT32 slot_index () const;
 
   /// Set the slot_index.
   void slot_index (ACE_UINT32 i);
 
   /// Get the slot_generation number.
-  ACE_UINT32 slot_generation (void) const;
+  ACE_UINT32 slot_generation () const;
 
   /// Set the slot_generation number.
   void slot_generation (ACE_UINT32 g);
 
   /// Size required to store information about active key.
-  static size_t size (void);
+  static size_t size ();
 
   /// Recover state of active key from @a data.  User must make sure
   /// that @a data encoded using the encode() method.
   void decode (const void *data);
 
   /// Encode state of the active key into @a data.  @a data must be as
-  /// big as the value returned from <size>.
+  /// big as the value returned from size().
   void encode (void *data) const;
 
   /// Compare keys.
@@ -79,10 +77,9 @@ public:
   // friends, they are not.
 
   /// Increment the slot_generation number.
-  void increment_slot_generation_count (void);
+  void increment_slot_generation_count ();
 
 private:
-
   /**
    * @brief Data for the Active Object Map Key.
    *

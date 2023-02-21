@@ -4,9 +4,7 @@
 /**
  *  @file    Auto_Ptr.h
  *
- *  $Id: Auto_Ptr.h 80826 2008-03-04 14:51:23Z wotte $
- *
- *  @author Doug Schmidt <schmidt@uci.edu>
+ *  @author Doug Schmidt <d.schmidt@vanderbilt.edu>
  *  @author Irfan Pyarali <irfan@cs.wustl.edu>
  *  @author Jack Reeves <jack@fx.com>
  *  @author Dr. Harald M. Mueller <mueller@garwein.hai.siemens.co.at>
@@ -32,7 +30,6 @@
 #  pragma warning(disable: 4284)
 #endif /* _MSC_VER */
 
-
 ACE_BEGIN_VERSIONED_NAMESPACE_DECL
 
 /**
@@ -47,21 +44,20 @@ class ACE_Auto_Basic_Ptr
 public:
   typedef X element_type;
 
-  // = Initialization and termination methods
   explicit ACE_Auto_Basic_Ptr (X * p = 0) : p_ (p) {}
 
   ACE_Auto_Basic_Ptr (ACE_Auto_Basic_Ptr<X> & ap);
   ACE_Auto_Basic_Ptr<X> &operator= (ACE_Auto_Basic_Ptr<X> & rhs);
-  ~ACE_Auto_Basic_Ptr (void);
+  ~ACE_Auto_Basic_Ptr ();
 
   // = Accessor methods.
   X &operator *() const;
-  X *get (void) const;
-  X *release (void);
+  X *get () const;
+  X *release ();
   void reset (X * p = 0);
 
   /// Dump the state of an object.
-  void dump (void) const;
+  void dump () const;
 
   /// Declare the dynamic allocation hooks.
   ACE_ALLOC_HOOK_DECLARE;
@@ -78,7 +74,7 @@ ACE_END_VERSIONED_NAMESPACE_DECL
 #include <memory>
 #if defined (ACE_USES_STD_NAMESPACE_FOR_STDCPP_LIB) && \
             (ACE_USES_STD_NAMESPACE_FOR_STDCPP_LIB != 0)
-using std::auto_ptr;
+using std::unique_ptr;
 #endif /* ACE_USES_STD_NAMESPACE_FOR_STDCPP_LIB */
 #else /* ACE_HAS_STANDARD_CPP_LIBRARY */
 
@@ -93,7 +89,6 @@ class auto_ptr : public ACE_Auto_Basic_Ptr<X>
 public:
   typedef X element_type;
 
-  // = Initialization and termination methods
   explicit auto_ptr (X * p = 0) : ACE_Auto_Basic_Ptr<X> (p) {}
   auto_ptr (auto_ptr<X> & ap) : ACE_Auto_Basic_Ptr<X> (ap.release ()) {}
 
@@ -106,9 +101,7 @@ ACE_BEGIN_VERSIONED_NAMESPACE_DECL
 
 /**
  * @brief Implements the draft C++ standard auto_ptr abstraction.
- * This version can be used instead of auto_ptr<T>, and obviates
- * the need for the ACE_AUTO_PTR_RESET macro on platforms like
- * VC6 where the auto_ptr<T> is broken.
+ * This version can be used instead of auto_ptr<T>
  */
 template <typename X>
 class ACE_Auto_Ptr : public ACE_Auto_Basic_Ptr <X>
@@ -116,7 +109,6 @@ class ACE_Auto_Ptr : public ACE_Auto_Basic_Ptr <X>
 public:
   typedef X element_type;
 
-  // = Initialization and termination methods
   explicit ACE_Auto_Ptr (X * p = 0) : ACE_Auto_Basic_Ptr<X> (p) {}
 
   X *operator-> () const;
@@ -136,22 +128,21 @@ class ACE_Auto_Basic_Array_Ptr
 public:
   typedef X element_type;
 
-  // = Initialization and termination methods.
   explicit ACE_Auto_Basic_Array_Ptr (X * p = 0) : p_ (p) {}
 
   ACE_Auto_Basic_Array_Ptr (ACE_Auto_Basic_Array_Ptr<X> & ap);
   ACE_Auto_Basic_Array_Ptr<X> &operator= (ACE_Auto_Basic_Array_Ptr<X> & rhs);
-  ~ACE_Auto_Basic_Array_Ptr (void);
+  ~ACE_Auto_Basic_Array_Ptr ();
 
   // = Accessor methods.
   X & operator* () const;
   X & operator[] (int i) const;
-  X * get (void) const;
-  X * release (void);
+  X * get () const;
+  X * release ();
   void reset (X * p = 0);
 
   /// Dump the state of an object.
-  void dump (void) const;
+  void dump () const;
 
   /// Declare the dynamic allocation hooks.
   ACE_ALLOC_HOOK_DECLARE;
@@ -172,7 +163,6 @@ class ACE_Auto_Array_Ptr : public ACE_Auto_Basic_Array_Ptr<X>
 public:
   typedef X element_type;
 
-  // = Initialization and termination methods.
   explicit ACE_Auto_Array_Ptr (X *p = 0)
     : ACE_Auto_Basic_Array_Ptr<X> (p) {}
 
@@ -208,18 +198,6 @@ ACE_auto_ptr_reset (AUTO_PTR_TYPE & ap,
 }
 
 ACE_END_VERSIONED_NAMESPACE_DECL
-
-// Some platforms have an older version of auto_ptr
-// support, which lacks reset, and cannot be disabled
-// easily.  Portability to these platforms requires
-// use of the following ACE_AUTO_PTR_RESET macro.
-//
-// The TYPE macro parameter is no longer necessary but we leave it
-// around for backward compatibility.  This is also the reason why the
-// ACE_auto_ptr_reset function template is not called
-// ACE_AUTO_PTR_RESET.
-# define ACE_AUTO_PTR_RESET(AUTOPTR,NEWPTR,TYPE) \
-  ACE_auto_ptr_reset (AUTOPTR, NEWPTR);
 
 #if defined (__ACE_INLINE__)
 #include "ace/Auto_Ptr.inl"

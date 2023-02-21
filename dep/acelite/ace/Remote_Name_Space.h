@@ -4,8 +4,6 @@
 /**
  *  @file    Remote_Name_Space.h
  *
- *  $Id: Remote_Name_Space.h 80826 2008-03-04 14:51:23Z wotte $
- *
  *  @author Prashant Jain
  */
 //==========================================================================
@@ -47,7 +45,6 @@ typedef ACE_Unbounded_Set<ACE_NS_WString> ACE_WSTRING_SET;
 class ACE_Export ACE_Remote_Name_Space : public ACE_Name_Space
 {
 public:
-  // = Initialization and termination methods.
   /// "Do-nothing" constructor.
   ACE_Remote_Name_Space (void);
 
@@ -77,18 +74,18 @@ public:
   /**
    * Overwrite the value or type of an existing name in a
    * ACE_Remote_Name_Space or bind a new name to the context, if it
-   * didn't exist yet. (Wide charcter strings interface).
+   * didn't exist yet. (Wide character strings interface).
    */
   virtual int rebind (const ACE_NS_WString &name_in,
                       const ACE_NS_WString &value_in,
                       const char *type_in = "");
 
-  /// Delete a name from a ACE_Remote_Name_Space (Wide charcter strings
+  /// Delete a name from a ACE_Remote_Name_Space (Wide character strings
   /// Interface).
   virtual int unbind (const ACE_NS_WString &name_in);
 
   /// Get value and type of a given name binding (Wide chars).  The
-  /// caller is responsible for deleting both <value_out> and <type_out>!
+  /// caller is responsible for deleting both @a value_out and @a type_out!
   virtual int resolve (const ACE_NS_WString &name_in,
                        ACE_NS_WString &value_out,
                        char *&type_out);
@@ -133,7 +130,9 @@ public:
                                  const ACE_NS_WString &pattern);
 
   /// Dump the state of the object.
-  virtual void dump (void) const;
+  virtual void dump () const;
+
+  ACE_ALLOC_HOOK_DECLARE;
 
 private:
   /// Interface to Name server process for NET_LOCAL namespace.
