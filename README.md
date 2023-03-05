@@ -16,5 +16,5 @@ MySQL ≥ 5.5.0+ (users of MySQL 5.7 and higher need to remove NO_ZERO_DATE, NO_
 CMake ≥ 3.2+
 OpenSSL ≥ 1.1.1g
 GCC ≥ 4.7.2 (Linux only)
-MS Visual Studio ≥ 12 (2013) (Windows only, build with VS 2019 successfully)
+MS Visual Studio 2019 successfully
 Xcode 7 (Mac only)
