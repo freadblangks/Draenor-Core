@@ -3319,15 +3319,6 @@ class Player : public Unit, public GridObject<Player>
         void SetLastPetNumber(uint32 petnumber) { m_lastpetnumber = petnumber; }
 
         /*********************************************************/
-        /***              BATTLE PET SYSTEM                    ***/
-        /*********************************************************/
-
-        BattlePetMgr& GetBattlePetMgr() { return m_battlePetMgr; }
-        BattlePetMgr const& GetBattlePetMgr() const { return m_battlePetMgr; }
-
-        void SendBattlePetJournal();
-
-        /*********************************************************/
         /***                   GROUP SYSTEM                    ***/
         /*********************************************************/
 
@@ -3509,7 +3500,8 @@ class Player : public Unit, public GridObject<Player>
         void SetBattleGroundRoles(uint8 roles) { m_bgRoles = roles; }
 
         /*********************************************************/
-        /***                 	S SYSTEM                    ***/
+        /***                  
+		S SYSTEM                    ***/
         /*********************************************************/
         void PlayScene(uint32 sceneId, WorldObject* spectator);
         /// Play standalone scene script on client side
@@ -4253,7 +4245,6 @@ class Player : public Unit, public GridObject<Player>
 
         AchievementMgr<Player> m_achievementMgr;
         ReputationMgr  m_reputationMgr;
-        BattlePetMgr   m_battlePetMgr;
 
         SpellCooldowns m_spellCooldowns;
 
