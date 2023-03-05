@@ -612,7 +612,7 @@ void KillRewarder::Reward()
 // == Player ====================================================
 // we can disable this warning for this since it only
 // causes undefined behavior when passed to the base class constructor
-Player::Player(WorldSession* session) : Unit(true), m_achievementMgr(this), m_reputationMgr(this), phaseMgr(this), m_archaeologyMgr(this), m_VignetteMgr(this)
+Player::Player(WorldSession* session) : Unit(true), m_achievementMgr(this), m_reputationMgr(this), phaseMgr(this), , m_battlePetMgr(this), m_archaeologyMgr(this), m_VignetteMgr(this)
 {
     m_Garrison = nullptr;
     m_GarrisonUpdateTimer.SetInterval(2 * IN_MILLISECONDS);
