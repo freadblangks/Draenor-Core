@@ -1,14 +1,12 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Project-Hellscream https://hellscream.org
-// Copyright (C) 2018-2020 Project-Hellscream-6.2
-// Discord https://discord.gg/CWCF3C9
+//  MILLENIUM-STUDIO
+//  Copyright 2016 Millenium-studio SARL
+//  All Rights Reserved.
 //
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
-#ifndef __BATTLE_PET_ABILITY_EFFECT_HEADER__
-#define __BATTLE_PET_ABILITY_EFFECT_HEADER__
 
 #include "Common.h"
 
@@ -69,7 +67,7 @@ struct PetBattleAbilityEffect
     bool AddTarget(uint32 target);
     bool AddTarget(PetBattleAbilityImplicitTarget target);
     void SelectTargets();
-    uint32 GetPetType();
+    int32 GetPetType();
     int32 CalculateDamage(int32 damage);
     int32 CalculateHeal(int32 heal);
     int32 CalculateHit(int32 accuracy);
@@ -77,16 +75,11 @@ struct PetBattleAbilityEffect
     int32 GetMaxHealth(uint32 target);
     int32 GetSpeed(uint32 target);
     bool SetHealth(uint32 target, int32 value);
-    bool Damage(uint32 target, int32 damage, bool p_CantBeAvoidBlockedDodged = false);
+    bool Damage(uint32 target, int32 damage, bool cantBeAvoidBlockedDodged = false);
     bool Heal(uint32 target, int32 heal);
     bool SetState(uint32 target, uint32 state, int32 value);
     int32 GetState(uint32 target, uint32 state);
-    /// Modify pet battle state increment or decrement state by ModValue
-    /// @p_Target   : Target Pet ID
-    /// @p_StateID  : ID of the state to modify
-    /// @p_ModValue : Value to add or sub
-    /// @p_Apply    : Add or sub p_ModValue
-    void ModState(uint32 p_Target, uint32 p_StateID, int32 p_ModValue, bool p_Apply = true);
+    void ModState(uint32 target, uint32 stateID, int32 modValue, bool isApply = true);
     bool AddAura(uint32 target, int32 duration, int32 maxAllowed);
     PetBattleAura* GetAura(uint32 target, uint32 ability);
     void Trigger(uint32 target, uint32 ability);
@@ -113,7 +106,6 @@ struct PetBattleAbilityEffect
     bool HandlePositiveAura();
     bool HandleHealState();
     bool HandleExtraAttackIfMoreFaster();
-    bool HandleExtraHealIfLastHitKill();
     bool HandleSplittedDamage();
     bool HandleDamageNonLetal();
     bool HandleExtraAttackIfLessFaster();
@@ -164,5 +156,3 @@ struct PetBattleAbilityEffect
     bool HandleDamageRange();
     bool HandleDamageWithBonus();
 };
-
-#endif
