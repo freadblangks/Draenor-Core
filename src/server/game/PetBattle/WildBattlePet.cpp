@@ -61,8 +61,15 @@ void WildBattlePetMgr::Load()
         uint32 CreatureEntry = fields[7].GetUInt32();
         int32 mapID = 0;
 
-        if (AreaTableEntry const* areaInfo = sAreaTableStore.LookupEntry(zoneID))
-            mapID = areaInfo->ContinentID;
+        for (uint32 l_I = 0; l_I < sAreaStore.GetNumRows(); l_I++)
+        {
+            AreaTableEntry const* l_AreaInfo = sAreaStore.LookupEntry(l_I);
+            if (l_AreaInfo && l_AreaInfo->ID == zoneID)
+            {
+                mapID = l_AreaInfo->ContinentID;
+                break;
+            }
+        }
 
         if (mapID == -1)
         {
@@ -88,8 +95,11 @@ void WildBattlePetMgr::Populate(WildPetPoolTemplate* wTemplate, WildBattlePetPoo
     if (wTemplate->Max <= pTemplate->Replaced.size())
         return;
 
-    if (sDB2Manager.HasBattlePetSpeciesFlag(wTemplate->Species, BATTLEPET_SPECIES_FLAG_UNTAMEABLE))
-        return;
+    if (BattlePetSpeciesEntry const* entry = sBattlePetSpeciesStore.LookupEntry(wTemplate->Species))
+    {
+        if ((entry->flags & BATTLEPET_SPECIES_FLAG_UNTAMEABLE) != 0)
+            return;
+    }
 
     std::vector<Creature*> availableForReplacement;
     if (!pTemplate->ToBeReplaced.empty())
@@ -119,7 +129,8 @@ void WildBattlePetMgr::ReplaceCreature(Creature* creature, WildPetPoolTemplate* 
     auto replacementCreature = new Creature();
     replacementCreature->m_isTempWorldObject = true;
 
-    if (!replacementCreature->Create(sObjectMgr->GetGenerator<HighGuid::Creature>()->Generate(), creature->GetMap(), creature->GetPhaseMask(), speciesInfo->CreatureID, 0, 0, creature->m_positionX, creature->m_positionY, creature->m_positionZ, creature->m_orientation))
+    if (!replacementCreature->Create(sObjectMgr->GenerateLowGuid(HIGHGUID_UNIT), creature->GetMap(), creature->GetPhaseMask(), speciesInfo->entry, 0, 0,
+        creature->m_positionX, creature->m_positionY, creature->m_positionZ, creature->m_orientation))
     {
         delete replacementCreature;
         return;
@@ -163,27 +174,28 @@ void WildBattlePetMgr::ReplaceCreature(Creature* creature, WildPetPoolTemplate* 
     memset(l_AbilityLevels, 0, sizeof(l_AbilityLevels));
     memset(battlePetInstance->Abilities, 0, sizeof(battlePetInstance->Abilities));
 
-    for (auto const& speciesXAbilityInfo : sBattlePetSpeciesXAbilityStore)
+    for (uint32 l_SpeciesXAbilityId = 0; l_SpeciesXAbilityId < sBattlePetSpeciesXAbilityStore.GetNumRows(); ++l_SpeciesXAbilityId)
     {
-        if (speciesXAbilityInfo->BattlePetSpeciesID != battlePetInstance->Species || speciesXAbilityInfo->RequiredLevel > battlePetInstance->Level)
+        BattlePetSpeciesXAbilityEntry const* speciesXAbilityInfo = sBattlePetSpeciesXAbilityStore.LookupEntry(l_SpeciesXAbilityId);
+        if (speciesXAbilityInfo->speciesId != battlePetInstance->Species || speciesXAbilityInfo->level > battlePetInstance->Level)
             continue;
 
-        if (l_AbilityLevels[speciesXAbilityInfo->SlotEnum])
+        if (l_AbilityLevels[speciesXAbilityInfo->tier])
         {
             int chance = 80;
-            if (l_AbilityLevels[speciesXAbilityInfo->SlotEnum] < speciesXAbilityInfo->RequiredLevel)
+            if (l_AbilityLevels[speciesXAbilityInfo->tier] < speciesXAbilityInfo->level)
                 chance = 100 - chance;
 
             if (rand() % 100 > chance)
                 continue;
         }
 
-        battlePetInstance->Abilities[speciesXAbilityInfo->SlotEnum] = speciesXAbilityInfo->BattlePetAbilityID;
-        l_AbilityLevels[speciesXAbilityInfo->SlotEnum] = speciesXAbilityInfo->RequiredLevel;
+        battlePetInstance->Abilities[speciesXAbilityInfo->tier] = speciesXAbilityInfo->abilityId;
+        l_AbilityLevels[speciesXAbilityInfo->tier] = speciesXAbilityInfo->level;
     }
 
     // Set creature flags
-    replacementCreature->SetFlag(UNIT_FIELD_NPC_FLAGS, UNIT_NPC_FLAG_WILD_BATTLE_PET);
+    replacementCreature->SetFlag(UNIT_FIELD_NPC_FLAGS, UNIT_NPC_FLAG_PETBATTLE);
     replacementCreature->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_IMMUNE_TO_NPC);
     replacementCreature->SetUInt32Value(UNIT_FIELD_WILD_BATTLE_PET_LEVEL, battlePetInstance->Level);
     replacementCreature->SetRespawnRadius(3.5f);

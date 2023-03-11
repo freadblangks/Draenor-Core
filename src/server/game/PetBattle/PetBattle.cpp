@@ -214,28 +214,30 @@ void BattlePet::UpdateAbilities()
     for (auto& Abilitie : Abilities)
         Abilitie = 0;
 
-    for (auto const& speciesXAbilityInfo : sBattlePetSpeciesXAbilityStore)
+    for (uint32 l_SpeciesXAbilityId = 0; l_SpeciesXAbilityId < sBattlePetSpeciesXAbilityStore.GetNumRows(); ++l_SpeciesXAbilityId)
     {
-        if (speciesXAbilityInfo->BattlePetSpeciesID != Species || speciesXAbilityInfo->RequiredLevel > Level || speciesXAbilityInfo->SlotEnum < 0 || speciesXAbilityInfo->SlotEnum >= MAX_PETBATTLE_ABILITIES)
+        BattlePetSpeciesXAbilityEntry const* speciesXAbilityInfo = sBattlePetSpeciesXAbilityStore.LookupEntry(l_SpeciesXAbilityId);
+
+        if (speciesXAbilityInfo->speciesId != Species || speciesXAbilityInfo->level > Level || speciesXAbilityInfo->tier < 0 || speciesXAbilityInfo->tier >= MAX_PETBATTLE_ABILITIES)
             continue;
 
-        if (speciesXAbilityInfo->RequiredLevel < 5)
-            Abilities[speciesXAbilityInfo->SlotEnum] = speciesXAbilityInfo->BattlePetAbilityID;
+        if (speciesXAbilityInfo->level < 5)
+            Abilities[speciesXAbilityInfo->tier] = speciesXAbilityInfo->abilityId;
         else
         {
-            switch (speciesXAbilityInfo->SlotEnum)
+            switch (speciesXAbilityInfo->tier)
             {
                 case 0:
                     if (Flags & BATTLEPET_FLAG_ABILITY_1_SECOND)
-                        Abilities[speciesXAbilityInfo->SlotEnum] = speciesXAbilityInfo->BattlePetAbilityID;
+                        Abilities[speciesXAbilityInfo->tier] = speciesXAbilityInfo->abilityId;
                     break;
                 case 1:
                     if (Flags & BATTLEPET_FLAG_ABILITY_2_SECOND)
-                        Abilities[speciesXAbilityInfo->SlotEnum] = speciesXAbilityInfo->BattlePetAbilityID;
+                        Abilities[speciesXAbilityInfo->tier] = speciesXAbilityInfo->abilityId;
                     break;
                 case 2:
                     if (Flags & BATTLEPET_FLAG_ABILITY_3_SECOND)
-                        Abilities[speciesXAbilityInfo->SlotEnum] = speciesXAbilityInfo->BattlePetAbilityID;
+                        Abilities[speciesXAbilityInfo->tier] = speciesXAbilityInfo->abilityId;
                     break;
                 default:
                     break;
@@ -256,38 +258,41 @@ void BattlePet::UpdateStats()
 
     for (size_t i = 0; i < 3; ++i)
         stats[i] = 1000;
-
-    for (auto const& v : sBattlePetBreedStateStore)
+    for (size_t i = 0; i < sBattlePetBreedStateStore.GetNumRows(); ++i)
     {
-        if (v->BreedID != Breed)
+        BattlePetBreedStateEntry const* breedstateinfo = sBattlePetBreedStateStore.LookupEntry(i);
+
+        if (!breedstateinfo || breedstateinfo->breed != Breed)
             continue;
 
-        switch (v->BattlePetStateID)
+        switch (breedstateinfo->stateId)
         {
             case BATTLEPET_STATE_Stat_Power:
             case BATTLEPET_STATE_Stat_Stamina:
             case BATTLEPET_STATE_Stat_Speed:
-                stats[v->BattlePetStateID - BATTLEPET_STATE_Stat_Power] = v->Value;
+                stats[breedstateinfo->stateId - BATTLEPET_STATE_Stat_Power] = breedstateinfo->value;
                 break;
             case BATTLEPET_STATE_Stat_Gender:
-                InfoGender = v->Value;
+                InfoGender = breedstateinfo->value;
                 break;
             default:
                 break;
         }
     }
 
-    for (auto const& v : sBattlePetSpeciesStateStore)
+    for (size_t i = 0; i < sBattlePetSpeciesStateStore.GetNumRows(); ++i)
     {
-        if (v->SpeciesID != Species)
+        BattlePetSpeciesStateEntry const* speciesstateinfo = sBattlePetSpeciesStateStore.LookupEntry(i);
+
+        if (!speciesstateinfo || speciesstateinfo->speciesId != Species)
             continue;
 
-        switch (v->BattlePetStateID)
+        switch (speciesstateinfo->stateId)
         {
             case BATTLEPET_STATE_Stat_Power:
             case BATTLEPET_STATE_Stat_Stamina:
             case BATTLEPET_STATE_Stat_Speed:
-                stats[v->BattlePetStateID - BATTLEPET_STATE_Stat_Power] += v->Value;
+                stats[speciesstateinfo->stateId - BATTLEPET_STATE_Stat_Power] += speciesstateinfo->value;
                 break;
             default:
                 break;
@@ -295,8 +300,9 @@ void BattlePet::UpdateStats()
     }
 
     float qualityFactor = 1.0f;
-    if (auto aualityInfo = sBattlePetBreedQualityStore[7 + Quality])
-        qualityFactor = aualityInfo->StateMultiplier;
+    BattlePetBreedQualityEntry const* aualityInfo = sBattlePetBreedQualityStore.LookupEntry(7 + Quality);
+    if (aualityInfo)
+        qualityFactor = aualityInfo->factor;
 
     for (size_t i = 0; i < 3; ++i)
         stats[i] = stats[i] * Level * qualityFactor;
@@ -375,10 +381,13 @@ int32 BattlePetInstance::GetSpeed()
 
 uint32 BattlePetInstance::GetMaxXPForCurrentLevel()
 {
-    if (auto xpTable = sBattlePetXPTable.GetRow(Level))
-        return xpTable->Xp * xpTable->Wins;
+    uint32 l_It1 = 100 + (Level - 1);
+    uint32 l_It2 = (Level - 1);
 
-    return 0;
+    if (l_It1 >= sGtBattlePetXPStore.GetNumRows() || l_It2 >= sGtBattlePetXPStore.GetNumRows())
+        return 0;
+
+    return sGtBattlePetXPStore.LookupEntry(l_It1)->value * sGtBattlePetXPStore.LookupEntry(l_It2)->value;
 }
 
 uint32 BattlePetInstance::GetXPEarn(uint32 targetPetID)
@@ -507,7 +516,7 @@ PetBattleEvent& PetBattleEvent::UpdateSpeed(int8 targetPetID, int32 p_Speed)
 PetBattleEvent& PetBattleEvent::Trigger(int8 targetPetID, uint32 p_AbilityId)
 {
     PetBattleEventUpdate update;
-    update.UpdateType = PETBATTLE_EVENT_UPDATE_TRIGGER;
+    update.UpdateType = PET_BATTLE_EFFECT_TARGET_EX_TRIGGER_ABILITY;
     update.TargetPetID = targetPetID;
     update.TriggerAbilityId = p_AbilityId;
     Updates.push_back(update);
@@ -517,9 +526,11 @@ PetBattleEvent& PetBattleEvent::Trigger(int8 targetPetID, uint32 p_AbilityId)
 
 void PetBattleAura::Apply(PetBattle* petBattle)
 {
-    for (auto const& v : sBattlePetAbilityStateStore)
+    for (uint32 i = 0; i < sBattlePetAbilityStateStore.GetNumRows(); i++)
     {
-        if (v->BattlePetAbilityID != AbilityID)
+        const BattlePetAbilityStateEntry* entry = sBattlePetAbilityStateStore.LookupEntry(i);
+
+        if (!entry || entry->abilityId != AbilityID)
             continue;
 
         uint32 flags = 0;
@@ -529,18 +540,18 @@ void PetBattleAura::Apply(PetBattle* petBattle)
         // FIXME: need more work; check weather ability, dont change state value on remove
         if (petBattle->Pets[TargetPetID]->States[BATTLEPET_STATE_Passive_Elemental])
         {
-            switch (v->BattlePetStateID)
+            switch (entry->stateId)
             {
                 case BATTLEPET_STATE_Mod_HealingTakenPercent:
                 case BATTLEPET_STATE_Stat_Accuracy:
-                    if (v->Value < 0)
+                    if (entry->value < 0)
                         flags |= PETBATTLE_EVENT_FLAG_IMMUNE;
                     break;
                 case BATTLEPET_STATE_Mechanic_IsBlind:
                 case BATTLEPET_STATE_Mechanic_IsChilled:
                 case BATTLEPET_STATE_Mechanic_IsBurning:
                 case BATTLEPET_STATE_swapOutLock:
-                    if (v->Value > 0)
+                    if (entry->value > 0)
                         flags |= PETBATTLE_EVENT_FLAG_IMMUNE;
                     break;
                 default:
@@ -548,11 +559,11 @@ void PetBattleAura::Apply(PetBattle* petBattle)
             }
         }
 
-        int32 value = petBattle->Pets[TargetPetID]->States[v->BattlePetStateID];
+        int32 value = petBattle->Pets[TargetPetID]->States[entry->stateId];
         if (!flags)
-            value += v->Value;
+            value += entry->value;
 
-        petBattle->SetPetState(CasterPetID, TargetPetID, 0, v->BattlePetStateID, value, false, flags);
+        petBattle->SetPetState(CasterPetID, TargetPetID, 0, entry->stateId, value, false, flags);
     }
 
     if (AbilityID == 577)   ///< Healthy http://www.wowhead.com/petability=576/perk-up
@@ -579,9 +590,15 @@ void PetBattleAura::Remove(PetBattle* petBattle)
     if (AbilityID == petBattle->WeatherAbilityId)
         petBattle->WeatherAbilityId = 0;
 
-    for (auto const& v : sBattlePetAbilityStateStore)
-        if (v->BattlePetAbilityID == AbilityID)
-            petBattle->SetPetState(CasterPetID, TargetPetID, 0, v->BattlePetStateID, petBattle->Pets[TargetPetID]->States[v->BattlePetStateID] - v->Value);
+    for (uint32 i = 0; i < sBattlePetAbilityStateStore.GetNumRows(); i++)
+    {
+        const BattlePetAbilityStateEntry* entry = sBattlePetAbilityStateStore.LookupEntry(i);
+
+        if (!entry || entry->abilityId != AbilityID)
+            continue;
+
+        petBattle->SetPetState(CasterPetID, TargetPetID, 0, entry->stateId, petBattle->Pets[TargetPetID]->States[entry->stateId] - entry->value);
+    }
 
     if (AbilityID == 577)   ///< Healthy http://www.wowhead.com/petability=576/perk-up
     {
@@ -610,7 +627,8 @@ void PetBattleAura::Process(PetBattle* petBattle)
         return;
     }
 
-    if (auto abilityInfo = sBattlePetAbilityStore.LookupEntry(AbilityID))
+    BattlePetAbilityEntry const* abilityInfo = sBattlePetAbilityStore.LookupEntry(AbilityID);
+    if (abilityInfo)
     {
         PetBattleAbilityTurn abilityTurn;
         memset(&abilityTurn, 0, sizeof abilityTurn);
@@ -618,29 +636,32 @@ void PetBattleAura::Process(PetBattle* petBattle)
         uint8 turnCount = 0;
         uint8 maxTurnID = 0;
 
-        for (auto const& abilityTurnInfo : sBattlePetAbilityTurnStore)
+        for (uint32 l_AbilityTurnId = 0; l_AbilityTurnId < sBattlePetAbilityTurnStore.GetNumRows(); ++l_AbilityTurnId)
         {
-            if (abilityTurnInfo->BattlePetAbilityID != AbilityID)
+            BattlePetAbilityTurnEntry const* abilityTurnInfo = sBattlePetAbilityTurnStore.LookupEntry(l_AbilityTurnId);
+            if (!abilityTurnInfo || abilityTurnInfo->abilityId != AbilityID)
                 continue;
 
             turnCount++;
-            maxTurnID = std::max(maxTurnID, abilityTurnInfo->OrderIndex);
+            maxTurnID = std::max(maxTurnID, abilityTurnInfo->turn);
         }
 
-        for (auto const& abilityTurnInfo : sBattlePetAbilityTurnStore)
+        for (uint32 l_AbilityTurnId = 0; l_AbilityTurnId < sBattlePetAbilityTurnStore.GetNumRows(); ++l_AbilityTurnId)
         {
-            if (abilityTurnInfo->BattlePetAbilityID != AbilityID)
+            BattlePetAbilityTurnEntry const* abilityTurnInfo = sBattlePetAbilityTurnStore.LookupEntry(l_AbilityTurnId);
+            if (!abilityTurnInfo || abilityTurnInfo->abilityId != AbilityID)
                 continue;
 
-            if (abilityTurnInfo->OrderIndex != Turn && turnCount != 1 && maxTurnID != 1)
+            if (abilityTurnInfo->turn != Turn && turnCount != 1 && maxTurnID != 1)
                 continue;
 
-            if (abilityTurnInfo->TurnTypeEnum && abilityTurnInfo->EventTypeEnum != PETBATTLE_ABILITY_TURN0_PROC_ON_TURN)
+            if (abilityTurnInfo->hasProcType && abilityTurnInfo->procType != PETBATTLE_ABILITY_TURN0_PROC_ON_TURN)
                 continue;
 
-            for (auto const& abilityEffectInfo : sBattlePetAbilityEffectStore)
+            for (uint32 l_AbilityEffectId = 0; l_AbilityEffectId < sBattlePetAbilityEffectStore.GetNumRows(); ++l_AbilityEffectId)
             {
-                if (abilityEffectInfo->BattlePetAbilityTurnID != abilityTurnInfo->ID)
+                BattlePetAbilityEffectEntry const* abilityEffectInfo = sBattlePetAbilityEffectStore.LookupEntry(l_AbilityEffectId);
+                if (!abilityEffectInfo || abilityEffectInfo->abilityTurnId != abilityTurnInfo->id)
                     continue;
 
                 PetBattleAbilityEffect effect;
@@ -657,7 +678,7 @@ void PetBattleAura::Process(PetBattle* petBattle)
                 auto itr = petBattle->RoundEvents.end();
 
                 if (!effect.Execute())
-                    abilityTurn.ChainFailure |= 1 << (abilityEffectInfo->OrderIndex - 1);
+                    abilityTurn.ChainFailure |= 1 << (abilityEffectInfo->effectIndex - 1);
 
                 /// Update "buff turn" on all event triggered by the current ability effect
                 for (; itr != petBattle->RoundEvents.end(); ++itr)
@@ -714,7 +735,7 @@ bool PetBattleTeam::Update()
 
         if (availablesPets.empty())
         {
-            PetBattleInstance->Finish(!thisTeamID, false, false);
+            PetBattleInstance->Finish(!thisTeamID, false);
             return true;
         }
 
@@ -848,8 +869,11 @@ uint8 PetBattleTeam::CanCatchOpponentTeamFrontPet()
     if (!targetPet || !targetPet->IsAlive())
         return 0;
 
-    if (sDB2Manager.HasBattlePetSpeciesFlag(targetPet->Species, BATTLEPET_SPECIES_FLAG_UNTAMEABLE))
-        return 0;
+    if (BattlePetSpeciesEntry const* entry = sBattlePetSpeciesStore.LookupEntry(targetPet->Species))
+    {
+        if ((entry->flags & BATTLEPET_SPECIES_FLAG_UNTAMEABLE) != 0)
+            return 0;
+    }
 
     if (targetPet->Health * 100 / targetPet->InfoMaxHealth >= 35)
         return PETBATTLE_TEAM_CATCH_FLAG_TOO_MUCH_HP;
@@ -1006,19 +1030,25 @@ void PetBattle::AddPet(uint32 teamID, std::shared_ptr<BattlePetInstance> pet)
         pet->Lockdowns[i] = 0;
     }
 
-    for (auto breedStateInfo : sBattlePetBreedStateStore)
-        if (breedStateInfo->BreedID == pet->Breed)
-            pet->States[breedStateInfo->BattlePetStateID] += breedStateInfo->Value;
-
-    for (auto speciesStateInfo : sBattlePetSpeciesStateStore)
+    for (size_t i = 0; i < sBattlePetBreedStateStore.GetNumRows(); ++i)
     {
-        if (speciesStateInfo->SpeciesID != pet->Species)
+        BattlePetBreedStateEntry const* breedStateInfo = sBattlePetBreedStateStore.LookupEntry(i);
+        if (!breedStateInfo || breedStateInfo->breed != pet->Breed)
             continue;
 
-        if (speciesStateInfo->BattlePetStateID > NUM_BATTLEPET_STATES)
+        pet->States[breedStateInfo->stateId] += breedStateInfo->value;
+    }
+
+    for (size_t i = 0; i < sBattlePetSpeciesStateStore.GetNumRows(); ++i)
+    {
+        BattlePetSpeciesStateEntry const* speciesStateInfo = sBattlePetSpeciesStateStore.LookupEntry(i);
+        if (speciesStateInfo->speciesId != pet->Species)
             continue;
 
-        pet->States[speciesStateInfo->BattlePetStateID] += speciesStateInfo->Value;
+        if (speciesStateInfo->stateId > NUM_BATTLEPET_STATES)
+            continue;
+
+        pet->States[speciesStateInfo->stateId] += speciesStateInfo->value;
     }
 
     // Primary stats is scaled with level and quality
@@ -1311,10 +1341,7 @@ void PetBattle::Finish(uint32 winnerTeamID, bool aborted)
 
             if (winnerTeamID == currentTeamID)
             {
-                auto speciesInfo = sDB2Manager.GetSpeciesByCreatureID(InitialWildPetGUID.GetEntry());
-                player->UpdateAchievementCriteria(ACHIEVEMENT_CRITERIA_TYPE_WIN_PETBATTLE, BattleType != PETBATTLE_TYPE_PVE, 0, speciesInfo ? speciesInfo->ID : 0);
-                if (speciesInfo)
-                    player->QuestObjectiveSatisfy(speciesInfo->ID, 1, QUEST_OBJECTIVE_DEFEATBATTLEPET, InitialWildPetGUID);
+                player->UpdateAchievementCriteria(ACHIEVEMENT_CRITERIA_TYPE_WIN_PETBATTLE, 1);
             }
 
             if (BattleType == PETBATTLE_TYPE_PVE && PveBattleType == PVE_PETBATTLE_WILD)
@@ -1373,8 +1400,9 @@ void PetBattle::Finish(uint32 winnerTeamID, bool aborted)
 
             player->GetSession()->SendPetBattleFinalRound(this);
             player->SetControlled(false, UNIT_STATE_ROOT);
-            player->AddDelayedEvent(10, [player]() -> void { if (player) player->SummonLastSummonedBattlePet(); });
-            player->_petBattleId.Clear();
+            player->SummonLastSummonedBattlePet();
+            player->ReloadPetBattles();
+            player->_petBattleId = 0;
             player->GetSession()->SendBattlePetJournal();
 
             if (BattleType == PETBATTLE_TYPE_PVP_MATCHMAKING)
@@ -1396,7 +1424,7 @@ void PetBattle::Finish(uint32 winnerTeamID, bool aborted)
 
                     wildPet->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_PACIFIED | UNIT_FLAG_IMMUNE_TO_PC);
                     wildPet->SetControlled(false, UNIT_STATE_ROOT);
-                    wildPet->_petBattleId.Clear();
+                    wildPet->_petBattleId = 0;
 
                     sWildBattlePetMgr->LeaveBattle(wildPet, winnerTeamID != PETBATTLE_PVE_TEAM_ID);
                 }
@@ -1523,13 +1551,19 @@ bool PetBattle::CanCast(uint32 teamID, uint32 abilityID)
 
 void PetBattle::PrepareCast(uint32 teamID, uint32 abilityID)
 {
-    // PetBattleAbilityTurn abilityTurn;
-    // memset(&abilityTurn, 0, sizeof(abilityTurn));
+    BattlePetAbilityEntry const* l_AbilityInfo = sBattlePetAbilityStore.LookupEntry(abilityID);
+    PetBattleAbilityTurn abilityTurn;
+    memset(&abilityTurn, 0, sizeof(abilityTurn));
 
     uint8 maxTurnID = 0;
-    for (auto const& abilityTurnInfo : sBattlePetAbilityTurnStore)
-        if (abilityTurnInfo->BattlePetAbilityID == abilityID)
-            maxTurnID = std::max(maxTurnID, abilityTurnInfo->OrderIndex);
+    for (uint32 l_AbilityTurnId = 0; l_AbilityTurnId < sBattlePetAbilityTurnStore.GetNumRows(); ++l_AbilityTurnId)
+    {
+        BattlePetAbilityTurnEntry const* abilityTurnInfo = sBattlePetAbilityTurnStore.LookupEntry(l_AbilityTurnId);
+        if (!abilityTurnInfo || abilityTurnInfo->abilityId != abilityID)
+            continue;
+
+        maxTurnID = std::max(maxTurnID, abilityTurnInfo->turn);
+    }
 
     Teams[teamID]->ActiveAbilityId = abilityID;
     Teams[teamID]->activeAbilityTurn = 1;
@@ -1552,24 +1586,34 @@ PetBattleCastResult PetBattle::Cast(uint32 casterPetID, uint32 abilityID, uint32
 
     // States
     if (!p_Turn && p_TriggerFlag == PETBATTLE_CAST_TRIGGER_NONE)
-        for (auto abilityStateInfo : sBattlePetAbilityStateStore)
-            if (abilityStateInfo->BattlePetAbilityID == abilityID)
-                SetPetState(casterPetID, casterPetID, 0, abilityStateInfo->BattlePetStateID, Pets[casterPetID]->States[abilityStateInfo->BattlePetStateID] + abilityStateInfo->Value);
+    if (!p_Turn && p_TriggerFlag == PETBATTLE_CAST_TRIGGER_NONE)
+    {
+        for (uint32 l_AbilityStateId = 0; l_AbilityStateId != sBattlePetAbilityStateStore.GetNumRows(); ++l_AbilityStateId)
+        {
+            BattlePetAbilityStateEntry const* abilityStateInfo = sBattlePetAbilityStateStore.LookupEntry(l_AbilityStateId);
+            if (abilityStateInfo->abilityId == abilityID)
+                continue;
 
+            SetPetState(casterPetID, casterPetID, 0, abilityStateInfo->stateId, Pets[casterPetID]->States[abilityStateInfo->stateId] + abilityStateInfo->value);
+        }
+    }
     PetBattleAbilityTurn abilityTurn;
     memset(&abilityTurn, 0, sizeof abilityTurn);
 
-    for (auto abilityTurnInfo : sBattlePetAbilityTurnStore)
+    for (uint32 l_AbilityTurnId = 0; l_AbilityTurnId < sBattlePetAbilityTurnStore.GetNumRows(); ++l_AbilityTurnId)
     {
-        if (abilityTurnInfo->BattlePetAbilityID != abilityID || abilityTurnInfo->OrderIndex != p_Turn)
+        BattlePetAbilityTurnEntry const* abilityTurnInfo = sBattlePetAbilityTurnStore.LookupEntry(l_AbilityTurnId);
+        if (abilityTurnInfo->abilityId != abilityID || abilityTurnInfo->turn != p_Turn)
             continue;
 
-        if (abilityTurnInfo->OrderIndex == 0 && abilityTurnInfo->EventTypeEnum != int8(p_Turn0ProcCondition))
+        if (abilityTurnInfo->turn == 0 && abilityTurnInfo->procType != int8(p_Turn0ProcCondition))
             continue;
 
-        for (auto abilityEffectInfo : sBattlePetAbilityEffectStore)
+        for (uint32 l_AbilityEffectId = 0; l_AbilityEffectId < sBattlePetAbilityEffectStore.GetNumRows(); ++l_AbilityEffectId)
         {
-            if (abilityEffectInfo->BattlePetAbilityTurnID != abilityTurnInfo->ID)
+            BattlePetAbilityEffectEntry const* abilityEffectInfo = sBattlePetAbilityEffectStore.LookupEntry(l_AbilityEffectId);
+
+            if (abilityEffectInfo->abilityTurnId != abilityTurnInfo->id)
                 continue;
 
             PetBattleAbilityEffect abilityEffect;
@@ -1584,7 +1628,7 @@ PetBattleCastResult PetBattle::Cast(uint32 casterPetID, uint32 abilityID, uint32
             abilityEffect.SelectTargets();
 
             if (!abilityEffect.Execute())
-                abilityTurn.ChainFailure |= 1 << (abilityEffectInfo->OrderIndex - 1);
+                abilityTurn.ChainFailure |= 1 << (abilityEffectInfo->effectIndex - 1);
 
             if (abilityEffect.StopChain)
                 break;
