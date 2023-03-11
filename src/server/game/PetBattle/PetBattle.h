@@ -354,7 +354,6 @@ public:
     uint32 OldLevel;
     uint32 OldXP;
 
-    std::vector<uint32> RoundDeadPets;                                      ///< Pets who died during this round
     std::shared_ptr<BattlePet> OriginalBattlePet;
     ObjectGuid OriginalCreature;
 };
@@ -609,6 +608,7 @@ public:
 
     std::list<PetBattleAura*> PetAuras;                                             ///< Current battle pets auras
     uint32 WeatherAbilityId;                                                ///< Only one weather at a time on battle
+    std::vector<uint32> RoundDeadPets;                                      ///< Pets who died during this round
 
     int32 WinnerTeamId;
     std::map<uint8, bool> FightedPets;

@@ -551,8 +551,8 @@ bool Map::AddToMap(T* obj)
     //also, trigger needs to cast spell, if not update, cannot see visual
     obj->UpdateObjectVisibility(true);
 
-    if (obj->ToCreature())
-        sWildBattlePetMgr->OnAddToMap(obj->ToCreature());
+    if (Creature* creature = obj->ToCreature())
+        AddBattlePet(creature);
 
     return true;
 }
@@ -775,7 +775,7 @@ template<class T>
 void Map::RemoveFromMap(T *obj, bool remove)
 {
     if (Creature* creature = obj->ToCreature())
-        sWildBattlePetMgr->OnRemoveToMap(creature);
+        RemoveBattlePet(creature);
 
     obj->RemoveFromWorld();
     if (obj->isActiveObject())
@@ -3679,10 +3679,10 @@ void Map::DepopulateBattlePet()
             sWildBattlePetMgr->Depopulate(&iter.second);
 }
 
-WildBattlePetPool* GetWildBattlePetPool(Creature* creature)
-{
-    if (!creature)
-        return nullptr;
+//WildBattlePetPool* GetWildBattlePetPool(Creature* creature)
+//{
+    //if (!creature)
+        //return nullptr;
 
-    return &m_wildBattlePetPool[creature->GetCurrentZoneID()][creature->GetEntry()];
-}
+    //return &m_wildBattlePetPool[creature->GetCurrentZoneID()][creature->GetEntry()];
+//}
