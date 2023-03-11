@@ -1296,9 +1296,6 @@ class ObjectMgr
         void LoadSpellInvalid();
         void LoadSpellStolen();
         void LoadDisabledEncounters();
-        void LoadBattlePetTemplate();
-        void LoadBattlePetNpcTeamMember();
-        void ComputeBattlePetSpawns();
 
 #ifndef CROSS
         void LoadGuildChallengeRewardInfo();
