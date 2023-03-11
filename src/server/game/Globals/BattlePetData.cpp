@@ -236,8 +236,8 @@ void BattlePetDataStoreMgr::ComputeBattlePetSpawns()
 
             uint32 speciesID = 0;
 
-            if (auto speciesInfo = GetSpeciesByCreatureID(itr->first))
-                speciesID = speciesInfo->ID;
+            //if (auto speciesInfo = GetSpeciesByCreatureID(itr->first))
+                //speciesID = speciesInfo->ID;
 
             if (speciesID == 0 || replace == 0)
             {

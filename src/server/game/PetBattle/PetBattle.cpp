@@ -103,40 +103,6 @@ void BattlePet::Save(SQLTransaction& trans)
     needSave = false;
 }
 
-void BattlePet::AddToPlayer(Player* player, SQLTransaction& trans)
-{
-    AccountID = player->GetSession()->GetAccountId();
-    //ObjectGuid::LowType guidlow = sObjectMgr->GetGenerator<HighGuid::BattlePet>()->Generate();
-    //JournalID = ObjectGuid::Create<HighGuid::BattlePet>(guidlow);
-
-    PreparedStatement* statement = LoginDatabase.GetPreparedStatement(LOGIN_INS_PETBATTLE);
-    //statement->setUInt64(0, guidlow);
-    statement->setInt32(1, Slot);
-    statement->setString(2, Name);
-    statement->setUInt32(3, NameTimeStamp);
-    statement->setUInt32(4, Species);
-    statement->setUInt32(5, Quality);
-    statement->setUInt32(6, Breed);
-    statement->setUInt32(7, Level);
-    statement->setUInt32(8, XP);
-    statement->setUInt32(9, DisplayModelID);
-    statement->setInt32(10, Health);
-    statement->setUInt32(11, Flags);
-    statement->setInt32(12, InfoPower);
-    statement->setInt32(13, InfoMaxHealth);
-    statement->setInt32(14, InfoSpeed);
-    statement->setInt32(15, InfoGender);
-    statement->setInt32(16, AccountID);
-    statement->setString(17, DeclinedNames[0]);
-    statement->setString(18, DeclinedNames[1]);
-    statement->setString(19, DeclinedNames[2]);
-    statement->setString(20, DeclinedNames[3]);
-    statement->setString(21, DeclinedNames[4]);
-    trans->Append(statement);
-
-    needSave = false;
-}
-
 void BattlePet::AddToPlayer(Player* p_Player, SQLTransaction& p_Transaction)
 {
     PreparedStatement* l_Statement = LoginDatabase.GetPreparedStatement(LOGIN_INS_PETBATTLE);

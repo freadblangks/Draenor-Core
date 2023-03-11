@@ -244,13 +244,18 @@ void WildBattlePetMgr::EnableWildBattle(Creature* creature)
 
     uint8 minlevel = temp->minlevel;
     uint8 maxlevel = temp->maxlevel;
-    if (AreaTableEntry const* areaInfo = sAreaTableStore.LookupEntry(creature->GetCurrentZoneID()))
-    {
-        if (minlevel < areaInfo->WildBattlePetLevelMin)
-            minlevel = areaInfo->WildBattlePetLevelMin;
-        if (maxlevel < areaInfo->WildBattlePetLevelMax)
-            maxlevel = areaInfo->WildBattlePetLevelMax;
-    }
+
+    //for (uint32 l_I = 0; l_I < sAreaStore.GetNumRows(); l_I++)
+    //{
+        //AreaTableEntry const* areaInfo = sAreaStore.LookupEntry(l_I);
+        //if (areaInfo && areaInfo->ID == creature->GetCurrentZoneID())
+        //{
+            //if (minlevel < areaInfo->WildBattlePetLevelMin)
+                //minlevel = areaInfo->WildBattlePetLevelMin;
+            //if (maxlevel < areaInfo->WildBattlePetLevelMax)
+               // maxlevel = areaInfo->WildBattlePetLevelMax;
+        //}
+    //}
 
     // Select level
     battlePetInstance->Level = std::max(urand(minlevel, maxlevel), static_cast<uint32>(1));
@@ -266,23 +271,24 @@ void WildBattlePetMgr::EnableWildBattle(Creature* creature)
     memset(l_AbilityLevels, 0, sizeof(l_AbilityLevels));
     memset(battlePetInstance->Abilities, 0, sizeof(battlePetInstance->Abilities));
 
-    for (auto const& speciesXAbilityInfo : sBattlePetSpeciesXAbilityStore)
+    for (uint32 l_SpeciesXAbilityId = 0; l_SpeciesXAbilityId < sBattlePetSpeciesXAbilityStore.GetNumRows(); ++l_SpeciesXAbilityId)
     {
-        if (speciesXAbilityInfo->BattlePetSpeciesID != battlePetInstance->Species || speciesXAbilityInfo->RequiredLevel > battlePetInstance->Level)
+        BattlePetSpeciesXAbilityEntry const* speciesXAbilityInfo = sBattlePetSpeciesXAbilityStore.LookupEntry(l_SpeciesXAbilityId);
+        if (speciesXAbilityInfo->speciesId != battlePetInstance->Species || speciesXAbilityInfo->level > battlePetInstance->Level)
             continue;
 
-        if (l_AbilityLevels[speciesXAbilityInfo->SlotEnum])
+        if (l_AbilityLevels[speciesXAbilityInfo->tier])
         {
             int chance = 80;
-            if (l_AbilityLevels[speciesXAbilityInfo->SlotEnum] < speciesXAbilityInfo->RequiredLevel)
+            if (l_AbilityLevels[speciesXAbilityInfo->tier] < speciesXAbilityInfo->level)
                 chance = 100 - chance;
 
             if (rand() % 100 > chance)
                 continue;
         }
 
-        battlePetInstance->Abilities[speciesXAbilityInfo->SlotEnum] = speciesXAbilityInfo->BattlePetAbilityID;
-        l_AbilityLevels[speciesXAbilityInfo->SlotEnum] = speciesXAbilityInfo->RequiredLevel;
+        battlePetInstance->Abilities[speciesXAbilityInfo->tier] = speciesXAbilityInfo->abilityId;
+        l_AbilityLevels[speciesXAbilityInfo->tier] = speciesXAbilityInfo->level;
     }
 
     // Set creature flags
@@ -293,7 +299,7 @@ void WildBattlePetMgr::EnableWildBattle(Creature* creature)
 void WildBattlePetMgr::Depopulate(WildBattlePetPool* pTemplate)
 {
     std::map<ObjectGuid, ObjectGuid> creatures = pTemplate->ReplacedRelation;
-    for (auto & creature : creatures)
+    for (auto& creature : creatures)
     {
         Unit* unit = sObjectAccessor->FindUnit(creature.first);
         if (unit && unit->ToCreature())

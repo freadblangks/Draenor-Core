@@ -3268,12 +3268,12 @@ void Player::ProcessDelayedOperations()
             if (teamID == PETBATTLE_TEAM_2)
                 std::swap(request.TeamPosition[PETBATTLE_TEAM_1], request.TeamPosition[PETBATTLE_TEAM_2]);
 
-            matchMakingRequest.PetBattleCenterPosition.m_positionZ = GetMap()->GetHeight(matchMakingRequest.PetBattleCenterPosition.GetPositionX(), matchMakingRequest.PetBattleCenterPosition.GetPositionZ(), MAX_HEIGHT);
+            battle->PvPMatchMakingRequest.PetBattleCenterPosition[2] = GetMap()->GetHeight(battle->PvPMatchMakingRequest.PetBattleCenterPosition[0], battle->PvPMatchMakingRequest.PetBattleCenterPosition[1], MAX_HEIGHT);
 
             GetSession()->SendPetBattleFinalizeLocation(&request);
 
             SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_PACIFIED | UNIT_FLAG_IMMUNE_TO_NPC);
-            SetFacingTo(GetAngle(matchMakingRequest.TeamPosition[!teamID].GetPositionX(), matchMakingRequest.TeamPosition[!teamID].GetPositionY()));
+            SetFacingTo(GetAngle(battle->PvPMatchMakingRequest.TeamPosition[!teamID][0], battle->PvPMatchMakingRequest.TeamPosition[!teamID][1]));
             SetRooted(true);
 
             if (!battle->PvPMatchMakingRequest.IsPvPReady[teamID])

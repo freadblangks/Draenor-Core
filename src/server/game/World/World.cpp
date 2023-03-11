@@ -2339,7 +2339,7 @@ void World::SetInitialWorldSettings()
     if (uint32 realmId = sConfigMgr->GetIntDefault("RealmID", 0)) // 0 reserved for auth
         sLog->SetRealmId(realmId);
 
-    sWildBattlePetMgr->PopulateAll();
+    //sWildBattlePetMgr->PopulateAll();
 }
 
 void World::DetectDBCLang()
