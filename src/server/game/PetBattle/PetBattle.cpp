@@ -7,7 +7,6 @@
 #include "ObjectMgr.h"
 #include "ObjectAccessor.h"
 #include "ScriptMgr.h"
-//#include "GameTables.h"
 
 #define PETBATTLE_UPDATE_INTERVAL 300
 
@@ -1230,7 +1229,7 @@ void PetBattle::ProceedRound()
     RoundStatus = PETBATTLE_ROUND_FINISHED;
 }
 
-void PetBattle::Finish(uint32 winnerTeamID, bool aborted, bool ignoreAbandonPenalty)
+void PetBattle::Finish(uint32 winnerTeamID, bool aborted)
 {
     if (aborted)
         if (Pets[Teams[winnerTeamID]->ActivePetID] && Pets[Teams[winnerTeamID]->ActivePetID]->IsAlive() && Pets[Teams[winnerTeamID]->ActivePetID]->States[BATTLEPET_STATE_Mechanic_IsWebbed])
@@ -1260,7 +1259,7 @@ void PetBattle::Finish(uint32 winnerTeamID, bool aborted, bool ignoreAbandonPena
                 if (currentPet->Health < 0)
                     currentPet->Health = 0;
 
-                if (ignoreAbandonPenalty && aborted && winnerTeamID != currentTeamID)
+                if (aborted && winnerTeamID != currentTeamID)
                     currentPet->Health = AddPct(currentPet->Health, -GetForfeitHealthPenalityPct());
 
                 if (winnerTeamID == currentTeamID && availablePetCount && BattleType == PETBATTLE_TYPE_PVE && currentPet->IsAlive() && currentPet->Level < BATTLEPET_MAX_LEVEL && FightedPets.find(currentPet->ID) != FightedPets.end())
@@ -1292,7 +1291,7 @@ void PetBattle::Finish(uint32 winnerTeamID, bool aborted, bool ignoreAbandonPena
                         if (auto speciesInfo = sBattlePetSpeciesStore.LookupEntry(currentPet->Species))
                         {
                             player->UpdateAchievementCriteria(ACHIEVEMENT_CRITERIA_TYPE_LEVELUP_BATTLEPET, currentPet->Level, speciesInfo->type, currentPet->Species);
-                            player->UpdateAchievementCriteria(CRITERIA_TYPE_LEVEL_BATTLE_PET_CREDIT, speciesInfo->id, currentPet->Level, currentPet->Species);
+                            //player->UpdateAchievementCriteria(CRITERIA_TYPE_LEVEL_BATTLE_PET_CREDIT, speciesInfo->id, currentPet->Level, currentPet->Species);
                         }
 
                         if (currentPet->Level >= 3)

@@ -67,6 +67,18 @@ enum ePetBattleQualities
     BATTLEPET_QUALITY_INHERITED = 7,
 };
 
+enum PetBattleEffectTargetType
+{
+    PET_BATTLE_EFFECT_TARGET_EX_FRONT_PET       = 0,
+    PET_BATTLE_EFFECT_TARGET_EX_AURA            = 1,
+    PET_BATTLE_EFFECT_TARGET_EX_STATE           = 2,
+    PET_BATTLE_EFFECT_TARGET_EX_PET             = 3,
+    PET_BATTLE_EFFECT_TARGET_EX_STAT_CHANGE     = 4,
+    PET_BATTLE_EFFECT_TARGET_EX_TRIGGER_ABILITY = 5,
+    PET_BATTLE_EFFECT_TARGET_EX_ABILITY_CHANGE  = 6,
+    PET_BATTLE_EFFECT_TARGET_EX_NPC_EMOTE       = 7
+};
+
 enum eBattlePetTypes : int8
 {
     BATTLEPET_PETTYPE_ALL           = -1,
@@ -457,8 +469,9 @@ struct PetBattleRequest
 
     ObjectGuid RequesterGuid;
     ObjectGuid OpponentGuid;
-    Position TeamPosition[MAX_PETBATTLE_TEAM] = { };
-    Position PetBattleCenterPosition;
+	float TeamPosition[MAX_PETBATTLE_TEAM][3];  ///< Teams position
+    float PetBattleCenterPosition[3];
+    float BattleFacing;                         ///< unk
     uint32 LocationResult = false;
     PetBattleType RequestType = PETBATTLE_TYPE_PVE;
     bool IsPvPReady[MAX_PETBATTLE_TEAM] = { };
@@ -553,7 +566,7 @@ public:
 
     void Begin();
     void ProceedRound();
-    void Finish(uint32 winnerTeamID, bool aborted, bool ignoreAbandonPenalty);
+    void Finish(uint32 winnerTeamID, bool aborted);
 
     void Update(uint32 diff);
 

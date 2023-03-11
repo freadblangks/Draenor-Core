@@ -101,9 +101,20 @@ public:
 
             PetBattleRequest* battleRequest = sPetBattleSystem->CreateRequest(player->GetGUID());
             battleRequest->OpponentGuid = creature->GetGUID();
-            battleRequest->PetBattleCenterPosition = battleCenterPosition;
-            battleRequest->TeamPosition[PETBATTLE_TEAM_1] = playerPosition;
-            battleRequest->TeamPosition[PETBATTLE_TEAM_2] = trainerPosition;
+
+            battleRequest->PetBattleCenterPosition[0] = battleCenterPosition.m_positionX;
+            battleRequest->PetBattleCenterPosition[1] = battleCenterPosition.m_positionY;
+            battleRequest->PetBattleCenterPosition[2] = battleCenterPosition.m_positionZ;
+            battleRequest->BattleFacing = battleCenterPosition.m_orientation;
+
+            battleRequest->TeamPosition[PETBATTLE_TEAM_1][0] = playerPosition.m_positionX;
+            battleRequest->TeamPosition[PETBATTLE_TEAM_1][1] = playerPosition.m_positionY;
+            battleRequest->TeamPosition[PETBATTLE_TEAM_1][2] = playerPosition.m_positionZ;
+
+            battleRequest->TeamPosition[PETBATTLE_TEAM_2][0] = trainerPosition.m_positionX;
+            battleRequest->TeamPosition[PETBATTLE_TEAM_2][1] = trainerPosition.m_positionY;
+            battleRequest->TeamPosition[PETBATTLE_TEAM_2][2] = trainerPosition.m_positionZ;
+
             battleRequest->RequestType = PETBATTLE_TYPE_PVE;
 
             eBattlePetRequests canEnterResult = sPetBattleSystem->CanPlayerEnterInPetBattle(player, battleRequest);

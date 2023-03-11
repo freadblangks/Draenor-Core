@@ -9,13 +9,14 @@
 
 struct PetBattleMembersPositions
 {
-    PetBattleMembersPositions(uint32 mapID, uint32 team, Position const& firstPosition, Position const& secondPosition) : MapID(mapID), Team(team)
+    PetBattleMembersPositions(uint32 p_MapID, uint32 p_Team, G3D::Vector3 firstPosition, G3D::Vector3 secondPosition)
+        : MapID(p_MapID), Team(p_Team)
     {
         Positions[0] = firstPosition;
         Positions[1] = secondPosition;
     }
 
-    Position Positions[2];
+    G3D::Vector3 Positions[2];
     uint32 MapID;
     uint32 Team;
 };
@@ -358,17 +359,31 @@ void PetBattleSystem::Update(uint32 diff)
 
                             auto battle = sPetBattleSystem->CreateBattle();
                             battle->PvPMatchMakingRequest.LocationResult = 0;
-                            battle->PvPMatchMakingRequest.TeamPosition[PETBATTLE_TEAM_1] = location.Positions[0];
-                            battle->PvPMatchMakingRequest.TeamPosition[PETBATTLE_TEAM_2] = location.Positions[1];
+                            battle->PvPMatchMakingRequest.TeamPosition[PETBATTLE_TEAM_1][0] = location.Positions[0].x;
+                            battle->PvPMatchMakingRequest.TeamPosition[PETBATTLE_TEAM_1][1] = location.Positions[0].y;
+                            battle->PvPMatchMakingRequest.TeamPosition[PETBATTLE_TEAM_1][2] = location.Positions[0].z;
+                            battle->PvPMatchMakingRequest.TeamPosition[PETBATTLE_TEAM_2][0] = location.Positions[1].x;
+                            battle->PvPMatchMakingRequest.TeamPosition[PETBATTLE_TEAM_2][1] = location.Positions[1].y;
+                            battle->PvPMatchMakingRequest.TeamPosition[PETBATTLE_TEAM_2][2] = location.Positions[1].z;
 
-                            Position battleCenterPosition((location.Positions[0].GetPositionX() + location.Positions[1].GetPositionX()) / 2, (location.Positions[0].GetPositionY() + location.Positions[1].GetPositionY()) / 2, (location.Positions[0].GetPositionZ() + location.Positions[1].GetPositionZ()) / 2);
-                            battle->PvPMatchMakingRequest.PetBattleCenterPosition = battleCenterPosition;
+                            Position battleCenterPosition;
+                            {
+                                battleCenterPosition.m_positionX = (location.Positions[0].x + location.Positions[1].x) / 2;
+                                battleCenterPosition.m_positionY = (location.Positions[0].y + location.Positions[1].y) / 2;
+                                battleCenterPosition.m_positionZ = (location.Positions[0].z + location.Positions[1].z) / 2;
+                            }
+                            battle->PvPMatchMakingRequest.PetBattleCenterPosition[0] = battleCenterPosition.m_positionX;
+                            battle->PvPMatchMakingRequest.PetBattleCenterPosition[1] = battleCenterPosition.m_positionY;
+                            battle->PvPMatchMakingRequest.PetBattleCenterPosition[2] = battleCenterPosition.m_positionZ;
 
                             auto const& l_One = location.Positions[PETBATTLE_TEAM_1];
                             auto const& l_Second = location.Positions[PETBATTLE_TEAM_2];
 
-                            float angle = atan2(l_Second.GetPositionY() - l_One.GetPositionY(), l_Second.GetPositionX() - l_One.GetPositionX());
-                            battle->PvPMatchMakingRequest.PetBattleCenterPosition.m_orientation = (angle >= 0) ? angle : 2 * M_PI + angle;
+                            float l_Dx = l_Second.x - l_One.x;
+                            float l_Dy = l_Second.y - l_One.y;
+
+                            float l_Angle = atan2(l_Dy, l_Dx);
+                            battle->PvPMatchMakingRequest.BattleFacing = (l_Angle >= 0) ? l_Angle : 2 * M_PI + l_Angle;
 
                             for (size_t i = 0; i < MAX_PETBATTLE_SLOTS; ++i)
                             {
@@ -439,12 +454,12 @@ void PetBattleSystem::Update(uint32 diff)
                             leftPlayer->SetBattlegroundEntryPoint();
                             leftPlayer->ScheduleDelayedOperation(DELAYED_PET_BATTLE_INITIAL);
                             leftPlayer->SaveRecallPosition();
-                            leftPlayer->TeleportTo(location.MapID, location.Positions[PETBATTLE_TEAM_1].GetPositionX() + 0.01f, location.Positions[PETBATTLE_TEAM_1].GetPositionY() + 0.01f, location.Positions[PETBATTLE_TEAM_1].GetPositionZ() + 0.01f, rightPlayer->GetOrientation() - M_PI);
+                            leftPlayer->TeleportTo(location.MapID, location.Positions[PETBATTLE_TEAM_1].x + 0.01f, location.Positions[PETBATTLE_TEAM_1].y + 0.01f, location.Positions[PETBATTLE_TEAM_1].z + 0.01f, rightPlayer->GetOrientation() - M_PI);
 
                             rightPlayer->SetBattlegroundEntryPoint();
                             rightPlayer->ScheduleDelayedOperation(DELAYED_PET_BATTLE_INITIAL);
                             rightPlayer->SaveRecallPosition();
-                            rightPlayer->TeleportTo(location.MapID, location.Positions[PETBATTLE_TEAM_2].GetPositionX() + 0.01f, location.Positions[PETBATTLE_TEAM_2].GetPositionY() + 0.01f, location.Positions[PETBATTLE_TEAM_2].GetPositionZ() + 0.01f, leftPlayer->GetOrientation() - M_PI);
+                            rightPlayer->TeleportTo(location.MapID, location.Positions[PETBATTLE_TEAM_2].x + 0.01f, location.Positions[PETBATTLE_TEAM_2].y + 0.01f, location.Positions[PETBATTLE_TEAM_2].z + 0.01f, leftPlayer->GetOrientation() - M_PI);
 
                             ticketsToRemove.push_back(l_Left->RequesterGUID);
                             ticketsToRemove.push_back(l_Right->RequesterGUID);
@@ -578,7 +593,7 @@ eBattlePetRequests PetBattleSystem::CanPlayerEnterInPetBattle(Player* player, Pe
     if (player->_petBattleId)
         return PETBATTLE_REQUEST_IN_BATTLE;
 
-    if (petBattleRequest->OpponentGuid.IsPlayer())
+    if (IS_PLAYER_GUID(petBattleRequest->OpponentGuid))
     {
         if (auto player2 = ObjectAccessor::FindPlayer(petBattleRequest->OpponentGuid))
         {
@@ -592,7 +607,7 @@ eBattlePetRequests PetBattleSystem::CanPlayerEnterInPetBattle(Player* player, Pe
                 return PETBATTLE_REQUEST_NOT_HERE_OBSTRUCTED;
         }
     }
-    else if (petBattleRequest->OpponentGuid.IsCreature())
+    else if (IS_CREATURE_GUID(petBattleRequest->OpponentGuid))
     {
         if (!player->GetNPCIfCanInteractWith(petBattleRequest->OpponentGuid, 0))
             return PETBATTLE_REQUEST_TARGET_INVALID;
@@ -612,9 +627,15 @@ eBattlePetRequests PetBattleSystem::CanPlayerEnterInPetBattle(Player* player, Pe
         return PETBATTLE_REQUEST_NOT_WHILE_IN_COMBAT;
 
     // Check positions
-    for (const auto& itr : petBattleRequest->TeamPosition)
-        if (player->GetMap()->getObjectHitPos(player->GetPhases(), true, petBattleRequest->PetBattleCenterPosition, itr, 0.0f))
+    for (size_t l_CurrentTeamID = 0; l_CurrentTeamID < MAX_PETBATTLE_TEAM; ++l_CurrentTeamID)
+    {
+        if (player->GetMap()->getObjectHitPos(player->GetPhaseMask(), petBattleRequest->PetBattleCenterPosition[0], petBattleRequest->PetBattleCenterPosition[1], petBattleRequest->PetBattleCenterPosition[2],
+            petBattleRequest->TeamPosition[l_CurrentTeamID][0], petBattleRequest->TeamPosition[l_CurrentTeamID][1], petBattleRequest->TeamPosition[l_CurrentTeamID][2],
+            petBattleRequest->TeamPosition[l_CurrentTeamID][0], petBattleRequest->TeamPosition[l_CurrentTeamID][1], petBattleRequest->TeamPosition[l_CurrentTeamID][2], 0.0f))
+        {
             return PETBATTLE_REQUEST_NOT_HERE_UNEVEN_GROUND;
+        }
+    }
 
     auto petSlots = player->GetBattlePetCombatTeam();
     size_t playerPetCount = 0;

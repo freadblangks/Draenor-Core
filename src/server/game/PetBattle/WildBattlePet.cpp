@@ -17,6 +17,7 @@
 #include "CellImpl.h"
 #include "DB2Stores.h"
 #include "Common.h"
+#include "BattlePetData.h"
 
 void WildBattlePetZonePools::LoadPoolTemplate(Field* fields)
 {
@@ -146,7 +147,7 @@ void WildBattlePetMgr::ReplaceCreature(Creature* creature, WildPetPoolTemplate* 
 
     // Select breed
     uint8 MinQuality = 0;
-    if (BattlePetTemplate const* temp = sBattlePetDataStore->GetBattlePetTemplate(speciesInfo->ID))
+    if (BattlePetTemplate const* temp = sBattlePetDataStore->GetBattlePetTemplate(speciesInfo->id))
     {
         battlePetInstance->Breed = sBattlePetDataStore->GetRandomBreedID(temp->BreedIDs);
         MinQuality = temp->MinQuality;
