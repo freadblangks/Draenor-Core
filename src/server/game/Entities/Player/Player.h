@@ -1461,6 +1461,8 @@ struct CompletedChallenge
 /// MapID
 typedef std::map<uint32, CompletedChallenge> CompletedChallengesMap;
 
+typedef std::map<ObjectGuid, std::shared_ptr<BattlePet>> BattlePetMap;
+
 enum BattlegroundTimerTypes
 {
     PVP_TIMER,
@@ -3518,19 +3520,19 @@ class Player : public Unit, public GridObject<Player>
         bool HasBattlePetTraining();
         /// Get battle pet trap level
         uint32 GetBattlePetTrapLevel();
+        void SaveBattlePets(SQLTransaction& trans);
         /// Compute the unlocked pet battle slot
         uint32 GetUnlockedPetBattleSlot();
         /// Summon current pet if any active
         void UnsummonCurrentBattlePetIfAny(bool p_Unvolontary);
         /// Summon new pet
-        void SummonBattlePet(uint64 p_JournalID);
+        void SummonBattlePet(ObjectGuid journalID);
         /// Get current summoned battle pet
         Creature* GetSummonedBattlePet();
         /// Summon last summoned battle pet
         void SummonLastSummonedBattlePet();
+        BattlePetMap* GetBattlePets();
 
-        /// Get pet battles
-        std::vector<std::shared_ptr<BattlePet>> GetBattlePets();
         /// Get pet battles
         std::shared_ptr<BattlePet> GetBattlePet(uint64 p_JournalID);
         /// Get pet battle combat team
@@ -3544,6 +3546,7 @@ class Player : public Unit, public GridObject<Player>
         void PetBattleCountBattleSpecies();
         /// Update battle pet combat team
         void UpdateBattlePetCombatTeam();
+        BattlePetMap _battlePets;
 
         //////////////////////////////////////////////////////////////////////////
         /// ToyBox
@@ -3828,8 +3831,8 @@ class Player : public Unit, public GridObject<Player>
         uint32 m_LastSummonedBattlePet;
 
         std::vector<std::shared_ptr<BattlePet>> m_BattlePets;
-        std::shared_ptr<BattlePet> m_BattlePetCombatTeam[3];
-        std::vector<std::pair<uint32, uint32>> m_OldPetBattleSpellToMerge;
+        std::shared_ptr<BattlePet> _battlePetCombatTeam[3];
+        std::vector<std::pair<uint32, uint32>> _oldPetBattleSpellToMerge;
 
         PreparedQueryResultFuture _petBattleJournalCallback;
 

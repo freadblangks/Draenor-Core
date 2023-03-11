@@ -10,6 +10,7 @@
 #include "ScriptedCreature.h"
 #include "ScriptedGossip.h"
 #include "PetBattle.h"
+#include "PetBattleSystem.h"
 #include "Common.h"
 
 class PlayerScriptPetBattle : public PlayerScript
