@@ -936,6 +936,9 @@ class WorldObject : public Object, public WorldLocation
 
         virtual const char* GetNameForLocaleIdx(LocaleConstant /*locale_idx*/) const { return GetName(); }
 
+        uint32 m_zoneId;
+        uint32 GetCurrentZoneID() const { return m_zoneId; }
+
         float GetDistance(const WorldObject* obj) const
         {
             float d = GetExactDist(obj) - GetObjectSize() - obj->GetObjectSize();

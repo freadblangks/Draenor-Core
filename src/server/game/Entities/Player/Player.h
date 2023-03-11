@@ -3766,6 +3766,8 @@ class Player : public Unit, public GridObject<Player>
 
         uint32 GetBagsFreeSlots() const;
 
+        bool AddBattlePet(uint32 spellID, uint16 flags = 0, bool sendUpdate = true);
+
         bool IsSummoned() const { return m_Summoned; }
         void FinishSummon() { m_Summoned = false; }
         void BeginSummon() { m_Summoned = true; }

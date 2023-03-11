@@ -35038,7 +35038,7 @@ bool Player::_LoadPetBattles(PreparedQueryResult&& result)
     _oldPetBattleSpellToMerge.clear();
 
     GetSession()->SendBattlePetJournal();
-    UpdateAchievementCriteria(CRITERIA_TYPE_COLLECT_BATTLEPET, 1);
+    UpdateAchievementCriteria(ACHIEVEMENT_CRITERIA_TYPE_EARN_BATTLEPET, 1);
 
     return true;
 }

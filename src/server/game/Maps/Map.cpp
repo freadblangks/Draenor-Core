@@ -48,9 +48,7 @@ Map::~Map()
 {
     sScriptMgr->OnDestroyMap(this);
 
-    // We need to depopulate WildBattlePet for respawn replaced creatures next time
-    // Because respawn time is saved in database
-    sWildBattlePetMgr->DepopulateMap(GetId());
+    //sWildBattlePetMgr->DepopulateMap(GetId());
 
     UnloadAll();
 
@@ -3637,4 +3635,54 @@ ItemContext Map::GetLootItemContext() const
         default:
             return ItemContext::None;
     }
+}
+
+void Map::AddBattlePet(Creature* creature)
+{
+    if (sWildBattlePetMgr->IsBattlePet(creature->GetEntry()))
+        m_wildBattlePetPool[creature->GetCurrentZoneID()][creature->GetEntry()].ToBeReplaced.insert(creature);
+    else if (creature->isWildBattlePet())
+        sWildBattlePetMgr->EnableWildBattle(creature);
+}
+
+void Map::RemoveBattlePet(Creature* creature)
+{
+    if (sWildBattlePetMgr->IsBattlePet(creature->GetEntry()))
+        m_wildBattlePetPool[creature->GetCurrentZoneID()][creature->GetEntry()].ToBeReplaced.erase(creature);
+}
+
+void Map::PopulateBattlePet(uint32 diff)
+{
+    uint32 _s = getMSTime();
+    for (auto& zone : m_wildBattlePetPool)
+    {
+        uint16 zoneId = zone.first;
+        for (auto& iter : zone.second)
+        {
+            uint32 entry = iter.first;
+            WildPetPoolTemplate* petTemplate = sWildBattlePetMgr->GetWildPetTemplate(GetId(), zoneId, entry);
+            if (!petTemplate)
+                continue;
+
+            sWildBattlePetMgr->Populate(petTemplate, &iter.second);
+        }
+    }
+    uint32 _ms = GetMSTimeDiffToNow(_s);
+    if (_ms > 200)
+        TC_LOG_INFO("server.loading", "Map::PopulateBattlePet mapId %u Update time - %ums diff %u", GetId(), _ms, diff);
+}
+
+void Map::DepopulateBattlePet()
+{
+    for (auto& zone : m_wildBattlePetPool)
+        for (auto& iter : zone.second)
+            sWildBattlePetMgr->Depopulate(&iter.second);
+}
+
+WildBattlePetPool* GetWildBattlePetPool(Creature* creature)
+{
+    if (!creature)
+        return nullptr;
+
+    return &m_wildBattlePetPool[creature->GetCurrentZoneID()][creature->GetEntry()];
 }
