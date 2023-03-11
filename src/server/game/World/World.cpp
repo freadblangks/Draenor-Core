@@ -2294,13 +2294,6 @@ void World::SetInitialWorldSettings()
     TC_LOG_INFO("misc", "Loading area skip update...");
     sObjectMgr->LoadSkipUpdateZone();
 
-    TC_LOG_INFO("server.loading", "Loading BattlePet template...");
-    sObjectMgr->LoadBattlePetTemplate();
-
-    TC_LOG_INFO("server.loading", "Loading BattlePet npc team member...");
-    sObjectMgr->LoadBattlePetNpcTeamMember();
-    ///sObjectMgr->ComputeBattlePetSpawns();
-
     TC_LOG_INFO("server.loading", "Loading Wild BattlePet pools...");
     sWildBattlePetMgr->Load();
 

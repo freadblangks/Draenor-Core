@@ -291,10 +291,10 @@ void WorldSession::SendPetBattleFirstRound(PetBattle* p_Battle)
     l_Packet << uint8(p_Battle->RoundResult);
     l_Packet << uint32(p_Battle->RoundEvents.size());
 
-    for (uint32 l_TeamID = 0; l_TeamID < MAX_PETBATTLE_TEAM; l_TeamID++)
+    for (uint8 i = 0; i < MAX_PETBATTLE_TEAM; i++)
     {
-        l_Packet << uint8(p_Battle->Teams[l_TeamID]->GetTeamInputFlags());  ///< NextInputFlags
-        l_Packet << uint8(p_Battle->Teams[l_TeamID]->GetTeamTrapFlags());   ///< NextTrapStatus
+        l_Packet << uint8(p_Battle->Teams[i]->GetTeamInputFlags());  ///< NextInputFlags
+        l_Packet << uint8(p_Battle->Teams[i]->GetTeamTrapStatus());   ///< NextTrapStatus
         l_Packet << uint16(pvpMaxRoundTime);                              ///< RoundTimeSecs
     }
 
@@ -408,7 +408,7 @@ void WorldSession::SendPetBattleRoundResult(PetBattle* p_Battle)
     for (uint8 l_TeamID = 0; l_TeamID < MAX_PETBATTLE_TEAM; l_TeamID++)
     {
         l_Packet << uint8(p_Battle->Teams[l_TeamID]->GetTeamInputFlags());
-        l_Packet << uint8(p_Battle->Teams[l_TeamID]->GetTeamTrapFlags());
+        l_Packet << uint8(p_Battle->Teams[l_TeamID]->GetTeamTrapStatus());
         l_Packet << uint16(l_PvpMaxRoundTime);
     }
 
@@ -522,7 +522,7 @@ void WorldSession::SendPetBattleReplacementMade(PetBattle* p_Battle)
     for (uint8 l_TeamID = 0; l_TeamID < MAX_PETBATTLE_TEAM; l_TeamID++)
     {
         l_Packet << uint8(p_Battle->Teams[l_TeamID]->GetTeamInputFlags());
-        l_Packet << uint8(p_Battle->Teams[l_TeamID]->GetTeamTrapFlags());
+        l_Packet << uint8(p_Battle->Teams[l_TeamID]->GetTeamTrapStatus());
         l_Packet << uint16(l_PvpMaxRoundTime);
     }
 
