@@ -936,7 +936,7 @@ void WorldSession::HandlePetBattleRequestWild(WorldPacket& p_RecvData)
 
     SendPetBattleFinalizeLocation(l_BattleRequest);
 
-    m_Player->SetFacingTo(m_Player->GetAngle(&l_BattleRequest->TeamPosition[PETBATTLE_TEAM_2]));
+    m_Player->SetFacingTo(m_Player->GetAngle(l_BattleRequest->TeamPosition[PETBATTLE_TEAM_2][0], l_BattleRequest->TeamPosition[PETBATTLE_TEAM_2][1]));
     m_Player->SetRooted(true);
 
     /// Ok, Create battle
@@ -1155,8 +1155,8 @@ void WorldSession::HandlePetBattleRequestUpdate(WorldPacket& p_RecvData)
         m_Player->GetSession()->SendPetBattleFinalizeLocation(l_BattleRequest);
         l_Opposant->GetSession()->SendPetBattleFinalizeLocation(l_BattleRequest);
 
-        m_Player->SetFacingTo(m_Player->GetAngle(&l_BattleRequest->TeamPosition[PETBATTLE_TEAM_1]));
-        l_Opposant->SetFacingTo(m_Player->GetAngle(&l_BattleRequest->TeamPosition[PETBATTLE_TEAM_2]));
+        m_Player->SetFacingTo(m_Player->GetAngle(l_BattleRequest->TeamPosition[PETBATTLE_TEAM_1][0], l_BattleRequest->TeamPosition[PETBATTLE_TEAM_1][1]));
+        l_Opposant->SetFacingTo(m_Player->GetAngle(l_BattleRequest->TeamPosition[PETBATTLE_TEAM_2][0], l_BattleRequest->TeamPosition[PETBATTLE_TEAM_2][1]));
         m_Player->SetRooted(true);
         l_Opposant->SetRooted(true);
 

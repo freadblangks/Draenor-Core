@@ -599,8 +599,8 @@ void PetBattleAura::Process(PetBattle* petBattle)
         PetBattleAbilityTurn abilityTurn;
         memset(&abilityTurn, 0, sizeof abilityTurn);
 
-        uint8 turnCount = 0;
-        uint8 maxTurnID = 0;
+        uint32 turnCount = 0;
+        uint32 maxTurnID = 0;
 
         for (uint32 l_AbilityTurnId = 0; l_AbilityTurnId < sBattlePetAbilityTurnStore.GetNumRows(); ++l_AbilityTurnId)
         {
@@ -1521,7 +1521,8 @@ void PetBattle::PrepareCast(uint32 teamID, uint32 abilityID)
     PetBattleAbilityTurn abilityTurn;
     memset(&abilityTurn, 0, sizeof(abilityTurn));
 
-    uint8 maxTurnID = 0;
+    uint32 maxTurnID = 0;
+
     for (uint32 l_AbilityTurnId = 0; l_AbilityTurnId < sBattlePetAbilityTurnStore.GetNumRows(); ++l_AbilityTurnId)
     {
         BattlePetAbilityTurnEntry const* abilityTurnInfo = sBattlePetAbilityTurnStore.LookupEntry(l_AbilityTurnId);

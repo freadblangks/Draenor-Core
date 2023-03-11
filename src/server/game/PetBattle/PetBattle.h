@@ -354,6 +354,7 @@ public:
     uint32 OldLevel;
     uint32 OldXP;
 
+    std::vector<uint32> RoundDeadPets;                                      ///< Pets who died during this round
     std::shared_ptr<BattlePet> OriginalBattlePet;
     ObjectGuid OriginalCreature;
 };

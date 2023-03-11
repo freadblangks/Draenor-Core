@@ -759,18 +759,25 @@ struct HotfixInfo
 
 struct BattlePetTemplate
 {
+    uint32 CreatureID;
+    uint32 BreedMask;
+    uint32 MinQuality;
+    uint32 minlevel;
+    uint32 maxlevel;
     uint32 Species;
-    uint32 Breed;
-    uint32 Quality;
-    uint32 Level;
+    std::set<uint32> BreedIDs;
 };
 typedef std::map<uint32, BattlePetTemplate> BattlePetTemplateContainer;
 
 struct BattlePetNpcTeamMember
 {
     uint32 Specie;
-    uint32 Level;
+    uint32 maxlevel;
+    uint32 minlevel;
+    uint32 minquality;
+    uint32 breadsMask;
     uint32 Ability[3];
+    std::set<uint32> BreedIDs;
 };
 typedef std::map<uint32, std::vector<BattlePetNpcTeamMember>> BattlePetNpcTeamMembers;
 

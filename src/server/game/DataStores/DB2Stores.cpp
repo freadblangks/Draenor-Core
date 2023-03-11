@@ -189,6 +189,8 @@ TaxiPathNodesByPath                       sTaxiPathNodesByPath;
 std::set<ResearchSiteEntry const*>        sResearchSiteSet;
 std::set<ResearchProjectEntry const*>     sResearchProjectSet;
 
+typedef std::vector<BattlePetSpeciesEntry const*> CreatureToSpeciesContainer;
+
 SpellTotemMap       sSpellTotemMap;
 MountCapabilitiesMap sMountCapabilitiesMap;
 CreatureToSpeciesContainer _creatureToSpeciesContainer;
@@ -202,7 +204,6 @@ std::map<uint32, uint32> g_PvPItemStoreLevels;
 AreaGroupMemebersByID sAreaGroupMemebersByIDStore;
 
 typedef std::list<std::string> StoreProblemList1;
-typedef std::vector<BattlePetSpeciesEntry const*> CreatureToSpeciesContainer;
 uint32 DB2FilesCount = 0;
 
 static bool LoadDB2_assert_print(uint32 fsize,uint32 rsize, const std::string& filename)
@@ -884,5 +885,5 @@ std::vector<uint32>GetSpeciesByCreatureID(uint32 CreatureID)
     if (CreatureID >= _creatureToSpeciesContainer.size())
         return std::vector<uint32>();
 
-    return _creatureToSpeciesContainer[CreatureID];
+    return std::vector<uint32>();
 }

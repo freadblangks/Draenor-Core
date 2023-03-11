@@ -5542,48 +5542,8 @@ bool Player::addSpell(uint32 spellId, bool active, bool learning, bool dependent
     }
 
     // Add BattlePet
-    if (learning && !dependent && p_LearnBattlePet)
-    {
-        for (uint32 speciesId = 0; speciesId != sBattlePetSpeciesStore.GetNumRows(); ++speciesId)
-        {
-            BattlePetSpeciesEntry const* speciesInfo = sBattlePetSpeciesStore.LookupEntry(speciesId);
-            if (!speciesInfo || speciesInfo->spellId != spellId)
-                continue;
-
-            BattlePet pet;
-            pet.Slot = PETBATTLE_NULL_SLOT;
-            pet.NameTimeStamp = 0;
-            pet.Species = speciesInfo->id;
-            pet.DisplayModelID = 0;
-            pet.Flags = 0;
-
-            if (BattlePetTemplate const* temp = sObjectMgr->GetBattlePetTemplate(speciesInfo->id))
-            {
-                pet.Breed = temp->Breed;
-                pet.Quality = temp->Quality;
-                pet.Level = temp->Level;
-            }
-            else
-            {
-                pet.Breed = 3;
-                pet.Quality = BATTLEPET_QUALITY_COMMON;
-                pet.Level = 1;
-            }
-
-            // Calculate XP for level
-            pet.XP = 0;
-            if (pet.Level > 1 && pet.Level < 100)
-                pet.XP = sGtBattlePetXPStore.LookupEntry(pet.Level - 2)->value * sGtBattlePetXPStore.LookupEntry(100 + pet.Level - 2)->value;
-
-            // Calculate stats
-            pet.UpdateStats();
-            pet.Health = pet.InfoMaxHealth;
-
-            pet.AddToPlayer(this);
-            ReloadPetBattles();
-            break;
-        }
-    }
+    if (learning && !dependent)
+        AddBattlePet(spellId);
 
     // add dependent skills
     uint16 maxskill     = GetMaxSkillValueForLevel();
