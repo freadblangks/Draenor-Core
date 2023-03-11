@@ -1,7 +1,6 @@
 #include "PetBattleSystem.h"
 #include "PetBattle.h"
 #include "Player.h"
-#include "Position.h"
 #include "ObjectAccessor.h"
 
 #define PETBATTLE_DELETE_INTERVAL (1 * 30 * IN_MILLISECONDS)
@@ -47,7 +46,8 @@ PetBattleSystem* PetBattleSystem::instance()
 
 PetBattle* PetBattleSystem::CreateBattle()
 {
-    auto battleID = ObjectGuid::Create<HighGuid::PetBattle>(++_maxPetBattleID);
+    uint64 battleID = ++_maxPetBattleID;
+
     _petBattles[battleID] = new PetBattle();
     _petBattles[battleID]->ID = battleID;
     return _petBattles[battleID];
@@ -62,12 +62,22 @@ PetBattleRequest* PetBattleSystem::CreateRequest(ObjectGuid requesterGuid)
 
 PetBattle* PetBattleSystem::GetBattle(ObjectGuid battleID)
 {
-    return Trinity::Containers::MapGetValuePtr(_petBattles, battleID);
+    std::map<ObjectGuid, PetBattle*>::iterator Iterator = _petBattles.find(battleID);
+
+    if (Iterator == _petBattles.end())
+        return 0;
+
+    return Iterator->second;
 }
 
 PetBattleRequest* PetBattleSystem::GetRequest(ObjectGuid requesterGuid)
 {
-    return Trinity::Containers::MapGetValuePtr(_battleRequests, requesterGuid);
+    std::map<ObjectGuid, PetBattleRequest*>::iterator Iterator = _battleRequests.find(requesterGuid);
+
+    if (Iterator == _battleRequests.end())
+        return 0;
+
+    return Iterator->second;
 }
 
 void PetBattleSystem::RemoveBattle(ObjectGuid battleID)
@@ -233,9 +243,9 @@ void PetBattleSystem::Update(uint32 diff)
                 continue;
             }
 
-            auto count = std::count_if(ticketsToRemove.begin(), ticketsToRemove.end(), [ticket](ObjectGuid const& p_Ticket) -> bool
+            auto count = std::count_if(ticketsToRemove.begin(), ticketsToRemove.end(), [ticket](uint64 const& p_Ticket) -> bool
             {
-                return p_Ticket == ticket->RequesterGUID;
+                  return p_Ticket == ticket->RequesterGUID;
             });
 
             if (count > 0)
@@ -322,17 +332,17 @@ void PetBattleSystem::Update(uint32 diff)
                             l_Left->State = LFBState::LFB_STATE_IN_COMBAT;
                             l_Right->State = LFBState::LFB_STATE_IN_COMBAT;
 
-                            static PetBattleMembersPositions const gPetBattlePositions[7] =
+                            const static PetBattleMembersPositions gPetBattlePositions[7] =
                             {
-                                PetBattleMembersPositions(0, TEAM_ALLIANCE, Position(-9502.376f, 114.492f, 59.822f), Position(-9493.934f, 119.854f, 58.459f)),
-                                PetBattleMembersPositions(0, TEAM_ALLIANCE, Position(-10048.859f, 1231.028f, 40.881f), Position(-10054.330f, 1239.399f, 40.894f)),
-                                PetBattleMembersPositions(0, TEAM_ALLIANCE, Position(-10909.911f, -362.280f, 39.643f), Position(-10899.923f, -362.773f, 39.265f)),
-                                PetBattleMembersPositions(0, TEAM_ALLIANCE, Position(-10439.142f, -1939.163f, 104.313f), Position(-10439.306f, -1949.162f, 103.763f)),
+                                PetBattleMembersPositions(0, TEAM_ALLIANCE,  G3D::Vector3(-9502.376f,  114.492f,   59.822f), G3D::Vector3(-9493.934f,   119.854f,  58.459f)),
+                                PetBattleMembersPositions(0, TEAM_ALLIANCE,  G3D::Vector3(-10048.859f,  1231.028f,  40.881f), G3D::Vector3(-10054.330f,  1239.399f,  40.894f)),
+                                PetBattleMembersPositions(0, TEAM_ALLIANCE,  G3D::Vector3(-10909.911f, -362.280f,   39.643f), G3D::Vector3(-10899.923f,  -362.773f,  39.265f)),
+                                PetBattleMembersPositions(0, TEAM_ALLIANCE,  G3D::Vector3(-10439.142f, -1939.163f, 104.313f), G3D::Vector3(-10439.306f, -1949.162f, 103.763f)),
 
-                                PetBattleMembersPositions(1, TEAM_HORDE, Position(-954.766f, -3255.210f, 95.645f), Position(-958.212f, -3264.597f, 95.837f)),
-                                PetBattleMembersPositions(1, TEAM_HORDE, Position(-2285.038f, -2155.838f, 95.843f), Position(-2281.738f, -2146.397f, 95.843f)),
-                                //PetBattleMembersPositions(1, TEAM_HORDE, Position(-1369.247f, -2716.736f, 253.246f), Position(-1359.747f, -2713.613f, 253.390f)),
-                                PetBattleMembersPositions(1, TEAM_HORDE, Position(-127.255f, -4959.972f, 20.903f), Position(-129.017f, -4950.128f, 21.378f))
+                                PetBattleMembersPositions(1, TEAM_HORDE,     G3D::Vector3(-954.766f, -3255.210f,  95.645f), G3D::Vector3(-958.212f, -3264.597f,  95.837f)),
+                                PetBattleMembersPositions(1, TEAM_HORDE,     G3D::Vector3(-2285.038f, -2155.838f,  95.843f), G3D::Vector3(-2281.738f, -2146.397f,  95.843f)),
+                                //PetBattleMembersPositions(1, TEAM_HORDE, G3D::Vector3(-1369.247f, -2716.736f, 253.246f), G3D::Vector3(-1359.747f, -2713.613f, 253.390f)),
+                                PetBattleMembersPositions(1, TEAM_HORDE,     G3D::Vector3(-127.255f, -4959.972f,  20.903f), G3D::Vector3(-129.017f, -4950.128f,  21.378f))
                             };
 
                             std::vector<PetBattleMembersPositions> positions;
