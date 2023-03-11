@@ -278,8 +278,8 @@ public:
     void CloneFrom(std::shared_ptr<BattlePet> & p_BattlePet);
     void Save(SQLTransaction& trans);
 
-    ObjectGuid::LowType AddToPlayer(Player* player);
-    void AddToPlayer(Player* player, SQLTransaction& trans);
+    void AddToPlayer(Player* p_Player);
+    void AddToPlayer(Player* p_Player, SQLTransaction& p_Transaction);
     void Remove(Player* player);
     void UpdateAbilities();
     void UpdateStats();

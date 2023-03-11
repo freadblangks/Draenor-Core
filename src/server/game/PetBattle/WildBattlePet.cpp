@@ -17,7 +17,6 @@
 #include "CellImpl.h"
 #include "DB2Stores.h"
 #include "Common.h"
-//#include "BattlePetData.h"
 
 void WildBattlePetZonePools::LoadPoolTemplate(Field* fields)
 {

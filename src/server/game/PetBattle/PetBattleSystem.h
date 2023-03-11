@@ -67,20 +67,6 @@ struct LFBTicket
     uint32 ProposalTime;
 };
 
-struct PetBattleMembersPositions
-{
-    PetBattleMembersPositions(uint32 p_MapID, uint32 p_Team, G3D::Vector3 p_FirstPosition, G3D::Vector3 p_SecondPosition)
-        : MapID(p_MapID), Team(p_Team)
-    {
-        Positions[0] = p_FirstPosition;
-        Positions[1] = p_SecondPosition;
-    }
-
-    uint32 MapID;
-    uint32 Team;
-    G3D::Vector3 Positions[2];
-};
-
 class PetBattleSystem
 {
     PetBattleSystem();
@@ -104,7 +90,7 @@ public:
 
     void Update(uint32 diff);
 
-    void ForfeitBattle(ObjectGuid battleID, ObjectGuid forfeiterGuid, bool ignoreAbandonPenalty);
+    void ForfeitBattle(ObjectGuid battleID, ObjectGuid forfeiterGuid);
 
     eBattlePetRequests CanPlayerEnterInPetBattle(Player* player, PetBattleRequest* petBattleRequest);
 

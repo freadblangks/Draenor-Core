@@ -549,7 +549,7 @@ void PetBattleSystem::Update(uint32 diff)
     }
 }
 
-void PetBattleSystem::ForfeitBattle(ObjectGuid battleID, ObjectGuid forfeiterGuid, bool ignoreAbandonPenalty)
+void PetBattleSystem::ForfeitBattle(ObjectGuid battleID, ObjectGuid forfeiterGuid)
 {
     auto battle = GetBattle(battleID);
     if (!battle)
@@ -563,7 +563,7 @@ void PetBattleSystem::ForfeitBattle(ObjectGuid battleID, ObjectGuid forfeiterGui
     if (forfeiterTeamID == MAX_PETBATTLE_TEAM)
         return;
 
-    battle->Finish(!forfeiterTeamID, true, ignoreAbandonPenalty);
+    battle->Finish(!forfeiterTeamID, true);
 }
 
 eBattlePetRequests PetBattleSystem::CanPlayerEnterInPetBattle(Player* player, PetBattleRequest* petBattleRequest)
