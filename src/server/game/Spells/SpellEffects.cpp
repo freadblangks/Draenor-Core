@@ -8300,20 +8300,19 @@ void Spell::EffectResurectPetBattles(SpellEffIndex /*effIndex*/)
     if (effectHandleMode != SPELL_EFFECT_HANDLE_HIT_TARGET)
         return;
 
-    if (!m_CastItem && m_caster->ToPlayer())
+    if (Player* player = m_caster->ToPlayer())
     {
-        std::vector<BattlePet::Ptr> l_Pets = m_caster->ToPlayer()->GetBattlePets();
-
-        for (std::vector<BattlePet::Ptr>::iterator l_It = l_Pets.begin(); l_It != l_Pets.end(); ++l_It)
+        BattlePetMap* pets = player->GetBattlePets();
+        for (auto& pet : *pets)
         {
-            BattlePet::Ptr l_Pet = (*l_It);
-
-            l_Pet->UpdateStats();
-            l_Pet->Health = l_Pet->InfoMaxHealth;
+            pet.second->UpdateStats();
+            if (pet.second->Health != pet.second->InfoMaxHealth)
+                pet.second->needSave = true;
+            pet.second->Health = pet.second->InfoMaxHealth;
         }
 
-        m_caster->ToPlayer()->GetSession()->SendBattlePetsHealed();
-        m_caster->ToPlayer()->GetSession()->SendBattlePetUpdates(false);
+        player->GetSession()->SendBattlePetsHealed();
+        player->GetSession()->SendBattlePetUpdates();
     }
 }
 

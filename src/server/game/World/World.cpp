@@ -66,6 +66,7 @@
 #include "MMapFactory.h"
 #include "GameEventMgr.h"
 #include "PoolMgr.h"
+#include "PetBattleSystem.h"
 #include "GridNotifiersImpl.h"
 #include "CellImpl.h"
 #include "InstanceSaveMgr.h"
@@ -2650,7 +2651,7 @@ void World::Update(uint32 diff)
 #endif
 
     sPetBattleSystem->Update(diff);
-    sWildBattlePetMgr->Update(diff);
+    //sWildBattlePetMgr->Update(diff);
 
     sLFGMgr->Update(diff);
     SetRecordDiff(RECORD_DIFF_LFG, getMSTime() - diffTime);

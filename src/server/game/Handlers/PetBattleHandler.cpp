@@ -318,7 +318,7 @@ void WorldSession::SendPetBattleFirstRound(PetBattle* p_Battle)
 
             l_Packet << uint8(l_UpdateIt->TargetPetID);
 
-            if (l_UpdateIt->UpdateType == PETBATTLE_EVENT_UPDATE_BUFF)
+            if (l_UpdateIt->UpdateType == PETBATTLE_EVENT_BUFF_APPLY)
             {
                 l_Packet << uint32(l_UpdateIt->Buff.ID);
                 l_Packet << uint32(l_UpdateIt->Buff.AbilityID);
@@ -326,29 +326,29 @@ void WorldSession::SendPetBattleFirstRound(PetBattle* p_Battle)
                 l_Packet << uint32(l_UpdateIt->Buff.Turn);
             }
 
-            if (l_UpdateIt->UpdateType == PETBATTLE_EVENT_UPDATE_STATE)
+            if (l_UpdateIt->UpdateType == PETBATTLE_EVENT_SET_STATE)
             {
                 l_Packet << uint32(l_UpdateIt->State.ID);
                 l_Packet << int32(l_UpdateIt->State.Value);
             }
 
-            if (l_UpdateIt->UpdateType == PETBATTLE_EVENT_UPDATE_HEALTH)
+            if (l_UpdateIt->UpdateType == PETBATTLE_EVENT_SET_MAX_HEALTH)
                 l_Packet << int32(l_UpdateIt->Health);
 
-            if (l_UpdateIt->UpdateType == PETBATTLE_EVENT_UPDATE_SPEED)
+            if (l_UpdateIt->UpdateType == PETBATTLE_EVENT_SET_SPEED)
                 l_Packet << int32(l_UpdateIt->Speed);
 
-            if (l_UpdateIt->UpdateType == PETBATTLE_EVENT_UPDATE_TRIGGER)
+            if (l_UpdateIt->UpdateType == PETBATTLE_EVENT_TRIGGER_ABILITY)
                 l_Packet << uint32(l_UpdateIt->TriggerAbilityId);
 
-            if (l_UpdateIt->UpdateType == PETBATTLE_EVENT_UPDATE_ABILITY_CHANGE)
+            if (l_UpdateIt->UpdateType == PETBATTLE_EVENT_ABILITY_CHANGE)
             {
                 l_Packet << uint32(0);
                 l_Packet << uint32(0);
                 l_Packet << uint32(0);
             }
 
-            if (l_UpdateIt->UpdateType == PETBATTLE_EVENT_UPDATE_NPC_EMOTE)
+            if (l_UpdateIt->UpdateType == PETBATTLE_EVENT_NPC_EMOTE)
                 l_Packet << int32(l_UpdateIt->NpcEmote.BroadcastTextID);
         }
     }
@@ -432,7 +432,7 @@ void WorldSession::SendPetBattleRoundResult(PetBattle* p_Battle)
 
             l_Packet << uint8(l_UpdateIt->TargetPetID);
 
-            if (l_UpdateIt->UpdateType == PETBATTLE_EVENT_UPDATE_BUFF)
+            if (l_UpdateIt->UpdateType == PETBATTLE_EVENT_BUFF_APPLY)
             {
                 l_Packet << uint32(l_UpdateIt->Buff.ID);
                 l_Packet << uint32(l_UpdateIt->Buff.AbilityID);
@@ -440,29 +440,29 @@ void WorldSession::SendPetBattleRoundResult(PetBattle* p_Battle)
                 l_Packet << uint32(l_UpdateIt->Buff.Turn);
             }
 
-            if (l_UpdateIt->UpdateType == PETBATTLE_EVENT_UPDATE_STATE)
+            if (l_UpdateIt->UpdateType == PETBATTLE_EVENT_SET_STATE)
             {
                 l_Packet << uint32(l_UpdateIt->State.ID);
                 l_Packet << int32(l_UpdateIt->State.Value);
             }
 
-            if (l_UpdateIt->UpdateType == PETBATTLE_EVENT_UPDATE_HEALTH)
+            if (l_UpdateIt->UpdateType == PETBATTLE_EVENT_SET_MAX_HEALTH)
                 l_Packet << int32(l_UpdateIt->Health);
 
-            if (l_UpdateIt->UpdateType == PETBATTLE_EVENT_UPDATE_SPEED)
+            if (l_UpdateIt->UpdateType == PETBATTLE_EVENT_SET_SPEED)
                 l_Packet << int32(l_UpdateIt->Speed);
 
-            if (l_UpdateIt->UpdateType == PETBATTLE_EVENT_UPDATE_TRIGGER)
+            if (l_UpdateIt->UpdateType == PETBATTLE_EVENT_TRIGGER_ABILITY)
                 l_Packet << uint32(l_UpdateIt->TriggerAbilityId);
 
-            if (l_UpdateIt->UpdateType == PETBATTLE_EVENT_UPDATE_ABILITY_CHANGE)
+            if (l_UpdateIt->UpdateType == PETBATTLE_EVENT_ABILITY_CHANGE)
             {
                 l_Packet << uint32(0);
                 l_Packet << uint32(0);
                 l_Packet << uint32(0);
             }
 
-            if (l_UpdateIt->UpdateType == PETBATTLE_EVENT_UPDATE_NPC_EMOTE)
+            if (l_UpdateIt->UpdateType == PETBATTLE_EVENT_NPC_EMOTE)
                 l_Packet << int32(l_UpdateIt->NpcEmote.BroadcastTextID);
         }
     }
@@ -546,7 +546,7 @@ void WorldSession::SendPetBattleReplacementMade(PetBattle* p_Battle)
 
             l_Packet << uint8(l_UpdateIt->TargetPetID);
 
-            if (l_UpdateIt->UpdateType == PETBATTLE_EVENT_UPDATE_BUFF)
+            if (l_UpdateIt->UpdateType == PETBATTLE_EVENT_BUFF_APPLY)
             {
                 l_Packet << uint32(l_UpdateIt->Buff.ID);
                 l_Packet << uint32(l_UpdateIt->Buff.AbilityID);
@@ -554,29 +554,29 @@ void WorldSession::SendPetBattleReplacementMade(PetBattle* p_Battle)
                 l_Packet << uint32(l_UpdateIt->Buff.Turn);
             }
 
-            if (l_UpdateIt->UpdateType == PETBATTLE_EVENT_UPDATE_STATE)
+            if (l_UpdateIt->UpdateType == PETBATTLE_EVENT_SET_STATE)
             {
                 l_Packet << uint32(l_UpdateIt->State.ID);
                 l_Packet << int32(l_UpdateIt->State.Value);
             }
 
-            if (l_UpdateIt->UpdateType == PETBATTLE_EVENT_UPDATE_HEALTH)
+            if (l_UpdateIt->UpdateType == PETBATTLE_EVENT_SET_MAX_HEALTH)
                 l_Packet << int32(l_UpdateIt->Health);
 
-            if (l_UpdateIt->UpdateType == PETBATTLE_EVENT_UPDATE_SPEED)
+            if (l_UpdateIt->UpdateType == PETBATTLE_EVENT_SET_SPEED)
                 l_Packet << int32(l_UpdateIt->Speed);
 
-            if (l_UpdateIt->UpdateType == PETBATTLE_EVENT_UPDATE_TRIGGER)
+            if (l_UpdateIt->UpdateType == PETBATTLE_EVENT_TRIGGER_ABILITY)
                 l_Packet << uint32(l_UpdateIt->TriggerAbilityId);
 
-            if (l_UpdateIt->UpdateType == PETBATTLE_EVENT_UPDATE_ABILITY_CHANGE)
+            if (l_UpdateIt->UpdateType == PETBATTLE_EVENT_ABILITY_CHANGE)
             {
                 l_Packet << uint32(0);
                 l_Packet << uint32(0);
                 l_Packet << uint32(0);
             }
 
-            if (l_UpdateIt->UpdateType == PETBATTLE_EVENT_UPDATE_NPC_EMOTE)
+            if (l_UpdateIt->UpdateType == PETBATTLE_EVENT_NPC_EMOTE)
                 l_Packet << int32(l_UpdateIt->NpcEmote.BroadcastTextID);
         }
     }
