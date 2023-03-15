@@ -19,46 +19,43 @@
 #include "GridNotifiers.h"
 #include "GridNotifiersImpl.h"
 
-void WorldSession::SendBattlePetUpdates(bool p_AddedPet)
+void WorldSession::SendBattlePetUpdates(BattlePet* pet2 /*= nullptr*/, bool add)
 {
     if (!m_Player || !m_Player->IsInWorld())
         return;
 
-    std::vector<BattlePet::Ptr> l_Pets = m_Player->GetBattlePets();
-
+    auto pets = m_Player->GetBattlePets();
     WorldPacket l_Packet(SMSG_BATTLE_PET_UPDATES, 15 * 1024);
-    l_Packet << uint32(l_Pets.size());                                                                      ///< Pets count
+    //update.AddedPet = add;
 
-    for (std::vector<BattlePet::Ptr>::iterator l_It = l_Pets.begin(); l_It != l_Pets.end(); ++l_It)
+    if (pet2)
     {
-        BattlePet::Ptr l_Pet = (*l_It);
-
-        uint64 l_Guid = l_Pet->JournalID;
+        uint64 l_Guid = pet2->JournalID;
         bool l_HasOwnerInfo = false;
-        BattlePetSpeciesEntry const* l_SpeciesInfo = sBattlePetSpeciesStore.LookupEntry(l_Pet->Species);
+        BattlePetSpeciesEntry const* l_SpeciesInfo = sBattlePetSpeciesStore.LookupEntry(pet2->Species);
 
-        l_Pet->UpdateStats();
+        pet2->UpdateStats();
 
         l_Packet.appendPackGUID(l_Guid);                                                                    ///< BattlePetGUID
-        l_Packet << uint32(l_Pet->Species);                                                                 ///< SpeciesID
+        l_Packet << uint32(pet2->Species);                                                                 ///< SpeciesID
         l_Packet << uint32(l_SpeciesInfo ? l_SpeciesInfo->entry : 0);                                       ///< CreatureID
-        l_Packet << uint32(l_Pet->DisplayModelID);                                                          ///< DisplayID
-        l_Packet << uint16(l_Pet->Breed);                                                                   ///< BreedID
-        l_Packet << uint16(l_Pet->Level);                                                                   ///< Level
-        l_Packet << uint16(l_Pet->XP);                                                                      ///< Xp
-        l_Packet << uint16(l_Pet->Flags);                                                                   ///< BattlePetDBFlags
-        l_Packet << int32(l_Pet->InfoPower);                                                                ///< Power
-        l_Packet << int32(l_Pet->Health > l_Pet->InfoMaxHealth ? l_Pet->InfoMaxHealth : l_Pet->Health);     ///< Health
-        l_Packet << int32(l_Pet->InfoMaxHealth);                                                            ///< MaxHealth
-        l_Packet << int32(l_Pet->InfoSpeed);                                                                ///< Speed
-        l_Packet << uint8(l_Pet->Quality);                                                                  ///< BreedQuality
+        l_Packet << uint32(pet2->DisplayModelID);                                                          ///< DisplayID
+        l_Packet << uint16(pet2->Breed);                                                                   ///< BreedID
+        l_Packet << uint16(pet2->Level);                                                                   ///< Level
+        l_Packet << uint16(pet2->XP);                                                                      ///< Xp
+        l_Packet << uint16(pet2->Flags);                                                                   ///< BattlePetDBFlags
+        l_Packet << int32(pet2->InfoPower);                                                                ///< Power
+        l_Packet << int32(pet2->Health > pet2->InfoMaxHealth ? pet2->InfoMaxHealth : pet2->Health);     ///< Health
+        l_Packet << int32(pet2->InfoMaxHealth);                                                            ///< MaxHealth
+        l_Packet << int32(pet2->InfoSpeed);                                                                ///< Speed
+        l_Packet << uint8(pet2->Quality);                                                                  ///< BreedQuality
 
-        l_Packet.WriteBits(l_Pet->Name.length(), 7);                                                        ///< CustomName
+        l_Packet.WriteBits(pet2->Name.length(), 7);                                                        ///< CustomName
         l_Packet.WriteBit(l_HasOwnerInfo);                                                                  ///< HasOwnerInfo
-        l_Packet.WriteBit(l_Pet->Name.empty());                                                             ///< NoRename
+        l_Packet.WriteBit(pet2->Name.empty());                                                             ///< NoRename
         l_Packet.FlushBits();
 
-        l_Packet.WriteString(l_Pet->Name);
+        l_Packet.WriteString(pet2->Name);
 
         if (l_HasOwnerInfo)
         {
@@ -70,7 +67,7 @@ void WorldSession::SendBattlePetUpdates(bool p_AddedPet)
         }
     }
 
-    l_Packet.WriteBit(p_AddedPet);                                                                          ///< HasJournalLock
+    l_Packet.WriteBit(add);                                                                          ///< HasJournalLock
     l_Packet.FlushBits();
 
     SendPacket(&l_Packet);
@@ -108,17 +105,17 @@ void WorldSession::SendBattlePetJournal()
     if (!m_Player || !m_Player->IsInWorld())
         return;
 
-    std::vector<BattlePet::Ptr>     l_Pets              = m_Player->GetBattlePets();
-    uint32                          l_UnlockedSlotCount = m_Player->GetUnlockedPetBattleSlot();
-    BattlePet::Ptr                * l_PetSlots          = m_Player->GetBattlePetCombatTeam();
+    auto pets = m_Player->GetBattlePets();
+    auto unlockedSlotCount = m_Player->GetUnlockedPetBattleSlot();
+    auto petSlots = m_Player->GetBattlePetCombatTeam();
 
-    if (l_UnlockedSlotCount > 0)
+    if (unlockedSlotCount > 0)
         m_Player->SetFlag(PLAYER_FIELD_PLAYER_FLAGS, PLAYER_FLAGS_HAS_BATTLE_PET_TRAINING);
 
     WorldPacket l_Packet(SMSG_BATTLE_PET_JOURNAL, 15 * 1024);
     l_Packet << uint16(m_Player->GetBattlePetTrapLevel());                                                  ///< Trap level
     l_Packet << uint32(MAX_PETBATTLE_SLOTS);                                                                                  ///< Slots count
-    l_Packet << uint32(l_Pets.size());                                                                      ///< Pets count
+    //l_Packet << uint32(pets.size());                                                                      ///< Pets count
 
     for (uint32 l_I = 0; l_I < MAX_PETBATTLE_SLOTS; l_I++)
     {
@@ -129,46 +126,46 @@ void WorldSession::SendBattlePetJournal()
         //if (m_Player->HasBattlePetTraining() && (l_I + 1) <= l_UnlockedSlotCount)
         //    l_IsLocked = false;
 
-        if (l_PetSlots[l_I])
-            l_Guid = l_PetSlots[l_I]->JournalID;
+        if (petSlots[l_I])
+            l_Guid = petSlots[l_I]->JournalID;
 
         l_Packet.appendPackGUID(l_Guid);                                                                    ///< BattlePetGUID
         l_Packet << uint32(0);                                                                              ///< CollarID
         l_Packet << uint8(l_I);                                                                             ///< SlotIndex
-        l_Packet.WriteBit(!((l_I + 1) <= l_UnlockedSlotCount));                                             ///< Locked
+        l_Packet.WriteBit(!((l_I + 1) <= unlockedSlotCount));                                             ///< Locked
         l_Packet.FlushBits();
     }
 
-    for (std::vector<BattlePet::Ptr>::iterator l_It = l_Pets.begin(); l_It != l_Pets.end(); ++l_It)
+    for (auto const& pet : *pets)
     {
-        BattlePet::Ptr l_Pet = (*l_It);
+        auto v = pet.second;
 
-        uint64 l_Guid = l_Pet->JournalID;
+        uint64 l_Guid = v->JournalID;
         bool l_HasOwnerInfo = false;
-        BattlePetSpeciesEntry const* l_SpeciesInfo = sBattlePetSpeciesStore.LookupEntry(l_Pet->Species);
+        BattlePetSpeciesEntry const* l_SpeciesInfo = sBattlePetSpeciesStore.LookupEntry(v->Species);
 
-        l_Pet->UpdateStats();
+        v->UpdateStats();
 
         l_Packet.appendPackGUID(l_Guid);                                                                    ///< BattlePetGUID
-        l_Packet << uint32(l_Pet->Species);                                                                 ///< SpeciesID
+        l_Packet << uint32(v->Species);                                                                 ///< SpeciesID
         l_Packet << uint32(l_SpeciesInfo ? l_SpeciesInfo->entry : 0);                                       ///< CreatureID
-        l_Packet << uint32(l_Pet->DisplayModelID);                                                          ///< DisplayID
-        l_Packet << uint16(l_Pet->Breed);                                                                   ///< BreedID
-        l_Packet << uint16(l_Pet->Level);                                                                   ///< Level
-        l_Packet << uint16(l_Pet->XP);                                                                      ///< Xp
-        l_Packet << uint16(l_Pet->Flags);                                                                   ///< BattlePetDBFlags
-        l_Packet << int32(l_Pet->InfoPower);                                                                ///< Power
-        l_Packet << int32(l_Pet->Health > l_Pet->InfoMaxHealth ? l_Pet->InfoMaxHealth : l_Pet->Health);     ///< Health
-        l_Packet << int32(l_Pet->InfoMaxHealth);                                                            ///< MaxHealth
-        l_Packet << int32(l_Pet->InfoSpeed);                                                                ///< Speed
-        l_Packet << uint8(l_Pet->Quality);                                                                  ///< BreedQuality
+        l_Packet << uint32(v->DisplayModelID);                                                          ///< DisplayID
+        l_Packet << uint16(v->Breed);                                                                   ///< BreedID
+        l_Packet << uint16(v->Level);                                                                   ///< Level
+        l_Packet << uint16(v->XP);                                                                      ///< Xp
+        l_Packet << uint16(v->Flags);                                                                   ///< BattlePetDBFlags
+        l_Packet << int32(v->InfoPower);                                                                ///< Power
+        l_Packet << int32(v->Health > v->InfoMaxHealth ? v->InfoMaxHealth : v->Health);                  ///< Health
+        l_Packet << int32(v->InfoMaxHealth);                                                            ///< MaxHealth
+        l_Packet << int32(v->InfoSpeed);                                                                ///< Speed
+        l_Packet << uint8(v->Quality);                                                                  ///< BreedQuality
 
-        l_Packet.WriteBits(l_Pet->Name.length(), 7);                                                        ///< CustomName
+        l_Packet.WriteBits(v->Name.length(), 7);                                                        ///< CustomName
         l_Packet.WriteBit(l_HasOwnerInfo);                                                                  ///< HasOwnerInfo
-        l_Packet.WriteBit(l_Pet->Name.empty());                                                             ///< NoRename
+        l_Packet.WriteBit(v->Name.empty());                                                             ///< NoRename
         l_Packet.FlushBits();
 
-        l_Packet.WriteString(l_Pet->Name);
+        l_Packet.WriteString(v->Name);
 
         if (l_HasOwnerInfo)
         {
@@ -256,23 +253,25 @@ void WorldSession::HandleBattlePetQueryName(WorldPacket& p_RecvData)
     if (!l_Creature)
         return;
 
-    BattlePet::Ptr l_BattlePet = nullptr;
+    std::shared_ptr<BattlePet> battlePet = nullptr;
 
     if (l_Creature->GetOwner() && l_Creature->GetOwner()->IsPlayer())
-        l_BattlePet = l_Creature->GetOwner()->ToPlayer()->GetBattlePet(l_JournalGuid);
+        battlePet = l_Creature->GetOwner()->ToPlayer()->GetBattlePet(l_JournalGuid);
 
-    if (!l_BattlePet)
+    if (!battlePet)
         return;
 
-    bool l_HaveCustomName = l_Creature->GetUInt32Value(UNIT_FIELD_BATTLE_PET_COMPANION_NAME_TIMESTAMP) != 0;
-    bool l_HaveDeclinedNames = false;
+    bool haveDeclinedNames = false;
 
-    if (l_BattlePet)
+    if (l_Creature->GetUInt32Value(UNIT_FIELD_BATTLE_PET_COMPANION_NAME_TIMESTAMP) != 0)
     {
-        for (int l_I = 0; l_I < MAX_DECLINED_NAME_CASES; ++l_I)
+        //response.Allow = true;
+        //response.Name = l_Creature->GetName();
+        if (haveDeclinedNames)
         {
-            if (!l_BattlePet->DeclinedNames[l_I].empty())
-                l_HaveDeclinedNames = true;
+            for (uint32 i = 0; i < MAX_DECLINED_NAME_CASES; ++i)
+                haveDeclinedNames = true;
+                //response.DeclinedNames[i] = battlePet->DeclinedNames[i];
         }
     }
 
@@ -281,26 +280,9 @@ void WorldSession::HandleBattlePetQueryName(WorldPacket& p_RecvData)
     l_Packet.appendPackGUID(l_JournalGuid);
     l_Packet << uint32(l_Creature->GetEntry());
     l_Packet << uint32(l_Creature->GetUInt32Value(UNIT_FIELD_BATTLE_PET_COMPANION_NAME_TIMESTAMP));
-    l_Packet.WriteBit(l_HaveCustomName);
-
-    if (l_HaveCustomName)
-    {
-        l_Packet.WriteBits(l_HaveCustomName ? strlen(l_Creature->GetName()) : 0, 8);
-        l_Packet.WriteBit(l_HaveDeclinedNames);
-
-        for (uint32 l_I = 0; l_I < MAX_DECLINED_NAME_CASES; ++l_I)
-            l_Packet.WriteBits(l_BattlePet ? l_BattlePet->DeclinedNames[l_I].size() : 0, 7);
-    }
+    l_Packet.WriteBit(haveDeclinedNames);
 
     l_Packet.FlushBits();
-
-    if (l_HaveCustomName)
-    {
-        l_Packet.WriteString(l_Creature->GetName());
-
-        for (uint32 l_I = 0; l_I < MAX_DECLINED_NAME_CASES; ++l_I)
-            l_Packet.WriteString(l_BattlePet ? l_BattlePet->DeclinedNames[l_I] : "");
-    }
 
     m_Player->GetSession()->SendPacket(&l_Packet);
 }
@@ -390,17 +372,15 @@ void WorldSession::HandleBattlePetModifyName(WorldPacket& p_RecvData)
 
     uint32 l_TimeStamp = l_Name.empty() ? 0 : time(0);
 
-    BattlePet::Ptr l_BattlePet = m_Player->GetBattlePet(l_PetJournalID);
-
-    if (l_BattlePet)
+    if (auto battlePet = m_Player->GetBattlePet(l_PetJournalID))
     {
-        l_BattlePet->Name           = l_Name;
-        l_BattlePet->NameTimeStamp  = l_TimeStamp;
+        battlePet->Name           = l_Name;
+        battlePet->NameTimeStamp  = l_TimeStamp;
 
         if (l_HaveDeclinedNames)
         {
             for (size_t l_I = 0; l_I < MAX_DECLINED_NAME_CASES; ++l_I)
-                l_BattlePet->DeclinedNames[l_I] = l_DeclinedNames.name[l_I];
+                battlePet->DeclinedNames[l_I] = l_DeclinedNames.name[l_I];
         }
     }
 
@@ -453,18 +433,16 @@ void WorldSession::HandleBattlePetSetBattleSlot(WorldPacket& p_RecvData)
     if (l_DestSlot >= MAX_PETBATTLE_SLOTS)
         return;
 
-    BattlePet::Ptr   l_BattlePet = m_Player->GetBattlePet(l_PetJournalID);
-    BattlePet::Ptr * l_PetSlots = m_Player->GetBattlePetCombatTeam();
-
-    if (l_BattlePet)
+    auto petSlots = m_Player->GetBattlePetCombatTeam();
+    if (auto battlePet = m_Player->GetBattlePet(l_PetJournalID))
     {
         for (uint8 l_I = 0; l_I < MAX_PETBATTLE_SLOTS; ++l_I)
         {
-            if (l_PetSlots[l_I] && l_PetSlots[l_I]->Slot == l_DestSlot)
-                l_PetSlots[l_I]->Slot = l_BattlePet->Slot;
+            if (petSlots[l_I] && petSlots[l_I]->Slot == l_DestSlot)
+                petSlots[l_I]->Slot = battlePet->Slot;
         }
 
-        l_BattlePet->Slot = l_DestSlot;
+        battlePet->Slot = l_DestSlot;
     }
 
     m_Player->UpdateBattlePetCombatTeam();
@@ -488,14 +466,12 @@ void WorldSession::HandleBattlePetSetFlags(WorldPacket& p_RecvData)
 
     l_Action = p_RecvData.ReadBits(2);  ///< 0 add flag, 2 remove it ///< l_Action is never read 01/18/16
 
-    BattlePet::Ptr l_BattlePet = m_Player->GetBattlePet(l_PetJournalID);
-
-    if (l_BattlePet)
+    if (auto battlePet = m_Player->GetBattlePet(l_PetJournalID))
     {
-        if (l_BattlePet->Flags & l_Flag)
-            l_BattlePet->Flags = l_BattlePet->Flags & ~l_Flag;
+        if (battlePet->Flags & l_Flag)
+            battlePet->Flags = battlePet->Flags & ~l_Flag;
         else
-            l_BattlePet->Flags |= l_Flag;
+            battlePet->Flags |= l_Flag;
     }
 }
 

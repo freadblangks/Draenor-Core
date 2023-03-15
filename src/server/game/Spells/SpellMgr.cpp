@@ -8066,6 +8066,9 @@ void SpellMgr::LoadSpellCustomAttr()
                     if (spellInfo->Id == 1822)
                         spellInfo->AttributesCu |= SPELL_ATTR0_CU_IGNORE_ARMOR;
                     break;
+                case 66550: // Teleport outside (Isle of Conquest)
+                    spellInfo->RangeEntry = sSpellRangeStore.LookupEntry(1);
+                    break;
                 default:
                     break;
             }

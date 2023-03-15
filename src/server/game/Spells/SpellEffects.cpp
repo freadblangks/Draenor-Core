@@ -1535,24 +1535,6 @@ void Spell::EffectTeleportUnits(SpellEffIndex /*effIndex*/)
                 return;
             }
             break;
-        case 66550: // teleport outside (Isle of Conquest)
-            if (Player* target = unitTarget->ToPlayer())
-            {
-                if (target->GetTeamId() == TEAM_ALLIANCE)
-                    m_targets.SetDst(442.24f, -835.25f, 44.30f, 0.06f, 628);
-                else
-                    m_targets.SetDst(1120.43f, -762.11f, 47.92f, 2.94f, 628);
-            }
-            break;
-        case 66551: // teleport inside (Isle of Conquest)
-            if (Player* target = unitTarget->ToPlayer())
-            {
-                if (target->GetTeamId() == TEAM_ALLIANCE)
-                    m_targets.SetDst(389.57f, -832.38f, 48.65f, 3.00f, 628);
-                else
-                    m_targets.SetDst(1174.85f, -763.24f, 48.72f, 6.26f, 628);
-            }
-            break;
 		case 36563: ///< Shadowstep teleport effect
 		case 57840: ///< Killing Spree teleport effect
 		{
@@ -1583,6 +1565,19 @@ void Spell::EffectTeleportUnits(SpellEffIndex /*effIndex*/)
     // post effects for TARGET_DEST_DB
     switch (m_spellInfo->Id)
     {
+        case 66550: // Teleport outside (Isle of Conquest)
+        case 66551: // Teleport inside (Isle of Conquest)
+        {
+            if (Creature* teleportTarget = m_caster->FindNearestCreature((m_spellInfo->Id == 66550 ? 23472 : 22515), 35.0f, true))
+            {
+                float x, y, z, o;
+                teleportTarget->GetPosition(x, y, z, o);
+
+                if (m_caster->GetTypeId() == TYPEID_PLAYER)
+                    m_caster->ToPlayer()->TeleportTo(628, x, y, z, o);
+            }
+            break;
+        }
         // Dimensional Ripper - Everlook
         case 23442:
         {
@@ -8305,20 +8300,19 @@ void Spell::EffectResurectPetBattles(SpellEffIndex /*effIndex*/)
     if (effectHandleMode != SPELL_EFFECT_HANDLE_HIT_TARGET)
         return;
 
-    if (!m_CastItem && m_caster->ToPlayer())
+    if (Player* player = m_caster->ToPlayer())
     {
-        std::vector<BattlePet::Ptr> l_Pets = m_caster->ToPlayer()->GetBattlePets();
-
-        for (std::vector<BattlePet::Ptr>::iterator l_It = l_Pets.begin(); l_It != l_Pets.end(); ++l_It)
+        BattlePetMap* pets = player->GetBattlePets();
+        for (auto& pet : *pets)
         {
-            BattlePet::Ptr l_Pet = (*l_It);
-
-            l_Pet->UpdateStats();
-            l_Pet->Health = l_Pet->InfoMaxHealth;
+            pet.second->UpdateStats();
+            if (pet.second->Health != pet.second->InfoMaxHealth)
+                pet.second->needSave = true;
+            pet.second->Health = pet.second->InfoMaxHealth;
         }
 
-        m_caster->ToPlayer()->GetSession()->SendBattlePetsHealed();
-        m_caster->ToPlayer()->GetSession()->SendBattlePetUpdates(false);
+        player->GetSession()->SendBattlePetsHealed();
+        player->GetSession()->SendBattlePetUpdates();
     }
 }
 

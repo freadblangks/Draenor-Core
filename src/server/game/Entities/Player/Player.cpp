@@ -18,6 +18,7 @@
 #include "WorldSession.h"
 #include "UpdateMask.h"
 #include "Player.h"
+#include "PetBattleSystem.h"
 #include "Vehicle.h"
 #include "SkillDiscovery.h"
 #include "QuestDef.h"
@@ -39,6 +40,7 @@
 #include "Formulas.h"
 #include "Group.h"
 #include "Pet.h"
+#include "PetBattle.h"
 #include "Util.h"
 #include "Transport.h"
 #include "Weather.h"
@@ -915,8 +917,8 @@ Player::Player(WorldSession* session) : Unit(true), m_achievementMgr(this), m_re
 
     m_LastSummonedBattlePet = 0;
 
-    for (size_t l_CurrentPetSlot = 0; l_CurrentPetSlot < MAX_PETBATTLE_SLOTS; ++l_CurrentPetSlot)
-        m_BattlePetCombatTeam[l_CurrentPetSlot] = BattlePet::Ptr();
+    for (size_t i = 0; i < MAX_PETBATTLE_SLOTS; ++i)
+        _battlePetCombatTeam[i] = std::shared_ptr<BattlePet>();
 
     ///////////////////////////////////////////////////////////
 
@@ -3254,33 +3256,31 @@ void Player::ProcessDelayedOperations()
 
     if (m_DelayedOperations & DELAYED_PET_BATTLE_INITIAL)
     {
-        if (PetBattle* l_Battle = sPetBattleSystem->GetBattle(_petBattleId))
+        if (PetBattle* battle = sPetBattleSystem->GetBattle(_petBattleId))
         {
-            uint8 l_TeamID = l_Battle->Teams[PETBATTLE_TEAM_1]->OwnerGuid == GetGUID() ? PETBATTLE_TEAM_1 : PETBATTLE_TEAM_2;
+            uint8 teamID = battle->Teams[PETBATTLE_TEAM_1]->OwnerGuid == GetGUID() ? PETBATTLE_TEAM_1 : PETBATTLE_TEAM_2;
 
-            PetBattleRequest l_Request;
-            memcpy(&l_Request, &l_Battle->PvPMatchMakingRequest, sizeof(PetBattleRequest));
+            PetBattleRequest request;
+            memcpy(&request, &battle->PvPMatchMakingRequest, sizeof(PetBattleRequest));
 
-            if (l_TeamID == PETBATTLE_TEAM_2)
-            {
-                std::swap(l_Request.TeamPosition[PETBATTLE_TEAM_1][0], l_Request.TeamPosition[PETBATTLE_TEAM_2][0]);
-                std::swap(l_Request.TeamPosition[PETBATTLE_TEAM_1][1], l_Request.TeamPosition[PETBATTLE_TEAM_2][1]);
-                std::swap(l_Request.TeamPosition[PETBATTLE_TEAM_1][2], l_Request.TeamPosition[PETBATTLE_TEAM_2][2]);
-            }
+            auto& matchMakingRequest = battle->PvPMatchMakingRequest;
 
-            l_Battle->PvPMatchMakingRequest.PetBattleCenterPosition[2] = GetMap()->GetHeight(l_Battle->PvPMatchMakingRequest.PetBattleCenterPosition[0], l_Battle->PvPMatchMakingRequest.PetBattleCenterPosition[1], MAX_HEIGHT);
+            if (teamID == PETBATTLE_TEAM_2)
+                std::swap(request.TeamPosition[PETBATTLE_TEAM_1], request.TeamPosition[PETBATTLE_TEAM_2]);
 
-            GetSession()->SendPetBattleFinalizeLocation(&l_Request);
+            battle->PvPMatchMakingRequest.PetBattleCenterPosition[2] = GetMap()->GetHeight(battle->PvPMatchMakingRequest.PetBattleCenterPosition[0], battle->PvPMatchMakingRequest.PetBattleCenterPosition[1], MAX_HEIGHT);
+
+            GetSession()->SendPetBattleFinalizeLocation(&request);
 
             SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_PACIFIED | UNIT_FLAG_IMMUNE_TO_NPC);
-            SetFacingTo(GetAngle(l_Battle->PvPMatchMakingRequest.TeamPosition[!l_TeamID][0], l_Battle->PvPMatchMakingRequest.TeamPosition[!l_TeamID][1]));
+            SetFacingTo(GetAngle(battle->PvPMatchMakingRequest.TeamPosition[!teamID][0], battle->PvPMatchMakingRequest.TeamPosition[!teamID][1]));
             SetRooted(true);
 
-            if (!l_Battle->PvPMatchMakingRequest.IsPvPReady[l_TeamID])
-                l_Battle->PvPMatchMakingRequest.IsPvPReady[l_TeamID] = true;
+            if (!battle->PvPMatchMakingRequest.IsPvPReady[teamID])
+                battle->PvPMatchMakingRequest.IsPvPReady[teamID] = true;
 
-            if (l_Battle->PvPMatchMakingRequest.IsPvPReady[PETBATTLE_TEAM_1] == true && l_Battle->PvPMatchMakingRequest.IsPvPReady[PETBATTLE_TEAM_2] == true)
-                l_Battle->Begin();
+            if (battle->PvPMatchMakingRequest.IsPvPReady[PETBATTLE_TEAM_1] == true && battle->PvPMatchMakingRequest.IsPvPReady[PETBATTLE_TEAM_2] == true)
+                battle->Begin();
         }
     }
 
@@ -5542,48 +5542,8 @@ bool Player::addSpell(uint32 spellId, bool active, bool learning, bool dependent
     }
 
     // Add BattlePet
-    if (learning && !dependent && p_LearnBattlePet)
-    {
-        for (uint32 speciesId = 0; speciesId != sBattlePetSpeciesStore.GetNumRows(); ++speciesId)
-        {
-            BattlePetSpeciesEntry const* speciesInfo = sBattlePetSpeciesStore.LookupEntry(speciesId);
-            if (!speciesInfo || speciesInfo->spellId != spellId)
-                continue;
-
-            BattlePet pet;
-            pet.Slot = PETBATTLE_NULL_SLOT;
-            pet.NameTimeStamp = 0;
-            pet.Species = speciesInfo->id;
-            pet.DisplayModelID = 0;
-            pet.Flags = 0;
-
-            if (BattlePetTemplate const* temp = sObjectMgr->GetBattlePetTemplate(speciesInfo->id))
-            {
-                pet.Breed = temp->Breed;
-                pet.Quality = temp->Quality;
-                pet.Level = temp->Level;
-            }
-            else
-            {
-                pet.Breed = 3;
-                pet.Quality = BATTLEPET_QUALITY_COMMON;
-                pet.Level = 1;
-            }
-
-            // Calculate XP for level
-            pet.XP = 0;
-            if (pet.Level > 1 && pet.Level < 100)
-                pet.XP = sGtBattlePetXPStore.LookupEntry(pet.Level - 2)->value * sGtBattlePetXPStore.LookupEntry(100 + pet.Level - 2)->value;
-
-            // Calculate stats
-            pet.UpdateStats();
-            pet.Health = pet.InfoMaxHealth;
-
-            pet.AddToPlayer(this);
-            ReloadPetBattles();
-            break;
-        }
-    }
+    if (learning && !dependent)
+        AddBattlePet(spellId);
 
     // add dependent skills
     uint16 maxskill     = GetMaxSkillValueForLevel();
@@ -22106,7 +22066,7 @@ bool Player::LoadFromDB(uint32 guid, SQLQueryHolder* holder, SQLQueryHolder* p_L
 
                 if (speciesInfo && speciesInfo->spellId == l_SpellID)
                 {
-                    m_OldPetBattleSpellToMerge.push_back(std::make_pair(l_SpellID, speciesInfo->id));
+                    _oldPetBattleSpellToMerge.push_back(std::make_pair(l_SpellID, speciesInfo->id));
                     break;
                 }
             }
@@ -23408,7 +23368,7 @@ void Player::_LoadSpells(PreparedQueryResult result)
 
                 if (speciesInfo && speciesInfo->spellId == l_SpellID)
                 {
-                    m_OldPetBattleSpellToMerge.push_back(std::make_pair(l_SpellID, speciesInfo->id));
+                    _oldPetBattleSpellToMerge.push_back(std::make_pair(l_SpellID, speciesInfo->id));
                     break;
                 }
 
@@ -24413,11 +24373,7 @@ void Player::SaveToDB(bool create /*=false*/, MS::Utilities::CallBackPtr p_Callb
     if (m_session->isLogingOut() || !sWorld->getBoolConfig(CONFIG_STATS_SAVE_ONLY_ON_LOGOUT))
         _SaveStats(trans);
 
-    for (std::vector<BattlePet::Ptr>::iterator l_It = m_BattlePets.begin(); l_It != m_BattlePets.end(); ++l_It)
-    {
-        BattlePet::Ptr l_Pet = (*l_It);
-        l_Pet->Save(accountTrans);
-    }
+    SaveBattlePets(trans);
 
     CommitTransaction(RealmDatabase, trans, p_Callback);
     LoginDatabase.CommitTransaction(accountTrans);
@@ -34188,31 +34144,24 @@ void Player::UnsummonCurrentBattlePetIfAny(bool p_Unvolontary)
 }
 
 /// Summon new pet
-void Player::SummonBattlePet(uint64 p_JournalID)
+void Player::SummonBattlePet(ObjectGuid journalID)
 {
     if (!IsInWorld())
         return;
 
-    std::vector<BattlePet::Ptr>::iterator l_It = std::find_if(m_BattlePets.begin(), m_BattlePets.end(), [p_JournalID](BattlePet::Ptr & p_Ptr)
-    {
-        if (p_Ptr && p_Ptr->JournalID == p_JournalID)
-            return true;
-
-        return false;
-    });
-
-    if (l_It == m_BattlePets.end())
+    BattlePetMap::iterator iter = _battlePets.find(journalID);
+    if (iter == _battlePets.end())
         return;
 
-    BattlePet::Ptr l_BattlePet = (*l_It);
+    std::shared_ptr<BattlePet> battlePet = iter->second;
 
-    if (l_BattlePet->Health <= 0)
+    if (battlePet->Health <= 0)
     {
         UnsummonCurrentBattlePetIfAny(false);
         return;
     }
 
-    BattlePetSpeciesEntry const* l_SpeciesInfo      = sBattlePetSpeciesStore.LookupEntry(l_BattlePet->Species);
+    BattlePetSpeciesEntry const* l_SpeciesInfo      = sBattlePetSpeciesStore.LookupEntry(battlePet->Species);
     SummonPropertiesEntry const* l_SummonProperties = sSummonPropertiesStore.LookupEntry(3221);
 
     if (!l_SpeciesInfo || !l_SummonProperties)
@@ -34238,25 +34187,25 @@ void Player::SummonBattlePet(uint64 p_JournalID)
     l_CurrentPet->InitStats(0);
     l_CurrentPet->SetOwnerGUID(GetGUID());
 
-    m_LastSummonedBattlePet = GUID_LOPART(l_BattlePet->JournalID);
+    m_LastSummonedBattlePet = GUID_LOPART(battlePet->JournalID);
 
     SetGuidValue(UNIT_FIELD_CRITTER,                                l_CurrentPet->GetGUID());
-    SetUInt32Value(UNIT_FIELD_WILD_BATTLE_PET_LEVEL,                l_BattlePet->Level);
-    SetGuidValue(PLAYER_FIELD_SUMMONED_BATTLE_PET_GUID,             l_BattlePet->JournalID);
-    SetUInt32Value(PLAYER_FIELD_CURRENT_BATTLE_PET_BREED_QUALITY,   l_BattlePet->Breed);
+    SetUInt32Value(UNIT_FIELD_WILD_BATTLE_PET_LEVEL,                battlePet->Level);
+    SetGuidValue(PLAYER_FIELD_SUMMONED_BATTLE_PET_GUID,             battlePet->JournalID);
+    SetUInt32Value(PLAYER_FIELD_CURRENT_BATTLE_PET_BREED_QUALITY,   battlePet->Breed);
 
-    l_CurrentPet->SetGuidValue(UNIT_FIELD_BATTLE_PET_COMPANION_GUID,    l_BattlePet->JournalID);
-    l_CurrentPet->SetUInt32Value(UNIT_FIELD_WILD_BATTLE_PET_LEVEL,      l_BattlePet->Level);
+    l_CurrentPet->SetGuidValue(UNIT_FIELD_BATTLE_PET_COMPANION_GUID,    battlePet->JournalID);
+    l_CurrentPet->SetUInt32Value(UNIT_FIELD_WILD_BATTLE_PET_LEVEL,      battlePet->Level);
 
-    if (!l_BattlePet->Name.empty())
+    if (!battlePet->Name.empty())
     {
-        l_CurrentPet->SetUInt32Value(UNIT_FIELD_BATTLE_PET_COMPANION_NAME_TIMESTAMP, l_BattlePet->NameTimeStamp);
-        l_CurrentPet->SetName(l_BattlePet->Name);
+        l_CurrentPet->SetUInt32Value(UNIT_FIELD_BATTLE_PET_COMPANION_NAME_TIMESTAMP, battlePet->NameTimeStamp);
+        l_CurrentPet->SetName(battlePet->Name);
     }
     else
         l_CurrentPet->SetUInt32Value(UNIT_FIELD_BATTLE_PET_COMPANION_NAME_TIMESTAMP, 0);
 
-    l_CurrentPet->SetUInt32Value(UNIT_FIELD_SHAPESHIFT_FORM, !l_BattlePet->Name.empty());
+    l_CurrentPet->SetUInt32Value(UNIT_FIELD_SHAPESHIFT_FORM, !battlePet->Name.empty());
     l_CurrentPet->SetUInt32Value(UNIT_FIELD_CREATED_BY_SPELL, l_SpeciesInfo->spellId);
 
     l_CurrentPet->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_UNK_15);
@@ -34305,32 +34254,32 @@ void Player::SummonLastSummonedBattlePet()
 }
 
 /// Get pet battles
-std::vector<std::shared_ptr<BattlePet>> Player::GetBattlePets()
+BattlePetMap* Player::GetBattlePets()
 {
-    return m_BattlePets;
+    return &_battlePets;
 }
 
 /// Get pet battles
-std::shared_ptr<BattlePet> Player::GetBattlePet(uint64 p_JournalID)
+std::shared_ptr<BattlePet> Player::GetBattlePet(uint64 journalID)
 {
-    std::vector<BattlePet::Ptr>::iterator l_It = std::find_if(m_BattlePets.begin(), m_BattlePets.end(), [p_JournalID](BattlePet::Ptr & p_Ptr)
-    {
-        if (p_Ptr && p_Ptr->JournalID == p_JournalID)
-            return true;
+    BattlePetMap::iterator iter = _battlePets.find(journalID);
+    if (iter == _battlePets.end())
+        return std::shared_ptr<BattlePet>();
 
-        return false;
-    });
-
-    if (l_It == m_BattlePets.end())
-        return BattlePet::Ptr();
-
-    return (*l_It);
+    return iter->second;
 }
 
 /// Get pet battle combat team
 std::shared_ptr<BattlePet> * Player::GetBattlePetCombatTeam()
 {
-    return m_BattlePetCombatTeam;
+    return _battlePetCombatTeam;
+}
+
+void Player::SaveBattlePets(SQLTransaction& trans)
+{
+    for (BattlePetMap::iterator itr = _battlePets.begin(); itr != _battlePets.end(); ++itr)
+        if (std::shared_ptr<BattlePet> pet = itr->second)
+            pet->Save(trans);
 }
 
 /// Reload pet battles
@@ -34338,10 +34287,10 @@ void Player::ReloadPetBattles()
 {
     SQLTransaction l_Transaction = LoginDatabase.BeginTransaction();
 
-    for (std::vector<BattlePet::Ptr>::iterator l_It = m_BattlePets.begin(); l_It != m_BattlePets.end(); ++l_It)
+    for (BattlePetMap::iterator itr = _battlePets.begin(); itr != _battlePets.end(); ++itr)
     {
-        BattlePet::Ptr l_Pet = (*l_It);
-        l_Pet->Save(l_Transaction);
+        std::shared_ptr<BattlePet> pet = itr->second;
+        pet->Save(l_Transaction);
     }
 
     uint64 l_ThisGUID = GetGUID();
@@ -34368,34 +34317,38 @@ void Player::PetBattleCountBattleSpecies()
 
     uint32 l_ThisTeamID = l_Battle->Teams[PETBATTLE_TEAM_1]->PlayerGuid == GetGUID() ? PETBATTLE_TEAM_1 : PETBATTLE_TEAM_2;
 
-    std::for_each(m_BattlePets.begin(), m_BattlePets.end(), [l_Battle, l_ThisTeamID](BattlePet::Ptr & p_PetBattle)
-    {
-        if (!p_PetBattle)
-            return;
+    for (BattlePetMap::iterator itr = _battlePets.begin(); itr != _battlePets.end(); ++itr)
+        if (std::shared_ptr<BattlePet> petBattle = itr->second)
+        {
+            if (!petBattle)
+                return;
 
-        if (l_Battle->Teams[l_ThisTeamID]->CapturedSpeciesCount.find(p_PetBattle->Species) == l_Battle->Teams[l_ThisTeamID]->CapturedSpeciesCount.end())
-            l_Battle->Teams[l_ThisTeamID]->CapturedSpeciesCount[p_PetBattle->Species] = 0;
+            if (l_Battle->Teams[l_ThisTeamID]->CapturedSpeciesCount.find(petBattle->Species) == l_Battle->Teams[l_ThisTeamID]->CapturedSpeciesCount.end())
+                l_Battle->Teams[l_ThisTeamID]->CapturedSpeciesCount[petBattle->Species] = 0;
 
-        l_Battle->Teams[l_ThisTeamID]->CapturedSpeciesCount[p_PetBattle->Species]++;
-    });
+            l_Battle->Teams[l_ThisTeamID]->CapturedSpeciesCount[petBattle->Species]++;
+        }
 }
 
 /// Update battle pet combat team
 void Player::UpdateBattlePetCombatTeam()
 {
-    for (size_t l_CurrentPetSlot = 0; l_CurrentPetSlot < MAX_PETBATTLE_SLOTS; ++l_CurrentPetSlot)
-        m_BattlePetCombatTeam[l_CurrentPetSlot] = BattlePet::Ptr();
+    for (auto& i : _battlePetCombatTeam)
+        i = std::shared_ptr<BattlePet>();
 
-    uint32 l_UnlockedSlotCount = GetUnlockedPetBattleSlot();
+    auto unlockedSlotCount = GetUnlockedPetBattleSlot();
 
-    std::for_each(m_BattlePets.begin(), m_BattlePets.end(), [this, l_UnlockedSlotCount](BattlePet::Ptr & p_BattlePet)
+    for (auto itr = _battlePets.begin(); itr != _battlePets.end(); ++itr)
     {
-        if (!p_BattlePet)
-            return;
-
-        if (p_BattlePet->Slot >= 0 && p_BattlePet->Slot < (int32)l_UnlockedSlotCount)
-            m_BattlePetCombatTeam[p_BattlePet->Slot] = p_BattlePet;
-    });
+        if (auto battlePet = itr->second)
+        {
+            if (battlePet->Slot >= 0 && battlePet->Slot < static_cast<int32>(unlockedSlotCount))
+            {
+                battlePet->UpdateAbilities();
+                _battlePetCombatTeam[battlePet->Slot] = battlePet;
+            }
+        }
+    }
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -34981,162 +34934,71 @@ uint32 Player::GetBattlePetCombatSize()
     uint32 l_Count = 0;
 
     for (size_t l_CurrentPetSlot = 0; l_CurrentPetSlot < MAX_PETBATTLE_SLOTS; ++l_CurrentPetSlot)
-        if (m_BattlePetCombatTeam[l_CurrentPetSlot])
+        if (_battlePetCombatTeam[l_CurrentPetSlot])
             l_Count++;
 
     return l_Count;
 }
 
 /// Load pet battle async callback
-bool Player::_LoadPetBattles(PreparedQueryResult&& p_Result)
+bool Player::_LoadPetBattles(PreparedQueryResult&& result)
 {
-    m_BattlePets.clear();
+     _battlePets.clear();
 
-    uint64 l_PlayerGUID = GetGUID();
-    MS::Utilities::CallBackPtr l_CallBack = std::make_shared<MS::Utilities::Callback>([l_PlayerGUID](bool p_Success) -> void
+    if (!result)
     {
-        if (Player* l_Player = HashMapHolder<Player>::Find(l_PlayerGUID))
-            l_Player->ReloadPetBattles();
-    });
+        auto add = false;
 
-    if (!p_Result)
-    {
-        bool l_Add = false;
+        for (const auto& itr : _oldPetBattleSpellToMerge)
+            if (AddBattlePet(itr.first, 0, false))
+                add = true;
 
-        SQLTransaction l_Transaction = LoginDatabase.BeginTransaction();
+        _oldPetBattleSpellToMerge.clear();
 
-        for (uint32 l_I = 0; l_I < m_OldPetBattleSpellToMerge.size(); l_I++)
+        if (add)
         {
-            BattlePet l_BattlePet;
-            l_BattlePet.Slot            = PETBATTLE_NULL_SLOT;
-            l_BattlePet.NameTimeStamp   = 0;
-            l_BattlePet.Species         = m_OldPetBattleSpellToMerge[l_I].second;
-            l_BattlePet.DisplayModelID  = 0;
-            l_BattlePet.Flags           = 0;
-
-            if (BattlePetTemplate const* l_Template = sObjectMgr->GetBattlePetTemplate(m_OldPetBattleSpellToMerge[l_I].second))
-            {
-                l_BattlePet.Breed   = l_Template->Breed;
-                l_BattlePet.Quality = l_Template->Quality;
-                l_BattlePet.Level   = l_Template->Level;
-            }
-            else
-            {
-                l_BattlePet.Breed   = 3;
-                l_BattlePet.Quality = BATTLEPET_QUALITY_COMMON;
-                l_BattlePet.Level   = 1;
-            }
-
-            /// Calculate XP for level
-            l_BattlePet.XP = 0;
-
-            if (l_BattlePet.Level > 1 && l_BattlePet.Level < 100)
-                l_BattlePet.XP = sGtBattlePetXPStore.LookupEntry(l_BattlePet.Level - 2)->value * sGtBattlePetXPStore.LookupEntry(100 + l_BattlePet.Level - 2)->value;
-
-            /// Calculate stats
-            l_BattlePet.UpdateStats();
-            l_BattlePet.Health = l_BattlePet.InfoMaxHealth;
-            l_BattlePet.AddToPlayer(this, l_Transaction);
-
-            l_Add = true;
-        }
-
-        m_OldPetBattleSpellToMerge.clear();
-
-        if (l_Add)
-        {
-            CommitTransaction(LoginDatabase, l_Transaction, l_CallBack);
+            GetSession()->SendBattlePetUpdates();
             return true;
         }
     }
 
-    for (size_t l_CurrentPetSlot = 0; l_CurrentPetSlot < MAX_PETBATTLE_SLOTS; ++l_CurrentPetSlot)
-        m_BattlePetCombatTeam[l_CurrentPetSlot] = BattlePet::Ptr();
+    for (auto i = 0; i < MAX_PETBATTLE_SLOTS; ++i)
+        _battlePetCombatTeam[i] = std::shared_ptr<BattlePet>();
 
-    m_BattlePets.resize(p_Result ? p_Result->GetRowCount() : 0);
-    uint32 l_UnlockedSlotCount = GetUnlockedPetBattleSlot();
-
-    if (l_UnlockedSlotCount > 0)
+    auto unlockedSlotCount = GetUnlockedPetBattleSlot();
+    if (unlockedSlotCount > 0)
         SetFlag(PLAYER_FIELD_PLAYER_FLAGS, PLAYER_FLAGS_HAS_BATTLE_PET_TRAINING);
 
-    std::vector<uint32> l_AlreadyKnownPet;
+    std::vector<uint32> alreadyKnownPet;
 
-    if (p_Result && p_Result->GetRowCount())
+    if (result)
     {
-        size_t l_PetID = 0;
-
         do
         {
-            if (l_PetID > m_BattlePets.size())
-                continue;
+            auto BattlePetPtr = std::make_shared<BattlePet>();
+            BattlePetPtr->Load(result->Fetch());
+            _battlePets.emplace(BattlePetPtr->JournalID, BattlePetPtr);
 
-            m_BattlePets[l_PetID] = BattlePet::Ptr(new BattlePet());
-            m_BattlePets[l_PetID]->Load(p_Result->Fetch());
+            if (BattlePetPtr->Slot >= 0 && BattlePetPtr->Slot < static_cast<int32>(unlockedSlotCount))
+                _battlePetCombatTeam[BattlePetPtr->Slot] = BattlePetPtr;
 
-            if (m_BattlePets[l_PetID]->Slot >= 0 && m_BattlePets[l_PetID]->Slot < (int32)l_UnlockedSlotCount)
-                m_BattlePetCombatTeam[m_BattlePets[l_PetID]->Slot] = m_BattlePets[l_PetID];
+            alreadyKnownPet.push_back(BattlePetPtr->Species);
 
-            l_AlreadyKnownPet.push_back(m_BattlePets[l_PetID]->Species);
-
-            BattlePetSpeciesEntry const* l_SpeciesEntry = sBattlePetSpeciesStore.LookupEntry(m_BattlePets[l_PetID]->Species);
-            if (l_SpeciesEntry != nullptr && !HasSpell(l_SpeciesEntry->spellId))
-                addSpell(l_SpeciesEntry->spellId, true, true, false, false, false, false, false);
-
-            ++l_PetID;
-        } while (p_Result->NextRow());
+        } while (result->NextRow());
     }
 
-    bool l_OldPetAdded = false;
-    SQLTransaction l_Transaction = LoginDatabase.BeginTransaction();
-    for (uint32 l_I = 0; l_I < m_OldPetBattleSpellToMerge.size(); l_I++)
+    for (auto itr = _oldPetBattleSpellToMerge.begin(); itr != _oldPetBattleSpellToMerge.end(); ++itr)
     {
-        if (std::find(l_AlreadyKnownPet.begin(), l_AlreadyKnownPet.end(), m_OldPetBattleSpellToMerge[l_I].second) != l_AlreadyKnownPet.end())
+        if (std::find(alreadyKnownPet.begin(), alreadyKnownPet.end(), itr->second) != alreadyKnownPet.end())
             continue;
 
-        l_OldPetAdded = true;
-
-        BattlePet l_BattlePet;
-        l_BattlePet.Slot            = PETBATTLE_NULL_SLOT;
-        l_BattlePet.NameTimeStamp   = 0;
-        l_BattlePet.Species         = m_OldPetBattleSpellToMerge[l_I].second;
-        l_BattlePet.DisplayModelID  = 0;
-        l_BattlePet.Flags           = 0;
-
-        if (BattlePetTemplate const* temp = sObjectMgr->GetBattlePetTemplate(m_OldPetBattleSpellToMerge[l_I].second))
-        {
-            l_BattlePet.Breed   = temp->Breed;
-            l_BattlePet.Quality = temp->Quality;
-            l_BattlePet.Level   = temp->Level;
-        }
-        else
-        {
-            l_BattlePet.Breed   = 3;
-            l_BattlePet.Quality = BATTLEPET_QUALITY_COMMON;
-            l_BattlePet.Level   = 1;
-        }
-
-        /// Calculate XP for level
-        l_BattlePet.XP = 0;
-
-        if (l_BattlePet.Level > 1 && l_BattlePet.Level < 100)
-            l_BattlePet.XP = sGtBattlePetXPStore.LookupEntry(l_BattlePet.Level - 2)->value * sGtBattlePetXPStore.LookupEntry(100 + l_BattlePet.Level - 2)->value;
-
-        /// Calculate stats
-        l_BattlePet.UpdateStats();
-        l_BattlePet.Health = l_BattlePet.InfoMaxHealth;
-
-        l_BattlePet.AddToPlayer(this, l_Transaction);
+        AddBattlePet(itr->first, 0, false);
     }
 
-    m_OldPetBattleSpellToMerge.clear();
-
-    if (l_OldPetAdded)
-    {
-        CommitTransaction(LoginDatabase, l_Transaction, l_CallBack);
-        return true;
-    }
+    _oldPetBattleSpellToMerge.clear();
 
     GetSession()->SendBattlePetJournal();
+    UpdateAchievementCriteria(ACHIEVEMENT_CRITERIA_TYPE_EARN_BATTLEPET, 1);
 
     return true;
 }

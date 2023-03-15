@@ -49,6 +49,7 @@ struct LfgUpdateData;
 struct MovementInfo;
 struct PetBattleRequest;
 class PetBattle;
+class BattlePet;
 
 enum AccountDataType
 {
@@ -1384,7 +1385,7 @@ class WorldSession
 #endif
 
         /// Battle pet
-        void SendBattlePetUpdates(bool p_AddedPet);
+        void SendBattlePetUpdates(BattlePet *pet = nullptr, bool add = false);
         void SendBattlePetTrapLevel();
         void SendBattlePetJournalLockAcquired();
         void SendBattlePetJournalLockDenied();

@@ -156,6 +156,7 @@ class Object
         virtual ~Object();
 
         bool IsInWorld() const { return m_inWorld; }
+        bool IsPreDelete() const;
 
         virtual void AddToWorld();
         virtual void RemoveFromWorld();
@@ -441,6 +442,7 @@ class Object
 
         bool m_objectUpdated;
 
+        std::atomic<bool> m_preDelete;
         std::vector<uint32>* _dynamicValues;
         uint32 _dynamicValuesCount;
         UpdateMask _changesMask;
@@ -935,6 +937,9 @@ class WorldObject : public Object, public WorldLocation
         void SetName(const std::string& newname) { m_name=newname; }
 
         virtual const char* GetNameForLocaleIdx(LocaleConstant /*locale_idx*/) const { return GetName(); }
+
+        uint32 m_zoneId;
+        uint32 GetCurrentZoneID() const { return m_zoneId; }
 
         float GetDistance(const WorldObject* obj) const
         {
