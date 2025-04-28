@@ -454,7 +454,7 @@ void Spell::EffectSchoolDMG(SpellEffIndex effIndex)
                         break;
                     // Consumption
                     case 28865:
-                        damage = (((InstanceMap*)m_caster->GetMap())->GetDifficultyID() == DifficultyNormal ? 2750 : 4250);
+                        damage = (((InstanceMap*)m_caster->GetMap())->GetDifficultyID() == DUNGEON_DIFFICULTY_NORMAL ? 2750 : 4250);
                         break;
                     // percent from health with min
                     case 25599: // Thundercrash
@@ -4983,7 +4983,7 @@ void Spell::EffectScriptEffect(SpellEffIndex effIndex)
                             m_originalCaster->CastSpell(unitTarget, 58689, true);
                             m_originalCaster->CastSpell(unitTarget, 58692, true);
                         }
-                        if (((InstanceMap*)m_originalCaster->GetMap())->GetDifficultyID() == DifficultyNormal)
+                        if (((InstanceMap*)m_originalCaster->GetMap())->GetDifficultyID() == DUNGEON_DIFFICULTY_NORMAL)
                         {
                             m_originalCaster->CastSpell(unitTarget, 58695, true);
                             m_originalCaster->CastSpell(unitTarget, 58696, true);
@@ -8300,19 +8300,20 @@ void Spell::EffectResurectPetBattles(SpellEffIndex /*effIndex*/)
     if (effectHandleMode != SPELL_EFFECT_HANDLE_HIT_TARGET)
         return;
 
-    if (Player* player = m_caster->ToPlayer())
+    if (!m_CastItem && m_caster->ToPlayer())
     {
-        BattlePetMap* pets = player->GetBattlePets();
-        for (auto& pet : *pets)
+        std::vector<BattlePet::Ptr> l_Pets = m_caster->ToPlayer()->GetBattlePets();
+
+        for (std::vector<BattlePet::Ptr>::iterator l_It = l_Pets.begin(); l_It != l_Pets.end(); ++l_It)
         {
-            pet.second->UpdateStats();
-            if (pet.second->Health != pet.second->InfoMaxHealth)
-                pet.second->needSave = true;
-            pet.second->Health = pet.second->InfoMaxHealth;
+            BattlePet::Ptr l_Pet = (*l_It);
+
+            l_Pet->UpdateStats();
+            l_Pet->Health = l_Pet->InfoMaxHealth;
         }
 
-        player->GetSession()->SendBattlePetsHealed();
-        player->GetSession()->SendBattlePetUpdates();
+        m_caster->ToPlayer()->GetSession()->SendBattlePetsHealed();
+        m_caster->ToPlayer()->GetSession()->SendBattlePetUpdates(false);
     }
 }
 

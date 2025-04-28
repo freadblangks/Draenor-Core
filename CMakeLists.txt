@@ -1,31 +1,34 @@
-# Copyright (C) 2008-2020 TrinityCore <http://www.trinitycore.org/>
 # Copyright (C) 2005-2009 MaNGOS <http://getmangos.com/>
+# Copyright (C) 2008-2024 TrinityCore <http://www.trinitycore.org/>
 #
-# This program is free software; you can redistribute it and/or modify it
-# under the terms of the GNU General Public License as published by the
-# Free Software Foundation; either version 2 of the License, or (at your
-# option) any later version.
+# This file is free software; as a special exception the author gives
+# unlimited permission to copy and/or distribute it, with or without
+# modifications, as long as this notice is preserved.
 #
-# This program is distributed in the hope that it will be useful, but WITHOUT
-# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
-# FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for
-# more details.
-#
-# You should have received a copy of the GNU General Public License along
-# with this program. If not, see <http://www.gnu.org/licenses/>.
+# This program is distributed in the hope that it will be useful, but
+# WITHOUT ANY WARRANTY, to the extent permitted by law; without even the
+# implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 
 # Set projectname (must be done AFTER setting configurationtypes)
-add_compile_options("$<$<C_COMPILER_ID:MSVC>:/utf-8>")
-add_compile_options("$<$<CXX_COMPILER_ID:MSVC>:/utf-8>")
-
-project(Trinity)
 
 # CMake policies (can not be handled elsewhere)
- cmake_minimum_required(VERSION 3.20.4)
- cmake_policy(SET CMP0005 OLD)
- if(POLICY CMP0043)
-   cmake_policy(SET CMP0043 OLD) # Disable 'Ignore COMPILE_DEFINITIONS_<Config> properties'
- endif(POLICY CMP0043)
+
+project(DraenorCore)
+
+cmake_minimum_required(VERSION 3.20.4)
+ 
+# CMake policies (can not be handled elsewhere)
+cmake_policy(SET CMP0005 NEW)
+if (CMAKE_VERSION VERSION_LESS "3.16.0")
+  cmake_policy(SET CMP0043 OLD) # Disable 'Ignore COMPILE_DEFINITIONS_<Config> properties'
+else()
+  cmake_policy(SET CMP0043 NEW) # Cotire isn't used so set to NEW
+endif()
+cmake_policy(SET CMP0054 NEW) # Only interpret if() arguments as variables or keywords when unquoted - prevents intepreting if (SOME_STRING_VARIABLE MATCHES "MSVC") as if (SOME_STRING_VARIABLE MATCHES "1")
+
+if(POLICY CMP0074)
+  cmake_policy(SET CMP0074 NEW) # find_package() uses <PackageName>_ROOT variables
+endif()
 
 # Set RPATH-handing (CMake parameters)
 set(CMAKE_SKIP_BUILD_RPATH 0)
@@ -66,7 +69,9 @@ if( NOPCH )
   set(USE_SCRIPTPCH 0)
 endif()
 
+include(ConfigureBaseTargets)
 include(CheckPlatform)
+
 include(GroupSources)
 
 # basic packagesearching and setup (further support will be needed, this is a preliminary release!)
@@ -85,6 +90,11 @@ endif()
 if( NOT DISABLEGITCHECK )
   find_package(Git)
 endif()
+
+set(Boost_USE_STATIC_LIBS ON)
+find_package(Boost COMPONENTS system locale filesystem thread regex serialization
+    REQUIRED
+)
 
 # Find revision ID and hash of the sourcetree
 include(cmake/genrev.cmake)

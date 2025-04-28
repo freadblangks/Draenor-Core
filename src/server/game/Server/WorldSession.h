@@ -46,10 +46,11 @@ struct LfgProposal;
 struct LfgReward;
 struct LfgRoleCheck;
 struct LfgUpdateData;
+struct LfgQueueStatusData;
 struct MovementInfo;
 struct PetBattleRequest;
 class PetBattle;
-class BattlePet;
+class AccountAchievementMgr;
 
 enum AccountDataType
 {
@@ -69,6 +70,18 @@ enum AccountDataType
 #define PER_CHARACTER_CACHE_MASK    0xAA
 
 #define REGISTERED_ADDON_PREFIX_SOFTCAP 64
+
+namespace lfg
+{
+    struct LfgJoinResultData;
+    struct LfgPlayerBoot;
+    struct LfgProposal;
+    struct LfgQueueStatusData;
+    struct LfgPlayerRewardData;
+    struct LfgRoleCheck;
+    struct PlayerQueueData;
+    enum LfgUpdateType : uint32;
+}
 
 struct AccountData
 {
@@ -670,7 +683,6 @@ class WorldSession
         /// @p_Data1 : Additional data 1
         /// @p_Data2 : Additional data 2
         void SendGameError(GameError::Type p_Error, uint32 p_Data1 = 0xF0F0F0F0, uint32 p_Data2 = 0xF0F0F0F0);
-
 #ifndef CROSS
         /// ============== Cross realm ========================= ///
         uint32 GetInterRealmBG() { return m_InterRealmZoneId; }
@@ -1209,26 +1221,28 @@ class WorldSession
         void HandleBfQueueRequest(WorldPacket &recv_data);
 
         // Looking for Dungeon/Raid
-        void HandleLfgSetCommentOpcode(WorldPacket& recvData);
-        void HandleLfgLockInfoRequestOpcode(WorldPacket& recvData);
+        void HandleLfgGetLockInfoOpcode(WorldPacket& recvData);
+        void SendLfgPlayerLockInfo();
+        void SendLfgPartyLockInfo();
         void HandleLfgJoinOpcode(WorldPacket& recvData);
         void HandleLfgLeaveOpcode(WorldPacket& recvData);
-        void HandleDfSetRolesOpcode(WorldPacket& recvData);
+        void HandleLfgSetRolesOpcode(WorldPacket& recvData);
         void HandleLfgProposalResultOpcode(WorldPacket& recvData);
         void HandleLfgSetBootVoteOpcode(WorldPacket& recvData);
         void HandleLfgTeleportOpcode(WorldPacket& recvData);
-        void HandleLfrSearchOpcode(WorldPacket& recvData);
+        void HandleLfrJoinOpcode(WorldPacket& recvData);
         void HandleLfrLeaveOpcode(WorldPacket& recvData);
         void HandleLfgGetStatus(WorldPacket& recvData);
+        void HandleSetLfgBonusFactionId(WorldPacket& recvData);
 
-        void SendLfgRoleChosen(uint64 p_Guid, uint8 p_Roles);
-        void SendLfgRoleCheckUpdate(const LfgRoleCheck* pRoleCheck);
-        void SendLfgUpdateSearch(bool update);
-        void SendLfgJoinResult(uint64 guid_, const LfgJoinResultData& joinData);
-        void SendLfgQueueStatus(uint32 dungeon, int32 waitTime, int32 avgWaitTime, int32 waitTimeTanks, int32 waitTimeHealer, int32 waitTimeDps, uint32 queuedTime, uint8 tanks, uint8 healers, uint8 dps);
-        void SendLfgPlayerReward(uint32 rdungeonEntry, uint32 sdungeonEntry, uint8 done, const LfgReward* reward, const Quest *qRew);
-        void SendLfgBootPlayer(const LfgPlayerBoot* pBoot);
-        void SendLfgUpdateProposal(uint32 proposalId, const LfgProposal *pProp);
+        void SendLfgUpdateStatus(lfg::LfgUpdateType updateType, lfg::PlayerQueueData const& queueData);
+        void SendLfgRoleChosen(uint64 guid, uint8 roles);
+        void SendLfgRoleCheckUpdate(lfg::LfgRoleCheck const& pRoleCheck);
+        void SendLfgJoinResult(uint32 queueId, lfg::LfgJoinResultData const& joinData);
+        void SendLfgQueueStatus(lfg::LfgQueueStatusData const& queueData);
+        void SendLfgPlayerReward(lfg::LfgPlayerRewardData const& lfgPlayerRewardData);
+        void SendLfgBootProposalUpdate(lfg::LfgPlayerBoot const& boot);
+        void SendLfgUpdateProposal(lfg::LfgProposal const& proposal);
         void SendLfgDisabled();
         void SendLfgOfferContinue(uint32 dungeonEntry);
         void SendLfgTeleportError(uint8 err);
@@ -1385,7 +1399,7 @@ class WorldSession
 #endif
 
         /// Battle pet
-        void SendBattlePetUpdates(BattlePet *pet = nullptr, bool add = false);
+        void SendBattlePetUpdates(bool p_AddedPet);
         void SendBattlePetTrapLevel();
         void SendBattlePetJournalLockAcquired();
         void SendBattlePetJournalLockDenied();
@@ -1398,22 +1412,15 @@ class WorldSession
         void SendBattlePetError(uint32 p_Result, uint32 p_CreatureID);
         void SendBattlePetCageDateError(uint32 p_SecondsUntilCanCage);
         void HandleBattlePetQueryName(WorldPacket& p_RecvData);
-        void HandleBattlePetsReconvert(WorldPacket& p_RecvData);
         void HandleBattlePetUpdateNotify(WorldPacket& p_RecvData);
         void HandleBattlePetRequestJournalLock(WorldPacket& p_RecvData);
         void HandleBattlePetRequestJournal(WorldPacket& p_RecvData);
         void HandleBattlePetDeletePet(WorldPacket& p_RecvData);
         void HandleBattlePetDeletePetCheat(WorldPacket& p_RecvData);
-        void HandleBattlePetDeleteJournal(WorldPacket& p_RecvData);
         void HandleBattlePetModifyName(WorldPacket& p_RecvData);
         void HandleBattlePetSummon(WorldPacket& p_RecvData);
-        void HandleBattlePetSetLevel(WorldPacket& p_RecvData);
         void HandleBattlePetSetBattleSlot(WorldPacket& p_RecvData);
-        void HandleBattlePetSetCollar(WorldPacket& p_RecvData);
         void HandleBattlePetSetFlags(WorldPacket& p_RecvData);
-        void HandleBattlePetsRestoreHealth(WorldPacket& p_RecvData);
-        void HandleBattlePetAdd(WorldPacket& p_RecvData);
-        void HandleBattlePetSetQualityCheat(WorldPacket& p_RecvData);
         void HandleBattlePetCage(WorldPacket& p_RecvData);
 
         /// Pet battle
@@ -1440,12 +1447,9 @@ class WorldSession
         void HandlePetBattleRequestUpdate(WorldPacket& p_RecvData);
         void HandlePetBattleQuitNotify(WorldPacket& p_RecvData);
         void HandlePetBattleFinalNotify(WorldPacket& p_RecvData);
-        void HandlePetBattleScriptErrorNotify(WorldPacket& p_RecvData);
         void HandlePetBattleQueueProposeMatchResult(WorldPacket& p_RecvData);
-        void HandlePetBattleFirstPet(WorldPacket& p_RecvData);
         void HandlePetBattleInput(WorldPacket& p_RecvData);
         void HandlePetBattleReplaceFrontPet(WorldPacket& p_RecvData);
-        void HandlePetBattleDebugQueueDump(WorldPacket& p_RecvData);
 
         //////////////////////////////////////////////////////////////////////////
         /// ToyBox

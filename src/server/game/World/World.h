@@ -109,6 +109,7 @@ enum WorldBoolConfigs
     CONFIG_ALLOW_TWO_SIDE_INTERACTION_GUILD,
     CONFIG_ALLOW_TWO_SIDE_INTERACTION_AUCTION,
     CONFIG_ALLOW_TWO_SIDE_INTERACTION_MAIL,
+    CONFIG_ALLOW_TWO_SIDE_INTERACTION_LFG,
     CONFIG_ALLOW_TWO_SIDE_INTERACTION_MOUNT,
     CONFIG_ALLOW_TWO_SIDE_INTERACTION_MOUNT_CAPITALS,
     CONFIG_ALLOW_TWO_SIDE_WHO_LIST,
@@ -168,6 +169,10 @@ enum WorldBoolConfigs
     CONFIG_CHATLOG_BGROUND,
     CONFIG_DUNGEON_FINDER_ENABLE,
     CONFIG_AUTOBROADCAST,
+    CONFIG_LFG_CASTDESERTER,
+    CONFIG_LFG_OVERRIDE_ROLES_REQUIRED,
+    CONFIG_LFG_MULTIQUEUE_ENABLED,
+    CONFIG_LFG_KEEP_QUEUES_IN_DUNGEON,
     CONFIG_ALLOW_TICKETS,
     CONFIG_DBC_ENFORCE_ITEM_ATTRIBUTES,
     CONFIG_PRESERVE_CUSTOM_CHANNELS,
@@ -386,6 +391,13 @@ enum WorldIntConfigs
     CONFIG_DB_PING_INTERVAL,
     CONFIG_PRESERVE_CUSTOM_CHANNEL_DURATION,
     CONFIG_PERSISTENT_CHARACTER_CLEAN_FLAGS,
+    CONFIG_LFG_OPTIONSMASK,
+    CONFIG_LFG_TANKS_NEEDED,
+    CONFIG_LFG_HEALERS_NEEDED,
+    CONFIG_LFG_DPS_NEEDED,
+    CONFIG_LFG_SHORTAGE_CHECK_INTERVAL,
+    CONFIG_LFG_SHORTAGE_PERCENT,
+    CONFIG_LFG_MAX_LFR_QUEUES,
     CONFIG_MAX_INSTANCES_PER_HOUR,
     CONFIG_WARDEN_CLIENT_RESPONSE_DELAY,
     CONFIG_WARDEN_CLIENT_CHECK_HOLDOFF,
@@ -623,6 +635,7 @@ enum ScriptCommands
     SCRIPT_COMMAND_PLAYMOVIE             = 34                // source = Player, datalong = movie id
 };
 
+
 /// Storage class for commands issued for delayed execution
 struct CliCommandHolder
 {
@@ -755,6 +768,9 @@ class World
 
         void SetInterRealmSession(InterRealmSession* irt) { m_InterRealmSession = irt; }
         InterRealmSession* GetInterRealmSession() { return m_InterRealmSession; }
+
+        std::thread::id GetThreadId() const { return m_threadId; }
+        void SendRaidQueueInfo(Player* player = nullptr);
 
         void ResetEventSeasonalQuests(uint16 event_id);
         void ResetCurrencyWeekCap();
@@ -1150,6 +1166,7 @@ class World
         bool m_allowMovement;
         std::string m_dataPath;
         MotdText m_Motd;
+        std::thread::id m_threadId;
 
         // for max speed access
         static float m_MaxVisibleDistanceOnContinents;

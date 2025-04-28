@@ -759,25 +759,18 @@ struct HotfixInfo
 
 struct BattlePetTemplate
 {
-    uint32 CreatureID;
-    uint32 BreedMask;
-    uint32 MinQuality;
-    uint32 minlevel;
-    uint32 maxlevel;
     uint32 Species;
-    std::set<uint32> BreedIDs;
+    uint32 Breed;
+    uint32 Quality;
+    uint32 Level;
 };
 typedef std::map<uint32, BattlePetTemplate> BattlePetTemplateContainer;
 
 struct BattlePetNpcTeamMember
 {
     uint32 Specie;
-    uint32 maxlevel;
-    uint32 minlevel;
-    uint32 minquality;
-    uint32 breadsMask;
+    uint32 Level;
     uint32 Ability[3];
-    std::set<uint32> BreedIDs;
 };
 typedef std::map<uint32, std::vector<BattlePetNpcTeamMember>> BattlePetNpcTeamMembers;
 
@@ -1296,6 +1289,9 @@ class ObjectMgr
         void LoadSpellInvalid();
         void LoadSpellStolen();
         void LoadDisabledEncounters();
+        void LoadBattlePetTemplate();
+        void LoadBattlePetNpcTeamMember();
+        void ComputeBattlePetSpawns();
 
 #ifndef CROSS
         void LoadGuildChallengeRewardInfo();
@@ -2013,8 +2009,8 @@ class ObjectMgr
         CacheVendorItemContainer _cacheVendorItemStore;
         CacheTrainerSpellContainer _cacheTrainerSpellStore;
 
-        std::set<uint32> _difficultyEntries[Difficulty::MaxDifficulties - 1]; // already loaded difficulty 1 value in creatures, used in CheckCreatureTemplate
-        std::set<uint32> _hasDifficultyEntries[Difficulty::MaxDifficulties - 1]; // already loaded creatures with difficulty 1 values, used in CheckCreatureTemplate
+        std::set<uint32> _difficultyEntries[Difficulty::MAX_DIFFICULTY - 1]; // already loaded difficulty 1 value in creatures, used in CheckCreatureTemplate
+        std::set<uint32> _hasDifficultyEntries[Difficulty::MAX_DIFFICULTY - 1]; // already loaded creatures with difficulty 1 values, used in CheckCreatureTemplate
 
         std::unordered_set<uint32> m_SpellInvalid;
         std::unordered_set<uint32> m_SpellStolen;

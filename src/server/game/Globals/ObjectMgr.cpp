@@ -314,29 +314,36 @@ void ObjectMgr::LoadCreatureLocales()
 
 	_creatureLocaleStore.clear();                              // need for reload case
 
-	QueryResult result = WorldDatabase.Query("SELECT entry, name_loc1, femaleName_loc1, subname_loc1, name_loc2, femaleName_loc2, subname_loc2, name_loc3, femaleName_loc3, subname_loc3, name_loc4, femaleName_loc4, subname_loc4, name_loc5, femaleName_loc5, subname_loc5, name_loc6, femaleName_loc6, subname_loc6, name_loc7, femaleName_loc7, subname_loc7, name_loc8, femaleName_loc8, subname_loc8, name_loc9, femaleName_loc9, subname_loc9, name_loc10, femaleName_loc10, subname_loc10 FROM locales_creature");
+    //                                                  0      1      2       3          4
+    QueryResult result = WorldDatabase.Query("SELECT entry, locale, Name, FemaleName, SubName FROM creature_template_locale");
 
 	if (!result)
-		return;
+        return;
 
-	do
-	{
-		Field* fields = result->Fetch();
+    do
+    {
+        Field* fields = result->Fetch();
 
-		uint32 entry = fields[0].GetUInt32();
+        uint32 id               = fields[0].GetUInt32();
+        std::string localeName  = fields[1].GetString();
 
-		CreatureLocale& data = _creatureLocaleStore[entry];
+        std::string name        = fields[2].GetString();
+        std::string femaleName  = fields[3].GetString();
+        std::string subname     = fields[4].GetString();
 
-		for (uint8 i = 1; i < TOTAL_LOCALES; ++i)
-		{
-			LocaleConstant locale = (LocaleConstant)i;
-			AddLocaleString(fields[1 + 3 * (i - 1)].GetString(), locale, data.Name);
-			AddLocaleString(fields[1 + 3 * (i - 1) + 1].GetString(), locale, data.l_FemaleName);
-			AddLocaleString(fields[1 + 3 * (i - 1) + 2].GetString(), locale, data.SubName);
-		}
+        CreatureLocale& data = _creatureLocaleStore[id];
+        LocaleConstant locale = GetLocaleByName(localeName);
+
+        if (locale == LOCALE_enUS)
+            continue;
+
+        AddLocaleString(name, locale, data.Name);
+        AddLocaleString(femaleName, locale, data.FemaleName);
+        AddLocaleString(subname, locale, data.SubName);
+
 	} while (result->NextRow());
 
-	TC_LOG_INFO("server.loading", ">> Loaded %lu creature locale strings in %u ms", (unsigned long)_creatureLocaleStore.size(), GetMSTimeDiffToNow(oldMSTime));
+	TC_LOG_INFO("server.loading", ">> Loaded %lu Creature Locale Strings in %u ms", (unsigned long)_creatureLocaleStore.size(), GetMSTimeDiffToNow(oldMSTime));
 }
 
 void ObjectMgr::LoadGossipMenuItemsLocales()
@@ -345,13 +352,7 @@ void ObjectMgr::LoadGossipMenuItemsLocales()
 
 	_gossipMenuItemsLocaleStore.clear();                              // need for reload case
 
-	QueryResult result = WorldDatabase.Query("SELECT menu_id, id, "
-		"option_text_loc1, box_text_loc1, option_text_loc2, box_text_loc2, "
-		"option_text_loc3, box_text_loc3, option_text_loc4, box_text_loc4, "
-		"option_text_loc5, box_text_loc5, option_text_loc6, box_text_loc6, "
-		"option_text_loc7, box_text_loc7, option_text_loc8, box_text_loc8, "
-		"option_text_loc9, box_text_loc9, option_text_loc10, box_text_loc10 "
-		"FROM locales_gossip_menu_option");
+    QueryResult result = WorldDatabase.Query("SELECT MenuID, OptionID, Locale, OptionText, BoxText FROM gossip_menu_option_locale");
 
 	if (!result)
 		return;
@@ -360,20 +361,22 @@ void ObjectMgr::LoadGossipMenuItemsLocales()
 	{
 		Field* fields = result->Fetch();
 
-		uint32 menuId = fields[0].GetUInt32();
-		uint16 id = fields[1].GetUInt16();
+        uint16 MenuID = fields[0].GetUInt16();
+        uint16 OptionID = fields[1].GetUInt16();
+        std::string LocaleName = fields[2].GetString();
+        std::string OptionText = fields[3].GetString();
+        std::string BoxText = fields[4].GetString();
 
-		GossipMenuItemsLocale& data = _gossipMenuItemsLocaleStore[MAKE_PAIR64(menuId, id)];
+        GossipMenuItemsLocale& data = _gossipMenuItemsLocaleStore[MAKE_PAIR32(MenuID, OptionID)];
+        LocaleConstant locale = GetLocaleByName(LocaleName);
+        if (locale == LOCALE_enUS)
+            continue;
+        AddLocaleString(OptionText, locale, data.OptionText);
+        AddLocaleString(BoxText, locale, data.BoxText);
 
-		for (uint8 i = 1; i < TOTAL_LOCALES; ++i)
-		{
-			LocaleConstant locale = (LocaleConstant)i;
-			AddLocaleString(fields[2 + 2 * (i - 1)].GetString(), locale, data.OptionText);
-			AddLocaleString(fields[2 + 2 * (i - 1) + 1].GetString(), locale, data.BoxText);
-		}
 	} while (result->NextRow());
 
-	TC_LOG_INFO("server.loading", ">> Loaded %lu gossip_menu_option locale strings in %u ms", (unsigned long)_gossipMenuItemsLocaleStore.size(), GetMSTimeDiffToNow(oldMSTime));
+	TC_LOG_INFO("server.loading", ">> Loaded %lu Gossip Menu Option Locale Strings in %u ms", (unsigned long)_gossipMenuItemsLocaleStore.size(), GetMSTimeDiffToNow(oldMSTime));
 }
 
 void ObjectMgr::LoadPointOfInterestLocales()
@@ -411,7 +414,7 @@ void ObjectMgr::LoadCreatureTemplates()
 		//                                           6        7      8           9       10           11            12       13      14     15       16       17         18        19        20
 		"modelid4, name, femaleName, subname, IconName, gossip_menu_id, minlevel, maxlevel, exp, exp_req, faction, npcflag, npcflag2, speed_walk, speed_run, "
 		//                                             21       22   23      24            25           26               27               28          29             30
-		"speed_fly, scale, rank,  dmgschool, dmg_multiplier, baseattacktime, rangeattacktime, baseVariance, rangeVariance,  unit_class, "
+		"speed_fly, scale, `rank`,  dmgschool, dmg_multiplier, baseattacktime, rangeattacktime, baseVariance, rangeVariance,  unit_class, "
 		//                                             31         32           33          34            35              36          37            38          39            40           41
 		"unit_flags, unit_flags2, unit_flags3, dynamicflags, WorldEffectID,   family, trainer_type, trainer_spell, trainer_class, trainer_race, type, "
 		//                                            42          43           44          45          46         47         48            49         50            51           52
@@ -452,7 +455,7 @@ void ObjectMgr::LoadCreatureTemplates()
 
 		l_CreatureTemplate->Entry = l_Entry;
 
-		for (uint8 i = 0; i < Difficulty::MaxDifficulties; ++i)
+		for (uint8 i = 0; i < Difficulty::MAX_DIFFICULTY; ++i)
 			l_CreatureTemplate->DifficultyEntry[i] = 0;
 
 		for (uint8 i = 0; i < MAX_KILL_CREDIT; ++i)
@@ -563,7 +566,7 @@ void ObjectMgr::LoadCreatureTemplatesDifficulties()
 		uint32 l_DifficultyIndex = l_Fields[1].GetUInt32() - 2;
 		uint32 l_DifficultyEntry = l_Fields[2].GetUInt32();
 
-		if (l_DifficultyIndex >= Difficulty::MaxDifficulties)
+		if (l_DifficultyIndex >= Difficulty::MAX_DIFFICULTY)
 			continue;
 
 		CreatureTemplate* l_CreatureTemplate = m_CreatureTemplateStore[l_Entry];
@@ -649,7 +652,7 @@ void ObjectMgr::CheckCreatureTemplate(CreatureTemplate const* cInfo)
 		return;
 
 	bool ok = true;                                     // bool to allow continue outside this loop
-	for (uint32 diff = 0; diff < Difficulty::MaxDifficulties - 1 && ok; ++diff)
+	for (uint32 diff = 0; diff < Difficulty::MAX_DIFFICULTY - 1 && ok; ++diff)
 	{
 		if (!cInfo->DifficultyEntry[diff])
 			continue;
@@ -664,7 +667,7 @@ void ObjectMgr::CheckCreatureTemplate(CreatureTemplate const* cInfo)
 		}
 
 		bool ok2 = true;
-		for (uint32 diff2 = 0; diff2 < Difficulty::MaxDifficulties - 1 && ok2; ++diff2)
+		for (uint32 diff2 = 0; diff2 < Difficulty::MAX_DIFFICULTY - 1 && ok2; ++diff2)
 		{
 			ok2 = false;
 			if (_difficultyEntries[diff2].find(cInfo->Entry) != _difficultyEntries[diff2].end())
@@ -1619,7 +1622,7 @@ void ObjectMgr::LoadCreatures()
 	std::map<uint32, uint32> spawnMasks;
 	for (uint32 i = 0; i < sMapStore.GetNumRows(); ++i)
 		if (sMapStore.LookupEntry(i))
-			for (int k = 0; k < Difficulty::MaxDifficulties; ++k)
+			for (int k = 0; k < Difficulty::MAX_DIFFICULTY; ++k)
 				if (GetMapDifficultyData(i, Difficulty(k)))
 					spawnMasks[i] |= (1 << k);
 
@@ -1682,7 +1685,7 @@ void ObjectMgr::LoadCreatures()
 			TC_LOG_ERROR("sql.sql", "Table `creature` have creature (GUID: %u) that have wrong spawn mask %u including not supported difficulty modes for map (Id: %u) spawnMasks[data.mapid]: %u.", guid, data.spawnMask, data.mapid, spawnMasks[data.mapid]);
 
 		bool ok = true;
-		for (uint32 diff = 0; diff < Difficulty::MaxDifficulties - 1 && ok; ++diff)
+		for (uint32 diff = 0; diff < Difficulty::MAX_DIFFICULTY - 1 && ok; ++diff)
 		{
 			if (_difficultyEntries[diff].find(data.id) != _difficultyEntries[diff].end())
 			{
@@ -1975,7 +1978,7 @@ void ObjectMgr::LoadGameobjects()
 	std::map<uint32, uint32> spawnMasks;
 	for (uint32 i = 0; i < sMapStore.GetNumRows(); ++i)
 		if (sMapStore.LookupEntry(i))
-			for (int k = 0; k < Difficulty::MaxDifficulties; ++k)
+			for (int k = 0; k < Difficulty::MAX_DIFFICULTY; ++k)
 				if (GetMapDifficultyData(i, Difficulty(k)))
 					spawnMasks[i] |= (1 << k);
 
@@ -6769,7 +6772,7 @@ void ObjectMgr::SetHighestGuids()
 	if (result)
 		sGuildMgr->SetNextGuildId((*result)[0].GetUInt32() + 1);
 
-	result = CharacterDatabase.Query("SELECT MAX(guid) FROM groups");
+	result = CharacterDatabase.Query("SELECT MAX(guid) FROM `groups`");
 	if (result)
 		sGroupMgr->SetGroupDbStoreSize((*result)[0].GetUInt32() + 1);
 
@@ -9554,7 +9557,7 @@ void ObjectMgr::LoadCreatureGroupSizeStats()
 			continue;
 		}
 
-		if (l_Difficulty >= MaxDifficulties)
+		if (l_Difficulty >= MAX_DIFFICULTY)
 		{
 			TC_LOG_ERROR("sql.sql", "Difficulty %u (entry %u) used in `creature_groupsizestats` is invalid.", l_Difficulty, l_CreatureEntry);
 			continue;
@@ -10031,8 +10034,209 @@ void ObjectMgr::LoadSpellPhaseInfo()
 	TC_LOG_INFO("server.loading", ">> Loaded %u spell dbc infos in %u ms.", count, GetMSTimeDiffToNow(oldMSTime));
 }
 
+void ObjectMgr::LoadBattlePetTemplate()
+{
+	uint32 oldMSTime = getMSTime();
+
+	_battlePetTemplateStore.clear();
+
+	QueryResult result = WorldDatabase.Query("SELECT species, breed, quality, level FROM battlepet_template");
+
+	if (!result)
+	{
+		TC_LOG_INFO("server.loading", ">> Loaded 0 battlepet template. DB table `battlepet_template` is empty.");
+		return;
+	}
+
+	uint32 count = 0;
+	do
+	{
+		Field* fields = result->Fetch();
+		BattlePetTemplate temp;
+		temp.Species = fields[0].GetUInt32();
+		temp.Breed = fields[1].GetUInt32();
+		temp.Quality = fields[2].GetUInt32();
+		temp.Level = fields[3].GetUInt32();
+		_battlePetTemplateStore[temp.Species] = temp;
+		count += 1;
+	} while (result->NextRow());
+
+	TC_LOG_INFO("server.loading", ">> Loaded %u battlepet template in %u ms.", count, GetMSTimeDiffToNow(oldMSTime));
+}
+
+void ObjectMgr::LoadBattlePetNpcTeamMember()
+{
+	uint32 l_OldMSTime = getMSTime();
+
+	m_BattlePetNpcTeamMembers.clear();
+
+	QueryResult l_Result = WorldDatabase.Query("SELECT NpcID, Specie, Level, Ability1, Ability2, Ability3 FROM battlepet_npc_team_member");
+
+	if (!l_Result)
+	{
+		TC_LOG_INFO("server.loading", ">> Loaded 0 battlepet npc team member. DB table `battlepet_npc_team_member` is empty.");
+		return;
+	}
+
+	uint32 l_Count = 0;
+	do
+	{
+		Field* l_Fields = l_Result->Fetch();
+
+		BattlePetNpcTeamMember l_Current;
+		l_Current.Specie = l_Fields[1].GetUInt32();
+		l_Current.Level = l_Fields[2].GetUInt32();
+		l_Current.Ability[0] = l_Fields[2].GetUInt32();
+		l_Current.Ability[1] = l_Fields[3].GetUInt32();
+		l_Current.Ability[2] = l_Fields[4].GetUInt32();
+
+		m_BattlePetNpcTeamMembers[l_Fields[0].GetUInt32()].push_back(l_Current);
+		l_Count += 1;
+
+	} while (l_Result->NextRow());
+
+	TC_LOG_INFO("server.loading", ">> Loaded %u battlepet npc team member in %u ms.", l_Count, GetMSTimeDiffToNow(l_OldMSTime));
+}
+
 #include <fstream>
 #include <iostream>
+
+/// Compute battle pet spawns
+void ObjectMgr::ComputeBattlePetSpawns()
+{
+	uint32 l_OldMSTime = getMSTime();
+	QueryResult l_Result = WorldDatabase.Query("SELECT CritterEntry, BattlePetEntry FROM temp_battlepet_spawn_relation a");
+
+	if (!l_Result)
+	{
+		TC_LOG_INFO("server.loading", ">> ComputeBattlePetSpawns No battlepet relation");
+		return;
+	}
+
+	std::map<uint32, uint32> l_BattlePetToCritter;
+	do
+	{
+		Field* l_Fields = l_Result->Fetch();
+		l_BattlePetToCritter[l_Fields[1].GetUInt32()] = l_Fields[0].GetUInt32();
+	} while (l_Result->NextRow());
+
+	l_Result = WorldDatabase.Query("SELECT MapID, a.Zone, BattlePetNPCID, XPos, YPos, MinLevel, MaxLevel FROM temp_battlepet_tocompute a");
+
+	if (!l_Result)
+	{
+		TC_LOG_INFO("server.loading", ">> ComputeBattlePetSpawns No data");
+		return;
+	}
+
+	struct PoolInfo
+	{
+		uint32 ZoneID;
+		std::map<uint32, uint32> CountPerBattlePetTemplateEntry;
+		uint32 MinLevel;
+		uint32 MaxLevel;
+	};
+
+	std::map<uint32, PoolInfo> l_PoolInfosPerZoneID;
+	std::map<uint32, uint32> l_MissingCorelations;
+
+	std::ofstream l_OutSpawns;
+	l_OutSpawns.open("BattlePetSpawns.sql");
+
+	do
+	{
+		Field* l_Fields = l_Result->Fetch();
+		uint32 l_MapID = l_Fields[0].GetUInt32();
+		uint32 l_ZoneID = l_Fields[1].GetUInt32();
+		uint32 l_BattlePetNpcID = l_Fields[2].GetUInt32();
+		double l_XPos = l_Fields[3].GetDouble();
+		double l_YPos = l_Fields[4].GetDouble();
+		uint32 l_MinLevel = l_Fields[5].GetUInt32();
+		uint32 l_MaxLevel = l_Fields[6].GetUInt32();
+
+		if (l_BattlePetToCritter.find(l_BattlePetNpcID) == l_BattlePetToCritter.end())
+		{
+			l_MissingCorelations[l_BattlePetNpcID] = 1;
+			continue;
+		}
+
+		if (!MapManager::IsValidMapCoord(l_MapID, l_XPos, l_YPos))
+		{
+			printf("Map %u Zone %u Npc %u X %f Y %F invalid map coord\n", l_MapID, l_ZoneID, l_BattlePetNpcID, l_XPos, l_YPos);
+			continue;
+		}
+
+		Map const* l_Map = sMapMgr->CreateBaseMap(l_MapID);
+		float l_ZPos = l_Map->GetHeight(l_XPos, l_YPos, MAX_HEIGHT) + 0.5f;
+
+		std::string l_Query = "INSERT INTO creature(id, map, zoneID, spawnMask, phaseMask, position_x, position_y, position_z, spawntimesecs) VALUES (";
+		l_Query += std::to_string(l_BattlePetToCritter[l_BattlePetNpcID]) + ", " + std::to_string(l_MapID) + ", " + std::to_string(l_ZoneID) + ", 1, 1, " + std::to_string(l_XPos) + ", " + std::to_string(l_YPos) + ", " + std::to_string(l_ZPos) + ", 120);\n";
+
+		l_OutSpawns << l_Query << std::flush;
+
+		l_PoolInfosPerZoneID[l_ZoneID].ZoneID = l_ZoneID;
+		l_PoolInfosPerZoneID[l_ZoneID].MinLevel = l_MinLevel;
+		l_PoolInfosPerZoneID[l_ZoneID].MaxLevel = l_MaxLevel;
+
+		if (l_PoolInfosPerZoneID[l_ZoneID].CountPerBattlePetTemplateEntry.find(l_BattlePetNpcID) == l_PoolInfosPerZoneID[l_ZoneID].CountPerBattlePetTemplateEntry.end())
+			l_PoolInfosPerZoneID[l_ZoneID].CountPerBattlePetTemplateEntry[l_BattlePetNpcID] = 1;
+		else
+			l_PoolInfosPerZoneID[l_ZoneID].CountPerBattlePetTemplateEntry[l_BattlePetNpcID] = 1 + l_PoolInfosPerZoneID[l_ZoneID].CountPerBattlePetTemplateEntry[l_BattlePetNpcID];
+	} while (l_Result->NextRow());
+
+	for (std::map<uint32, uint32>::iterator l_Current = l_MissingCorelations.begin(); l_Current != l_MissingCorelations.end(); l_Current++)
+		printf("Npc %u no critter npc found\n", l_Current->first);
+
+	l_OutSpawns.close();
+
+	std::ofstream l_OutPools;
+	l_OutPools.open("BattlePetPools.sql");
+	for (std::map<uint32, PoolInfo>::iterator l_Current = l_PoolInfosPerZoneID.begin(); l_Current != l_PoolInfosPerZoneID.end(); l_Current++)
+	{
+		PoolInfo& l_PoolInfo = l_Current->second;
+
+		for (std::map<uint32, uint32>::iterator l_CurrentTemplate = l_PoolInfo.CountPerBattlePetTemplateEntry.begin(); l_CurrentTemplate != l_PoolInfo.CountPerBattlePetTemplateEntry.end(); l_CurrentTemplate++)
+		{
+			uint32 l_RespawnTime = 60;
+			uint32 l_Replace = l_BattlePetToCritter[l_CurrentTemplate->first];
+			uint32 l_Max = float(l_CurrentTemplate->second) > 1 ? (float(l_CurrentTemplate->second) * 0.95f) : 1;
+
+			if (l_BattlePetToCritter[l_CurrentTemplate->first] == l_CurrentTemplate->first)
+				l_Max = l_CurrentTemplate->second;
+
+			uint32 l_Species = 0;
+
+			for (std::size_t l_I = 0; l_I < sBattlePetSpeciesStore.GetNumRows(); ++l_I)
+			{
+				BattlePetSpeciesEntry const* l_Entry = sBattlePetSpeciesStore.LookupEntry(l_I);
+
+				if (!l_Entry || l_Entry->CreatureID != l_CurrentTemplate->first)
+					continue;
+
+				l_Species = l_Entry->ID;
+				break;
+			}
+
+			if (l_Species == 0 || l_Replace == 0)
+			{
+				printf("No species or replacement for npc %u found\n", l_CurrentTemplate->first);
+				continue;
+			}
+
+			std::string l_Query = "INSERT INTO `wild_battlepet_zone_pool` (`Zone`, `Species`, `Replace`, `Max`, `RespawnTime`, `MinLevel`, `MaxLevel`, `Breed0`, `Breed1`, `Breed2`, `Breed3`, `Breed4`, `Breed5`, `Breed6`, `Breed7`, `Breed8`, `Breed9`) VALUES (";
+			l_Query += std::to_string(l_PoolInfo.ZoneID) + ", " + std::to_string(l_Species) + ", " + std::to_string(l_Replace) + ", " + std::to_string(l_Max) + ", " + std::to_string(l_RespawnTime) + ", " + std::to_string(l_PoolInfo.MinLevel) + ", " + std::to_string(l_PoolInfo.MaxLevel) + ", '3', '3', '3', '3', '3', '3', '3', '3', '3', '3');\n";
+
+			l_OutPools << l_Query << std::flush;
+		}
+	}
+
+	l_OutPools.close();
+
+	TC_LOG_INFO("server.loading", ">> ComputeBattlePetSpawns %u ms.", GetMSTimeDiffToNow(l_OldMSTime));
+
+#ifdef _WIN32
+	system("pause");
+#endif
+}
 
 GameObjectTemplate const* ObjectMgr::GetGameObjectTemplate(uint32 entry)
 {
@@ -10568,7 +10772,6 @@ void ObjectMgr::LoadQuestObjectives()
 		{
 		case QUEST_OBJECTIVE_TYPE_NPC:
 		case QUEST_OBJECTIVE_TYPE_NPC_INTERACT:
-		case QUEST_OBJECTIVE_TYPE_PET_BATTLE_TAMER:
 		{
 			if (!GetCreatureTemplate(l_ObjectiveObjectID))
 			{

@@ -379,6 +379,7 @@ class UnitAI;
 class Totem;
 class Transport;
 class Vehicle;
+class VehicleJoinEvent;
 class TransportBase;
 
 typedef std::list<Unit*> UnitList;
@@ -618,7 +619,7 @@ enum WeaponAttackType
 // Last check : 6.0.3
 enum CombatRating
 {
-    CR_UNUSED_1                         = 0,    //< Deprecated, CR_UNUSED_1 in PaperDollFrame.lua previously CR_WEAPON_SKILL
+    CR_WEAPON_SKILL                     = 0,
     CR_DEFENSE_SKILL                    = 1,    //< Deprecated
     CR_DODGE                            = 2,
     CR_PARRY                            = 3,
@@ -1183,6 +1184,19 @@ struct DeclinedName
     std::string name[MAX_DECLINED_NAME_CASES];
 };
 
+struct CharacterNameData
+{
+    ~CharacterNameData() { delete m_declinedName; }
+
+    std::string m_name;
+    uint8 m_class;
+    uint8 m_race;
+    uint8 m_gender;
+    uint8 m_level;
+    uint32 m_accountID;
+    DeclinedName const* m_declinedName = nullptr;
+};
+
 enum CurrentSpellTypes
 {
     CURRENT_MELEE_SPELL             = 0,
@@ -1535,6 +1549,11 @@ class Unit : public WorldObject
         void CleanupBeforeRemoveFromMap(bool finalCleanup);
         void CleanupsBeforeDelete(bool finalCleanup = true);                        // used in ~Creature/~Player (or before mass creature delete to remove cross-references to already deleted units)
 
+        void AddDelayedEvent(std::function<void()> p_Lambda, uint32 p_Delay = 0)
+        {
+            m_Events.AddEvent(new GenericDelayedEvent(p_Lambda), m_Events.CalculateTime(p_Delay));
+        }
+
         DiminishingLevels GetDiminishing(DiminishingGroup  group);
         void IncrDiminishing(DiminishingGroup group);
         float ApplyDiminishingToDuration(DiminishingGroup  group, int32 &duration, Unit* caster, DiminishingLevels Level, int32 limitduration);
@@ -1856,7 +1875,6 @@ class Unit : public WorldObject
         bool isSpiritGuide()  const { return HasFlag(UNIT_FIELD_NPC_FLAGS, UNIT_NPC_FLAG_SPIRITGUIDE); }
         bool isTabardDesigner()const { return HasFlag(UNIT_FIELD_NPC_FLAGS, UNIT_NPC_FLAG_TABARDDESIGNER); }
         bool isAuctioner()    const { return HasFlag(UNIT_FIELD_NPC_FLAGS, UNIT_NPC_FLAG_AUCTIONEER); }
-        bool isWildBattlePet() const;
         bool isArmorer()      const { return HasFlag(UNIT_FIELD_NPC_FLAGS, UNIT_NPC_FLAG_REPAIR); }
         bool isServiceProvider() const
         {
@@ -1998,6 +2016,11 @@ class Unit : public WorldObject
         void SendThreatListUpdate();
 
         void SendClearTarget();
+
+        bool IsAlive() const
+        {
+            return (m_deathState == ALIVE);
+        }
 
         void BuildHeartBeatMsg(WorldPacket* data) const;
 
@@ -2605,6 +2628,7 @@ class Unit : public WorldObject
         uint32 GetReducedThreatPercent() { return m_reducedThreatPercent; }
         Unit* GetMisdirectionTarget() { return m_misdirectionTargetGUID ? GetUnit(*this, m_misdirectionTargetGUID) : NULL; }
 
+        friend class VehicleJoinEvent;
         bool IsAIEnabled, NeedChangeAI;
         bool CreateVehicleKit(uint32 id, uint32 creatureEntry);
         void RemoveVehicleKit(bool dismount = false);

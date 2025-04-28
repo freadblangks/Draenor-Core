@@ -1,8 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Project-Hellscream https://hellscream.org
-// Copyright (C) 2018-2020 Project-Hellscream-6.2
-// Discord https://discord.gg/CWCF3C9
+//  MILLENIUM-STUDIO
+//  Copyright 2016 Millenium-studio SARL
+//  All Rights Reserved.
 //
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -13,7 +13,6 @@
 #include "WorldSession.h"
 #include "Player.h"
 #include "PetBattle.h"
-#include "PetBattleSystem.h"
 #include "WildBattlePet.h"
 #include "AchievementMgr.h"
 #include "CellImpl.h"
@@ -25,14 +24,18 @@ void WorldSession::SendPetBattleSlotUpdates(bool p_NewSlotUnlocked)
     if (!m_Player || !m_Player->IsInWorld())
         return;
 
-    auto unlockedSlotCount = m_Player->GetUnlockedPetBattleSlot();
-    auto petSlots = m_Player->GetBattlePetCombatTeam();
+    uint32                          l_UnlockedSlotCount = m_Player->GetUnlockedPetBattleSlot();
+    BattlePet::Ptr* l_PetSlots = m_Player->GetBattlePetCombatTeam();
 
-    if (unlockedSlotCount > 0)
+    if (l_UnlockedSlotCount > 0)
         m_Player->SetFlag(PLAYER_FIELD_PLAYER_FLAGS, PLAYER_FLAGS_HAS_BATTLE_PET_TRAINING);
 
     WorldPacket l_Packet(SMSG_PET_BATTLE_SLOT_UPDATES, 100);
     l_Packet << uint32(MAX_PETBATTLE_SLOTS);                                                                ///< Slots count
+
+    l_Packet.WriteBit(p_NewSlotUnlocked);                                                                   ///< NewSlotUnlocked
+    l_Packet.WriteBit(true);                                                                                ///< AutoSlotted
+    l_Packet.FlushBits();
 
     for (uint32 l_I = 0; l_I < MAX_PETBATTLE_SLOTS; l_I++)
     {
@@ -43,19 +46,15 @@ void WorldSession::SendPetBattleSlotUpdates(bool p_NewSlotUnlocked)
         //if (m_Player->HasBattlePetTraining() && (l_I + 1) <= l_UnlockedSlotCount)
         //    l_IsLocked = false;
 
-        if (petSlots[l_I])
-            l_Guid = petSlots[l_I]->JournalID;
+        if (l_PetSlots[l_I])
+            l_Guid = l_PetSlots[l_I]->JournalID;
 
         l_Packet.appendPackGUID(l_Guid);                                                                    ///< BattlePetGUID
         l_Packet << uint32(0);                                                                              ///< CollarID
         l_Packet << uint8(l_I);                                                                             ///< SlotIndex
-        l_Packet.WriteBit(!((l_I + 1) <= unlockedSlotCount));                                             ///< Locked
+        l_Packet.WriteBit(!((l_I + 1) <= l_UnlockedSlotCount));                                             ///< Locked
         l_Packet.FlushBits();
     }
-
-    l_Packet.WriteBit(p_NewSlotUnlocked);                                                                   ///< NewSlotUnlocked
-    l_Packet.WriteBit(true);                                                                                ///< AutoSlotted
-    l_Packet.FlushBits();
 
     SendPacket(&l_Packet);
 }
@@ -175,16 +174,16 @@ void WorldSession::SendPetBattleInitialUpdate(PetBattle* p_Battle)
             {
                 switch (l_State)
                 {
-                    case BATTLEPET_STATE_Stat_Power:
-                    case BATTLEPET_STATE_Stat_Stamina:
-                    case BATTLEPET_STATE_Stat_Speed:
-                    case BATTLEPET_STATE_Stat_CritChance:
-                    case BATTLEPET_STATE_Stat_Accuracy:
-                        l_StatesCount++;
-                        break;
+                case BATTLEPET_STATE_Stat_Power:
+                case BATTLEPET_STATE_Stat_Stamina:
+                case BATTLEPET_STATE_Stat_Speed:
+                case BATTLEPET_STATE_Stat_CritChance:
+                case BATTLEPET_STATE_Stat_Accuracy:
+                    l_StatesCount++;
+                    break;
 
-                    default:
-                        break;
+                default:
+                    break;
                 }
             }
 
@@ -222,17 +221,17 @@ void WorldSession::SendPetBattleInitialUpdate(PetBattle* p_Battle)
             {
                 switch (l_State)
                 {
-                    case BATTLEPET_STATE_Stat_Power:
-                    case BATTLEPET_STATE_Stat_Stamina:
-                    case BATTLEPET_STATE_Stat_Speed:
-                    case BATTLEPET_STATE_Stat_CritChance:
-                    case BATTLEPET_STATE_Stat_Accuracy:
-                        l_Packet << uint32(l_State);
-                        l_Packet << int32(l_Pet->States[l_State]);
-                        break;
+                case BATTLEPET_STATE_Stat_Power:
+                case BATTLEPET_STATE_Stat_Stamina:
+                case BATTLEPET_STATE_Stat_Speed:
+                case BATTLEPET_STATE_Stat_CritChance:
+                case BATTLEPET_STATE_Stat_Accuracy:
+                    l_Packet << uint32(l_State);
+                    l_Packet << int32(l_Pet->States[l_State]);
+                    break;
 
-                    default:
-                        break;
+                default:
+                    break;
                 }
             }
 
@@ -257,11 +256,11 @@ void WorldSession::SendPetBattleInitialUpdate(PetBattle* p_Battle)
     l_Packet << uint8(l_CurPetBattleState);
     l_Packet << uint8(p_Battle->GetForfeitHealthPenalityPct());
 
+    l_Packet.appendPackGUID(l_Guid);
+
     l_Packet.WriteBit(l_IsPVP);
     l_Packet.WriteBit(l_CanAwardXP);
     l_Packet.FlushBits();
-
-    l_Packet.appendPackGUID(l_Guid);
 
     SendPacket(&l_Packet);
 }
@@ -269,7 +268,7 @@ void WorldSession::SendPetBattleInitialUpdate(PetBattle* p_Battle)
 void WorldSession::SendPetBattleFirstRound(PetBattle* p_Battle)
 {
     bool l_IsPVP = p_Battle->BattleType != PETBATTLE_TYPE_PVE;
-    uint16 pvpMaxRoundTime = l_IsPVP ? 30 : 0;
+    uint16 l_PvpMaxRoundTime = l_IsPVP ? 30 : 0;
 
     WorldPacket l_Packet(SMSG_PET_BATTLE_FIRST_ROUND, 100);
 
@@ -291,67 +290,14 @@ void WorldSession::SendPetBattleFirstRound(PetBattle* p_Battle)
     l_Packet << uint8(p_Battle->RoundResult);
     l_Packet << uint32(p_Battle->RoundEvents.size());
 
-    for (uint8 i = 0; i < MAX_PETBATTLE_TEAM; i++)
+    for (uint32 l_TeamID = 0; l_TeamID < MAX_PETBATTLE_TEAM; l_TeamID++)
     {
-        l_Packet << uint8(p_Battle->Teams[i]->GetTeamInputFlags());  ///< NextInputFlags
-        l_Packet << uint8(p_Battle->Teams[i]->GetTeamTrapStatus());   ///< NextTrapStatus
-        l_Packet << uint16(pvpMaxRoundTime);                              ///< RoundTimeSecs
+        l_Packet << uint8(p_Battle->Teams[l_TeamID]->GetTeamInputFlags());  ///< NextInputFlags
+        l_Packet << uint8(p_Battle->Teams[l_TeamID]->GetTeamTrapFlags());   ///< NextTrapStatus
+        l_Packet << uint16(l_PvpMaxRoundTime);                              ///< RoundTimeSecs
     }
 
     l_Packet << uint32(l_CooldownCount);
-
-    for (std::list<PetBattleEvent>::iterator l_EventIt = p_Battle->RoundEvents.begin(); l_EventIt != p_Battle->RoundEvents.end(); ++l_EventIt)
-    {
-        l_Packet << uint32(l_EventIt->AbilityEffectID);
-        l_Packet << uint16(l_EventIt->Flags);
-        l_Packet << uint16(l_EventIt->BuffTurn);    ///< can be swap down
-        l_Packet << uint16(l_EventIt->RoundTurn);   ///< can be swap up
-        l_Packet << uint8(l_EventIt->EventType);
-        l_Packet << uint8(l_EventIt->SourcePetID);
-        l_Packet << uint8(l_EventIt->StackDepth);
-        l_Packet << uint32(l_EventIt->Updates.size());
-
-        for (std::list<PetBattleEventUpdate>::iterator l_UpdateIt = l_EventIt->Updates.begin(); l_UpdateIt != l_EventIt->Updates.end(); ++l_UpdateIt)
-        {
-            l_Packet.WriteBits(l_UpdateIt->UpdateType, 3);
-            l_Packet.FlushBits();
-
-            l_Packet << uint8(l_UpdateIt->TargetPetID);
-
-            if (l_UpdateIt->UpdateType == PETBATTLE_EVENT_BUFF_APPLY)
-            {
-                l_Packet << uint32(l_UpdateIt->Buff.ID);
-                l_Packet << uint32(l_UpdateIt->Buff.AbilityID);
-                l_Packet << int32(l_UpdateIt->Buff.Duration);
-                l_Packet << uint32(l_UpdateIt->Buff.Turn);
-            }
-
-            if (l_UpdateIt->UpdateType == PETBATTLE_EVENT_SET_STATE)
-            {
-                l_Packet << uint32(l_UpdateIt->State.ID);
-                l_Packet << int32(l_UpdateIt->State.Value);
-            }
-
-            if (l_UpdateIt->UpdateType == PETBATTLE_EVENT_SET_MAX_HEALTH)
-                l_Packet << int32(l_UpdateIt->Health);
-
-            if (l_UpdateIt->UpdateType == PETBATTLE_EVENT_SET_SPEED)
-                l_Packet << int32(l_UpdateIt->Speed);
-
-            if (l_UpdateIt->UpdateType == PETBATTLE_EVENT_TRIGGER_ABILITY)
-                l_Packet << uint32(l_UpdateIt->TriggerAbilityId);
-
-            if (l_UpdateIt->UpdateType == PETBATTLE_EVENT_ABILITY_CHANGE)
-            {
-                l_Packet << uint32(0);
-                l_Packet << uint32(0);
-                l_Packet << uint32(0);
-            }
-
-            if (l_UpdateIt->UpdateType == PETBATTLE_EVENT_NPC_EMOTE)
-                l_Packet << int32(l_UpdateIt->NpcEmote.BroadcastTextID);
-        }
-    }
 
     for (uint8 l_CurrentPetslot = 0; l_CurrentPetslot < (MAX_PETBATTLE_TEAM * MAX_PETBATTLE_SLOTS); l_CurrentPetslot++)
     {
@@ -373,6 +319,59 @@ void WorldSession::SendPetBattleFirstRound(PetBattle* p_Battle)
 
     l_Packet.WriteBits(p_Battle->RoundDeadPets.size(), 3);
     l_Packet.FlushBits();
+
+    for (std::list<PetBattleEvent>::iterator l_EventIt = p_Battle->RoundEvents.begin(); l_EventIt != p_Battle->RoundEvents.end(); ++l_EventIt)
+    {
+        l_Packet << uint32(l_EventIt->AbilityEffectID);
+        l_Packet << uint16(l_EventIt->Flags);
+        l_Packet << uint16(l_EventIt->BuffTurn);    ///< can be swap down
+        l_Packet << uint16(l_EventIt->RoundTurn);   ///< can be swap up
+        l_Packet << uint8(l_EventIt->EventType);
+        l_Packet << uint8(l_EventIt->SourcePetID);
+        l_Packet << uint8(l_EventIt->StackDepth);
+        l_Packet << uint32(l_EventIt->Updates.size());
+
+        for (std::list<PetBattleEventUpdate>::iterator l_UpdateIt = l_EventIt->Updates.begin(); l_UpdateIt != l_EventIt->Updates.end(); ++l_UpdateIt)
+        {
+            l_Packet.WriteBits(l_UpdateIt->UpdateType, 3);
+            l_Packet.FlushBits();
+
+            l_Packet << uint8(l_UpdateIt->TargetPetID);
+
+            if (l_UpdateIt->UpdateType == PETBATTLE_EVENT_UPDATE_BUFF)
+            {
+                l_Packet << uint32(l_UpdateIt->Buff.ID);
+                l_Packet << uint32(l_UpdateIt->Buff.AbilityID);
+                l_Packet << int32(l_UpdateIt->Buff.Duration);
+                l_Packet << uint32(l_UpdateIt->Buff.Turn);
+            }
+
+            if (l_UpdateIt->UpdateType == PETBATTLE_EVENT_UPDATE_STATE)
+            {
+                l_Packet << uint32(l_UpdateIt->State.ID);
+                l_Packet << int32(l_UpdateIt->State.Value);
+            }
+
+            if (l_UpdateIt->UpdateType == PETBATTLE_EVENT_UPDATE_HEALTH)
+                l_Packet << int32(l_UpdateIt->Health);
+
+            if (l_UpdateIt->UpdateType == PETBATTLE_EVENT_UPDATE_SPEED)
+                l_Packet << int32(l_UpdateIt->Speed);
+
+            if (l_UpdateIt->UpdateType == PETBATTLE_EVENT_UPDATE_TRIGGER)
+                l_Packet << uint32(l_UpdateIt->TriggerAbilityId);
+
+            if (l_UpdateIt->UpdateType == PETBATTLE_EVENT_UPDATE_ABILITY_CHANGE)
+            {
+                l_Packet << uint32(0);
+                l_Packet << uint32(0);
+                l_Packet << uint32(0);
+            }
+
+            if (l_UpdateIt->UpdateType == PETBATTLE_EVENT_UPDATE_NPC_EMOTE)
+                l_Packet << int32(l_UpdateIt->NpcEmote.BroadcastTextID);
+        }
+    }
 
     for (std::size_t l_I = 0; l_I < p_Battle->RoundDeadPets.size(); l_I++)
         l_Packet << uint8(p_Battle->RoundDeadPets[l_I]);
@@ -408,64 +407,11 @@ void WorldSession::SendPetBattleRoundResult(PetBattle* p_Battle)
     for (uint8 l_TeamID = 0; l_TeamID < MAX_PETBATTLE_TEAM; l_TeamID++)
     {
         l_Packet << uint8(p_Battle->Teams[l_TeamID]->GetTeamInputFlags());
-        l_Packet << uint8(p_Battle->Teams[l_TeamID]->GetTeamTrapStatus());
+        l_Packet << uint8(p_Battle->Teams[l_TeamID]->GetTeamTrapFlags());
         l_Packet << uint16(l_PvpMaxRoundTime);
     }
 
     l_Packet << uint32(l_CooldownCount);
-
-    for (std::list<PetBattleEvent>::iterator l_EventIt = p_Battle->RoundEvents.begin(); l_EventIt != p_Battle->RoundEvents.end(); ++l_EventIt)
-    {
-        l_Packet << uint32(l_EventIt->AbilityEffectID);
-        l_Packet << uint16(l_EventIt->Flags);
-        l_Packet << uint16(l_EventIt->BuffTurn);    ///< Can be swap down
-        l_Packet << uint16(l_EventIt->RoundTurn);   ///< Can be swap up
-        l_Packet << uint8(l_EventIt->EventType);
-        l_Packet << uint8(l_EventIt->SourcePetID);
-        l_Packet << uint8(l_EventIt->StackDepth);
-        l_Packet << uint32(l_EventIt->Updates.size());
-
-        for (std::list<PetBattleEventUpdate>::iterator l_UpdateIt = l_EventIt->Updates.begin(); l_UpdateIt != l_EventIt->Updates.end(); ++l_UpdateIt)
-        {
-            l_Packet.WriteBits(l_UpdateIt->UpdateType, 3);
-            l_Packet.FlushBits();
-
-            l_Packet << uint8(l_UpdateIt->TargetPetID);
-
-            if (l_UpdateIt->UpdateType == PETBATTLE_EVENT_BUFF_APPLY)
-            {
-                l_Packet << uint32(l_UpdateIt->Buff.ID);
-                l_Packet << uint32(l_UpdateIt->Buff.AbilityID);
-                l_Packet << int32(l_UpdateIt->Buff.Duration);
-                l_Packet << uint32(l_UpdateIt->Buff.Turn);
-            }
-
-            if (l_UpdateIt->UpdateType == PETBATTLE_EVENT_SET_STATE)
-            {
-                l_Packet << uint32(l_UpdateIt->State.ID);
-                l_Packet << int32(l_UpdateIt->State.Value);
-            }
-
-            if (l_UpdateIt->UpdateType == PETBATTLE_EVENT_SET_MAX_HEALTH)
-                l_Packet << int32(l_UpdateIt->Health);
-
-            if (l_UpdateIt->UpdateType == PETBATTLE_EVENT_SET_SPEED)
-                l_Packet << int32(l_UpdateIt->Speed);
-
-            if (l_UpdateIt->UpdateType == PETBATTLE_EVENT_TRIGGER_ABILITY)
-                l_Packet << uint32(l_UpdateIt->TriggerAbilityId);
-
-            if (l_UpdateIt->UpdateType == PETBATTLE_EVENT_ABILITY_CHANGE)
-            {
-                l_Packet << uint32(0);
-                l_Packet << uint32(0);
-                l_Packet << uint32(0);
-            }
-
-            if (l_UpdateIt->UpdateType == PETBATTLE_EVENT_NPC_EMOTE)
-                l_Packet << int32(l_UpdateIt->NpcEmote.BroadcastTextID);
-        }
-    }
 
     for (uint8 l_CurrentPetslot = 0; l_CurrentPetslot < (MAX_PETBATTLE_TEAM * MAX_PETBATTLE_SLOTS); l_CurrentPetslot++)
     {
@@ -485,8 +431,63 @@ void WorldSession::SendPetBattleRoundResult(PetBattle* p_Battle)
         }
     }
 
+
     l_Packet.WriteBits(p_Battle->RoundDeadPets.size(), 3);
     l_Packet.FlushBits();
+
+    for (std::list<PetBattleEvent>::iterator l_EventIt = p_Battle->RoundEvents.begin(); l_EventIt != p_Battle->RoundEvents.end(); ++l_EventIt)
+    {
+        l_Packet << uint32(l_EventIt->AbilityEffectID);
+        l_Packet << uint16(l_EventIt->Flags);
+        l_Packet << uint16(l_EventIt->BuffTurn);    ///< Can be swap down
+        l_Packet << uint16(l_EventIt->RoundTurn);   ///< Can be swap up
+        l_Packet << uint8(l_EventIt->EventType);
+        l_Packet << uint8(l_EventIt->SourcePetID);
+        l_Packet << uint8(l_EventIt->StackDepth);
+        l_Packet << uint32(l_EventIt->Updates.size());
+
+        for (std::list<PetBattleEventUpdate>::iterator l_UpdateIt = l_EventIt->Updates.begin(); l_UpdateIt != l_EventIt->Updates.end(); ++l_UpdateIt)
+        {
+            l_Packet.WriteBits(l_UpdateIt->UpdateType, 3);
+            l_Packet.FlushBits();
+
+            l_Packet << uint8(l_UpdateIt->TargetPetID);
+
+            if (l_UpdateIt->UpdateType == PETBATTLE_EVENT_UPDATE_BUFF)
+            {
+                l_Packet << uint32(l_UpdateIt->Buff.ID);
+                l_Packet << uint32(l_UpdateIt->Buff.AbilityID);
+                l_Packet << int32(l_UpdateIt->Buff.Duration);
+                l_Packet << uint32(l_UpdateIt->Buff.Turn);
+            }
+
+            if (l_UpdateIt->UpdateType == PETBATTLE_EVENT_UPDATE_STATE)
+            {
+                l_Packet << uint32(l_UpdateIt->State.ID);
+                l_Packet << int32(l_UpdateIt->State.Value);
+            }
+
+            if (l_UpdateIt->UpdateType == PETBATTLE_EVENT_UPDATE_HEALTH)
+                l_Packet << int32(l_UpdateIt->Health);
+
+            if (l_UpdateIt->UpdateType == PETBATTLE_EVENT_UPDATE_SPEED)
+                l_Packet << int32(l_UpdateIt->Speed);
+
+            if (l_UpdateIt->UpdateType == PETBATTLE_EVENT_UPDATE_TRIGGER)
+                l_Packet << uint32(l_UpdateIt->TriggerAbilityId);
+
+            if (l_UpdateIt->UpdateType == PETBATTLE_EVENT_UPDATE_ABILITY_CHANGE)
+            {
+                l_Packet << uint32(0);
+                l_Packet << uint32(0);
+                l_Packet << uint32(0);
+            }
+
+            if (l_UpdateIt->UpdateType == PETBATTLE_EVENT_UPDATE_NPC_EMOTE)
+                l_Packet << int32(l_UpdateIt->NpcEmote.BroadcastTextID);
+        }
+    }
+
 
     for (std::size_t l_I = 0; l_I < p_Battle->RoundDeadPets.size(); l_I++)
         l_Packet << uint8(p_Battle->RoundDeadPets[l_I]);
@@ -522,7 +523,7 @@ void WorldSession::SendPetBattleReplacementMade(PetBattle* p_Battle)
     for (uint8 l_TeamID = 0; l_TeamID < MAX_PETBATTLE_TEAM; l_TeamID++)
     {
         l_Packet << uint8(p_Battle->Teams[l_TeamID]->GetTeamInputFlags());
-        l_Packet << uint8(p_Battle->Teams[l_TeamID]->GetTeamTrapStatus());
+        l_Packet << uint8(p_Battle->Teams[l_TeamID]->GetTeamTrapFlags());
         l_Packet << uint16(l_PvpMaxRoundTime);
     }
 
@@ -546,7 +547,7 @@ void WorldSession::SendPetBattleReplacementMade(PetBattle* p_Battle)
 
             l_Packet << uint8(l_UpdateIt->TargetPetID);
 
-            if (l_UpdateIt->UpdateType == PETBATTLE_EVENT_BUFF_APPLY)
+            if (l_UpdateIt->UpdateType == PETBATTLE_EVENT_UPDATE_BUFF)
             {
                 l_Packet << uint32(l_UpdateIt->Buff.ID);
                 l_Packet << uint32(l_UpdateIt->Buff.AbilityID);
@@ -554,29 +555,29 @@ void WorldSession::SendPetBattleReplacementMade(PetBattle* p_Battle)
                 l_Packet << uint32(l_UpdateIt->Buff.Turn);
             }
 
-            if (l_UpdateIt->UpdateType == PETBATTLE_EVENT_SET_STATE)
+            if (l_UpdateIt->UpdateType == PETBATTLE_EVENT_UPDATE_STATE)
             {
                 l_Packet << uint32(l_UpdateIt->State.ID);
                 l_Packet << int32(l_UpdateIt->State.Value);
             }
 
-            if (l_UpdateIt->UpdateType == PETBATTLE_EVENT_SET_MAX_HEALTH)
+            if (l_UpdateIt->UpdateType == PETBATTLE_EVENT_UPDATE_HEALTH)
                 l_Packet << int32(l_UpdateIt->Health);
 
-            if (l_UpdateIt->UpdateType == PETBATTLE_EVENT_SET_SPEED)
+            if (l_UpdateIt->UpdateType == PETBATTLE_EVENT_UPDATE_SPEED)
                 l_Packet << int32(l_UpdateIt->Speed);
 
-            if (l_UpdateIt->UpdateType == PETBATTLE_EVENT_TRIGGER_ABILITY)
+            if (l_UpdateIt->UpdateType == PETBATTLE_EVENT_UPDATE_TRIGGER)
                 l_Packet << uint32(l_UpdateIt->TriggerAbilityId);
 
-            if (l_UpdateIt->UpdateType == PETBATTLE_EVENT_ABILITY_CHANGE)
+            if (l_UpdateIt->UpdateType == PETBATTLE_EVENT_UPDATE_ABILITY_CHANGE)
             {
                 l_Packet << uint32(0);
                 l_Packet << uint32(0);
                 l_Packet << uint32(0);
             }
 
-            if (l_UpdateIt->UpdateType == PETBATTLE_EVENT_NPC_EMOTE)
+            if (l_UpdateIt->UpdateType == PETBATTLE_EVENT_UPDATE_NPC_EMOTE)
                 l_Packet << int32(l_UpdateIt->NpcEmote.BroadcastTextID);
         }
     }
@@ -729,48 +730,49 @@ void WorldSession::HandlePetBattleJoinQueue(WorldPacket& /*p_RecvData*/)
         return;
     }
 
-    std::shared_ptr<BattlePetInstance> playerPets[MAX_PETBATTLE_SLOTS];
-    size_t playerPetCount = 0;
+    std::recursive_mutex& l_Lock = sPetBattleSystem->GetLock();
+    std::lock_guard<std::recursive_mutex> l_Guard(l_Lock);
+
+    BattlePetInstance::Ptr  l_PlayerPets[MAX_PETBATTLE_SLOTS];
+    size_t                  l_PlayerPetCount = 0;
     uint32                  l_ErrorCode = PETBATTLE_REQUEST_CREATE_FAILED;
 
     // Temporary pet buffer
     for (size_t l_CurrentPetSlot = 0; l_CurrentPetSlot < MAX_PETBATTLE_SLOTS; ++l_CurrentPetSlot)
-        playerPets[l_CurrentPetSlot] = 0;
+        l_PlayerPets[l_CurrentPetSlot] = 0;
 
     // Load player pets
-    m_Player->UpdateBattlePetCombatTeam();
-    auto petSlots = m_Player->GetBattlePetCombatTeam();
-    uint32 deadPetCount = 0;
+    BattlePet::Ptr* l_PetSlots = m_Player->GetBattlePetCombatTeam();
 
     uint32 l_DeadPetCount = 0;
 
     for (size_t l_CurrentPetSlot = 0; l_CurrentPetSlot < MAX_PETBATTLE_SLOTS; ++l_CurrentPetSlot)
     {
-        if (!petSlots[l_CurrentPetSlot])
+        if (!l_PetSlots[l_CurrentPetSlot])
             continue;
 
-        if (playerPetCount >= MAX_PETBATTLE_SLOTS || playerPetCount >= m_Player->GetUnlockedPetBattleSlot())
+        if (l_PlayerPetCount >= MAX_PETBATTLE_SLOTS || l_PlayerPetCount >= m_Player->GetUnlockedPetBattleSlot())
             break;
 
-        if (petSlots[l_CurrentPetSlot]->Health == 0)
+        if (l_PetSlots[l_CurrentPetSlot]->Health == 0)
             l_DeadPetCount++;
 
-        playerPets[playerPetCount] = std::make_shared<BattlePetInstance>();
-        playerPets[playerPetCount]->CloneFrom(petSlots[l_CurrentPetSlot]);
-        playerPets[playerPetCount]->Slot = playerPetCount;
-        playerPets[playerPetCount]->OriginalBattlePet = petSlots[l_CurrentPetSlot];
+        l_PlayerPets[l_PlayerPetCount] = BattlePetInstance::Ptr(new BattlePetInstance());
+        l_PlayerPets[l_PlayerPetCount]->CloneFrom(l_PetSlots[l_CurrentPetSlot]);
+        l_PlayerPets[l_PlayerPetCount]->Slot = l_PlayerPetCount;
+        l_PlayerPets[l_PlayerPetCount]->OriginalBattlePet = l_PetSlots[l_CurrentPetSlot];
 
-        ++playerPetCount;
+        ++l_PlayerPetCount;
     }
 
-    if (l_DeadPetCount && l_DeadPetCount == playerPetCount)
+    if (l_DeadPetCount && l_DeadPetCount == l_PlayerPetCount)
     {
         SendPetBattleRequestFailed(PETBATTLE_REQUEST_ALL_PETS_DEAD);
         return;
     }
 
     // Check player team
-    if (!playerPetCount)
+    if (!l_PlayerPetCount)
     {
         SendPetBattleRequestFailed(PETBATTLE_REQUEST_NO_PETS_IN_SLOT);
         return;
@@ -783,6 +785,9 @@ void WorldSession::HandlePetBattleLeaveQueue(WorldPacket& /*p_RecvData*/)
 {
     if (!m_Player || !m_Player->IsInWorld())
         return;
+
+    std::recursive_mutex& l_Lock = sPetBattleSystem->GetLock();
+    std::lock_guard<std::recursive_mutex> l_Guard(l_Lock);
 
     sPetBattleSystem->LeaveQueue(m_Player);
 }
@@ -798,6 +803,9 @@ void WorldSession::HandlePetBattleRequestWild(WorldPacket& p_RecvData)
         return;
     }
 
+    std::recursive_mutex& l_Lock = sPetBattleSystem->GetLock();
+    std::lock_guard<std::recursive_mutex> l_Guard(l_Lock);
+
     PetBattleRequest* l_BattleRequest = sPetBattleSystem->CreateRequest(m_Player->GetGUID());
     uint64 l_OpponentGuid;
 
@@ -811,8 +819,8 @@ void WorldSession::HandlePetBattleRequestWild(WorldPacket& p_RecvData)
     for (int l_CurrentTeamID = 0; l_CurrentTeamID < MAX_PETBATTLE_TEAM; l_CurrentTeamID++)
         p_RecvData >> l_BattleRequest->TeamPosition[l_CurrentTeamID][0] >> l_BattleRequest->TeamPosition[l_CurrentTeamID][1] >> l_BattleRequest->TeamPosition[l_CurrentTeamID][2];
 
-    l_BattleRequest->RequestType    = PETBATTLE_TYPE_PVE;
-    l_BattleRequest->OpponentGuid   = l_OpponentGuid;
+    l_BattleRequest->RequestType = PETBATTLE_TYPE_PVE;
+    l_BattleRequest->OpponentGuid = l_OpponentGuid;
 
     eBattlePetRequests l_CanEnterResult = sPetBattleSystem->CanPlayerEnterInPetBattle(m_Player, l_BattleRequest);
     if (l_CanEnterResult != PETBATTLE_REQUEST_OK)
@@ -834,9 +842,9 @@ void WorldSession::HandlePetBattleRequestWild(WorldPacket& p_RecvData)
     ////////////////////////////////
     ////////////////////////////////
 
-    Creature* wildBattlePet = sObjectAccessor->GetCreature(*m_Player, l_BattleRequest->OpponentGuid);
+    Creature* l_Wild = sObjectAccessor->GetCreature(*m_Player, l_BattleRequest->OpponentGuid);
 
-    if (!wildBattlePet)
+    if (!l_Wild)
     {
         SendPetBattleRequestFailed(PETBATTLE_REQUEST_TARGET_NOT_CAPTURABLE);
         sPetBattleSystem->RemoveRequest(l_BattleRequest->RequesterGuid);
@@ -847,7 +855,7 @@ void WorldSession::HandlePetBattleRequestWild(WorldPacket& p_RecvData)
     ////////////////////////////////
 
     /// Wild should be wild
-    if (!sWildBattlePetMgr->IsWildPet(wildBattlePet))
+    if (!l_Wild->GetMap()->GetWildBattlePetPools()->IsWildPet(l_Wild))
     {
         SendPetBattleRequestFailed(PETBATTLE_REQUEST_TARGET_NOT_CAPTURABLE);
         sPetBattleSystem->RemoveRequest(l_BattleRequest->RequesterGuid);
@@ -857,21 +865,25 @@ void WorldSession::HandlePetBattleRequestWild(WorldPacket& p_RecvData)
     ////////////////////////////////
     ////////////////////////////////
 
-    std::shared_ptr<BattlePetInstance> playerPets[MAX_PETBATTLE_SLOTS];
-    std::shared_ptr<BattlePetInstance> wildBattlePets[MAX_PETBATTLE_SLOTS];
-    size_t playerPetCount = 0;
-    PetBattle*              l_Battle;
+    BattlePetInstance::Ptr  l_PlayerPets[MAX_PETBATTLE_SLOTS];
+    BattlePetInstance::Ptr  l_WildBattlePets[MAX_PETBATTLE_SLOTS];
+    size_t                  l_PlayerPetCount = 0;
+    PetBattle* l_Battle;
 
     /// Temporary pet buffer
     for (size_t l_CurrentPetSlot = 0; l_CurrentPetSlot < MAX_PETBATTLE_SLOTS; ++l_CurrentPetSlot)
     {
-        playerPets[l_CurrentPetSlot] = nullptr;
-        wildBattlePets[l_CurrentPetSlot] = nullptr;
+        l_PlayerPets[l_CurrentPetSlot] = nullptr;
+        l_WildBattlePets[l_CurrentPetSlot] = nullptr;
     }
 
+    ////////////////////////////////
+    ////////////////////////////////
 
+    WildBattlePetZonePools* l_WildBattlePetPools = l_Wild->GetMap()->GetWildBattlePetPools();
 
-    auto l_WildBattlePet = sWildBattlePetMgr->GetWildBattlePet(wildBattlePet);
+    BattlePetInstance::Ptr l_WildBattlePet = l_WildBattlePetPools->GetWildBattlePet(l_Wild);
+
     if (!l_WildBattlePet)
     {
         l_WildBattlePet = nullptr;
@@ -881,27 +893,27 @@ void WorldSession::HandlePetBattleRequestWild(WorldPacket& p_RecvData)
         return;
     }
 
-    wildBattlePets[0] = l_WildBattlePet;
+    l_WildBattlePets[0] = l_WildBattlePet;
 
     std::list<Unit*> l_NearCreature;
-    Trinity::AnyFriendlyUnitInObjectRangeCheck l_UCheck(wildBattlePet, wildBattlePet, 50.0f);
-    Trinity::UnitListSearcher<Trinity::AnyFriendlyUnitInObjectRangeCheck> l_Searcher(wildBattlePet, l_NearCreature, l_UCheck);
-    wildBattlePet->VisitNearbyObject(40.0f, l_Searcher);
+    Trinity::AnyFriendlyUnitInObjectRangeCheck l_UCheck(l_Wild, l_Wild, 50.0f);
+    Trinity::UnitListSearcher<Trinity::AnyFriendlyUnitInObjectRangeCheck> l_Searcher(l_Wild, l_NearCreature, l_UCheck);
+    l_Wild->VisitNearbyObject(40.0f, l_Searcher);
 
-    uint32 wildsPetCount = 1;
+    uint32 l_WildsPetCount = 1;
     for (Unit* l_Current : l_NearCreature)
     {
-        if (wildsPetCount >= MAX_PETBATTLE_SLOTS)
+        if (l_WildsPetCount >= MAX_PETBATTLE_SLOTS)
             break;
 
-        if (!l_Current->ToCreature() || !l_Current->isAlive() || l_Current->GetGUID() == wildBattlePet->GetGUID() || !sWildBattlePetMgr->IsWildPet(l_Current->ToCreature()))
+        if (!l_Current->ToCreature() || !l_Current->isAlive() || l_Current->GetGUID() == l_Wild->GetGUID() || !l_WildBattlePetPools->IsWildPet(l_Current->ToCreature()))
             continue;
 
-        if (sWildBattlePetMgr->GetWildBattlePet(l_Current->ToCreature()) != nullptr && roll_chance_i(80))
+        if (l_WildBattlePetPools->GetWildBattlePet(l_Current->ToCreature()) != nullptr && roll_chance_i(80))
         {
-            wildBattlePets[wildsPetCount] = sWildBattlePetMgr->GetWildBattlePet(l_Current->ToCreature());
-            wildBattlePets[wildsPetCount]->OriginalCreature = l_Current->GetGUID();
-            wildsPetCount++;
+            l_WildBattlePets[l_WildsPetCount] = l_WildBattlePetPools->GetWildBattlePet(l_Current->ToCreature());
+            l_WildBattlePets[l_WildsPetCount]->OriginalCreature = l_Current->GetGUID();
+            l_WildsPetCount++;
         }
     }
 
@@ -909,23 +921,22 @@ void WorldSession::HandlePetBattleRequestWild(WorldPacket& p_RecvData)
     ////////////////////////////////
 
     /// Load player pets
-    m_Player->UpdateBattlePetCombatTeam();
-    auto petSlots = m_Player->GetBattlePetCombatTeam();
+    BattlePet::Ptr* l_PetSlots = m_Player->GetBattlePetCombatTeam();
 
-    for (size_t i = 0; i < MAX_PETBATTLE_SLOTS; ++i)
+    for (size_t l_CurrentPetSlot = 0; l_CurrentPetSlot < MAX_PETBATTLE_SLOTS; ++l_CurrentPetSlot)
     {
-        if (!petSlots[i])
+        if (!l_PetSlots[l_CurrentPetSlot])
             continue;
 
-        if (playerPetCount >= MAX_PETBATTLE_SLOTS || playerPetCount >= m_Player->GetUnlockedPetBattleSlot())
+        if (l_PlayerPetCount >= MAX_PETBATTLE_SLOTS || l_PlayerPetCount >= m_Player->GetUnlockedPetBattleSlot())
             break;
 
-        playerPets[playerPetCount] = std::make_shared<BattlePetInstance>();
-        playerPets[playerPetCount]->CloneFrom(petSlots[i]);
-        playerPets[playerPetCount]->Slot                = playerPetCount;
-        playerPets[playerPetCount]->OriginalBattlePet   = petSlots[i];
+        l_PlayerPets[l_PlayerPetCount] = BattlePetInstance::Ptr(new BattlePetInstance());
+        l_PlayerPets[l_PlayerPetCount]->CloneFrom(l_PetSlots[l_CurrentPetSlot]);
+        l_PlayerPets[l_PlayerPetCount]->Slot = l_PlayerPetCount;
+        l_PlayerPets[l_PlayerPetCount]->OriginalBattlePet = l_PetSlots[l_CurrentPetSlot];
 
-        ++playerPetCount;
+        ++l_PlayerPetCount;
     }
 
     ////////////////////////////////
@@ -943,21 +954,21 @@ void WorldSession::HandlePetBattleRequestWild(WorldPacket& p_RecvData)
     l_Battle = sPetBattleSystem->CreateBattle();
 
     /// Add player pets
-    l_Battle->Teams[PETBATTLE_TEAM_1]->OwnerGuid    = m_Player->GetGUID();
-    l_Battle->Teams[PETBATTLE_TEAM_1]->PlayerGuid   = m_Player->GetGUID();
+    l_Battle->Teams[PETBATTLE_TEAM_1]->OwnerGuid = m_Player->GetGUID();
+    l_Battle->Teams[PETBATTLE_TEAM_1]->PlayerGuid = m_Player->GetGUID();
 
-    l_Battle->Teams[PETBATTLE_TEAM_2]->OwnerGuid = wildBattlePet->GetGUID();
+    l_Battle->Teams[PETBATTLE_TEAM_2]->OwnerGuid = l_Wild->GetGUID();
 
     for (size_t l_CurrentPetSlot = 0; l_CurrentPetSlot < MAX_PETBATTLE_SLOTS; ++l_CurrentPetSlot)
     {
-        if (playerPets[l_CurrentPetSlot])
-            l_Battle->AddPet(PETBATTLE_TEAM_1, playerPets[l_CurrentPetSlot]);
+        if (l_PlayerPets[l_CurrentPetSlot])
+            l_Battle->AddPet(PETBATTLE_TEAM_1, l_PlayerPets[l_CurrentPetSlot]);
 
-        if (wildBattlePets[l_CurrentPetSlot])
+        if (l_WildBattlePets[l_CurrentPetSlot])
         {
-            l_Battle->AddPet(PETBATTLE_TEAM_2, wildBattlePets[l_CurrentPetSlot]);
+            l_Battle->AddPet(PETBATTLE_TEAM_2, l_WildBattlePets[l_CurrentPetSlot]);
 
-            if (Creature* l_CurrrentCreature = sObjectAccessor->GetCreature(*m_Player, wildBattlePets[l_CurrentPetSlot]->OriginalCreature))
+            if (Creature* l_CurrrentCreature = sObjectAccessor->GetCreature(*m_Player, l_WildBattlePets[l_CurrentPetSlot]->OriginalCreature))
             {
                 /// Ok, Despawn wild
                 l_CurrrentCreature->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_PACIFIED | UNIT_FLAG_IMMUNE_TO_PC); // Immuned to all
@@ -965,12 +976,12 @@ void WorldSession::HandlePetBattleRequestWild(WorldPacket& p_RecvData)
                 l_CurrrentCreature->SetControlled(true, UNIT_STATE_ROOT);
                 l_CurrrentCreature->_petBattleId = l_Battle->ID;
 
-                sWildBattlePetMgr->EnterInBattle(l_CurrrentCreature);
+                l_WildBattlePetPools->EnterInBattle(l_CurrrentCreature);
             }
         }
     }
 
-    l_Battle->BattleType    = l_BattleRequest->RequestType;
+    l_Battle->BattleType = l_BattleRequest->RequestType;
     l_Battle->PveBattleType = PVE_PETBATTLE_WILD;
 
     /// Launch battle
@@ -981,11 +992,11 @@ void WorldSession::HandlePetBattleRequestWild(WorldPacket& p_RecvData)
 
     for (size_t l_CurrentPetID = 0; l_CurrentPetID < MAX_PETBATTLE_SLOTS; ++l_CurrentPetID)
     {
-        if (playerPets[l_CurrentPetID])
-            playerPets[l_CurrentPetID] = nullptr;
+        if (l_PlayerPets[l_CurrentPetID])
+            l_PlayerPets[l_CurrentPetID] = nullptr;
 
-        if (wildBattlePets[l_CurrentPetID])
-            wildBattlePets[l_CurrentPetID] = nullptr;
+        if (l_WildBattlePets[l_CurrentPetID])
+            l_WildBattlePets[l_CurrentPetID] = nullptr;
     }
 
     l_WildBattlePet = nullptr;
@@ -1001,6 +1012,9 @@ void WorldSession::HandlePetBattleRequestPvP(WorldPacket& p_RecvData)
     if (!m_Player || !m_Player->IsInWorld())
         return;
 
+    std::recursive_mutex& l_Lock = sPetBattleSystem->GetLock();
+    std::lock_guard<std::recursive_mutex> l_Guard(l_Lock);
+
     PetBattleRequest* l_BattleRequest = sPetBattleSystem->CreateRequest(m_Player->GetGUID());
     uint64 l_OpponentGuid = 0;
 
@@ -1015,8 +1029,8 @@ void WorldSession::HandlePetBattleRequestPvP(WorldPacket& p_RecvData)
     for (int l_CurrentTeamID = 0; l_CurrentTeamID < MAX_PETBATTLE_TEAM; l_CurrentTeamID++)
         p_RecvData >> l_BattleRequest->TeamPosition[l_CurrentTeamID][0] >> l_BattleRequest->TeamPosition[l_CurrentTeamID][1] >> l_BattleRequest->TeamPosition[l_CurrentTeamID][2];
 
-    l_BattleRequest->RequestType    = PETBATTLE_TYPE_PVP_DUEL;
-    l_BattleRequest->OpponentGuid   = l_OpponentGuid;
+    l_BattleRequest->RequestType = PETBATTLE_TYPE_PVP_DUEL;
+    l_BattleRequest->OpponentGuid = l_OpponentGuid;
 
     // Player can't be already in battle
     if (m_Player->_petBattleId)
@@ -1037,9 +1051,9 @@ void WorldSession::HandlePetBattleRequestPvP(WorldPacket& p_RecvData)
     // Check positions
     for (size_t l_CurrentTeamID = 0; l_CurrentTeamID < MAX_PETBATTLE_TEAM; ++l_CurrentTeamID)
     {
-        if (m_Player->GetMap()->getObjectHitPos(m_Player->GetPhaseMask(), l_BattleRequest->PetBattleCenterPosition[0],        l_BattleRequest->PetBattleCenterPosition[1],        l_BattleRequest->PetBattleCenterPosition[2],
-                                                                          l_BattleRequest->TeamPosition[l_CurrentTeamID][0],  l_BattleRequest->TeamPosition[l_CurrentTeamID][1],  l_BattleRequest->TeamPosition[l_CurrentTeamID][2],
-                                                                          l_BattleRequest->TeamPosition[l_CurrentTeamID][0],  l_BattleRequest->TeamPosition[l_CurrentTeamID][1],  l_BattleRequest->TeamPosition[l_CurrentTeamID][2], 0.0f))
+        if (m_Player->GetMap()->getObjectHitPos(m_Player->GetPhaseMask(), l_BattleRequest->PetBattleCenterPosition[0], l_BattleRequest->PetBattleCenterPosition[1], l_BattleRequest->PetBattleCenterPosition[2],
+            l_BattleRequest->TeamPosition[l_CurrentTeamID][0], l_BattleRequest->TeamPosition[l_CurrentTeamID][1], l_BattleRequest->TeamPosition[l_CurrentTeamID][2],
+            l_BattleRequest->TeamPosition[l_CurrentTeamID][0], l_BattleRequest->TeamPosition[l_CurrentTeamID][1], l_BattleRequest->TeamPosition[l_CurrentTeamID][2], 0.0f))
         {
             SendPetBattleRequestFailed(PETBATTLE_REQUEST_NOT_HERE_UNEVEN_GROUND);
             sPetBattleSystem->RemoveRequest(l_BattleRequest->RequesterGuid);
@@ -1080,6 +1094,9 @@ void WorldSession::HandlePetBattleRequestUpdate(WorldPacket& p_RecvData)
     uint64 l_TargetGUID = 0;
     bool l_Canceled = false;
 
+    std::recursive_mutex& l_Lock = sPetBattleSystem->GetLock();
+    std::lock_guard<std::recursive_mutex> l_Guard(l_Lock);
+
     p_RecvData.readPackGUID(l_TargetGUID);
     l_Canceled = p_RecvData.ReadBit();
 
@@ -1088,69 +1105,67 @@ void WorldSession::HandlePetBattleRequestUpdate(WorldPacket& p_RecvData)
 
     if (!l_Canceled && l_BattleRequest && l_Opposant)
     {
-        m_Player->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_PACIFIED | UNIT_FLAG_IMMUNE_TO_NPC); // Immuned only to NPC
-        l_Opposant->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_PACIFIED | UNIT_FLAG_IMMUNE_TO_NPC); // Immuned only to NPC
-
-        std::shared_ptr<BattlePetInstance> playerPets[MAX_PETBATTLE_SLOTS];
-        std::shared_ptr<BattlePetInstance> playerOpposantPets[MAX_PETBATTLE_SLOTS];
-        size_t playerPetCount = 0;
-        size_t playerOpposantPetCount = 0;
-        PetBattle*              l_Battle;
+        BattlePetInstance::Ptr  l_PlayerPets[MAX_PETBATTLE_SLOTS];
+        BattlePetInstance::Ptr  l_PlayerOpposantPets[MAX_PETBATTLE_SLOTS];
+        size_t                  l_PlayerPetCount = 0;
+        size_t                  l_PlayerOpposantPetCount = 0;
+        PetBattle* l_Battle;
         uint32                  l_ErrorCode = PETBATTLE_REQUEST_CREATE_FAILED;
 
         // Temporary pet buffer
         for (size_t l_CurrentPetSlot = 0; l_CurrentPetSlot < MAX_PETBATTLE_SLOTS; ++l_CurrentPetSlot)
         {
-            playerPets[l_CurrentPetSlot] = 0;
-            playerOpposantPets[l_CurrentPetSlot] = 0;
+            l_PlayerPets[l_CurrentPetSlot] = 0;
+            l_PlayerOpposantPets[l_CurrentPetSlot] = 0;
         }
 
         // Load player pets
-        m_Player->UpdateBattlePetCombatTeam();
-        auto petSlots = m_Player->GetBattlePetCombatTeam();
+        BattlePet::Ptr* l_PetSlots = m_Player->GetBattlePetCombatTeam();
 
-        for (size_t i = 0; i < MAX_PETBATTLE_SLOTS; ++i)
+        for (size_t l_CurrentPetSlot = 0; l_CurrentPetSlot < MAX_PETBATTLE_SLOTS; ++l_CurrentPetSlot)
         {
-            if (!petSlots[i])
+            if (!l_PetSlots[l_CurrentPetSlot])
                 continue;
 
-            if (playerPetCount >= MAX_PETBATTLE_SLOTS || playerPetCount >= m_Player->GetUnlockedPetBattleSlot())
+            if (l_PlayerPetCount >= MAX_PETBATTLE_SLOTS || l_PlayerPetCount >= m_Player->GetUnlockedPetBattleSlot())
                 break;
 
-            playerPets[playerPetCount] = std::make_shared<BattlePetInstance>();
-            playerPets[playerPetCount]->CloneFrom(petSlots[i]);
-            playerPets[playerPetCount]->Slot = playerPetCount;
-            playerPets[playerPetCount]->OriginalBattlePet = petSlots[i];
+            l_PlayerPets[l_PlayerPetCount] = BattlePetInstance::Ptr(new BattlePetInstance());
+            l_PlayerPets[l_PlayerPetCount]->CloneFrom(l_PetSlots[l_CurrentPetSlot]);
+            l_PlayerPets[l_PlayerPetCount]->Slot = l_PlayerPetCount;
+            l_PlayerPets[l_PlayerPetCount]->OriginalBattlePet = l_PetSlots[l_CurrentPetSlot];
 
-            ++playerPetCount;
+            ++l_PlayerPetCount;
         }
 
-        l_Opposant->UpdateBattlePetCombatTeam();
-        auto petOpposantSlots = l_Opposant->GetBattlePetCombatTeam();
+        BattlePet::Ptr* l_PetOpposantSlots = l_Opposant->GetBattlePetCombatTeam();
 
-        for (size_t i = 0; i < MAX_PETBATTLE_SLOTS; ++i)
+        for (size_t l_CurrentOpposantPetSlot = 0; l_CurrentOpposantPetSlot < MAX_PETBATTLE_SLOTS; ++l_CurrentOpposantPetSlot)
         {
-            if (!petOpposantSlots[i])
+            if (!l_PetOpposantSlots[l_CurrentOpposantPetSlot])
                 continue;
 
-            if (playerOpposantPetCount >= MAX_PETBATTLE_SLOTS || playerOpposantPetCount >= m_Player->GetUnlockedPetBattleSlot())
+            if (l_PlayerOpposantPetCount >= MAX_PETBATTLE_SLOTS || l_PlayerOpposantPetCount >= m_Player->GetUnlockedPetBattleSlot())
                 break;
 
-            playerOpposantPets[playerOpposantPetCount] = std::make_shared<BattlePetInstance>();
-            playerOpposantPets[playerOpposantPetCount]->CloneFrom(petOpposantSlots[i]);
-            playerOpposantPets[playerOpposantPetCount]->Slot = playerOpposantPetCount;
-            playerOpposantPets[playerOpposantPetCount]->OriginalBattlePet = petOpposantSlots[i];
+            l_PlayerOpposantPets[l_PlayerOpposantPetCount] = BattlePetInstance::Ptr(new BattlePetInstance());
+            l_PlayerOpposantPets[l_PlayerOpposantPetCount]->CloneFrom(l_PetOpposantSlots[l_CurrentOpposantPetSlot]);
+            l_PlayerOpposantPets[l_PlayerOpposantPetCount]->Slot = l_PlayerOpposantPetCount;
+            l_PlayerOpposantPets[l_PlayerOpposantPetCount]->OriginalBattlePet = l_PetOpposantSlots[l_CurrentOpposantPetSlot];
 
-            ++playerOpposantPetCount;
+            ++l_PlayerOpposantPetCount;
         }
 
-        if (!playerOpposantPetCount || !playerPetCount)
+        if (!l_PlayerOpposantPetCount || !l_PlayerPetCount)
         {
             m_Player->GetSession()->SendPetBattleRequestFailed(PETBATTLE_REQUEST_NO_PETS_IN_SLOT);
             l_Opposant->GetSession()->SendPetBattleRequestFailed(PETBATTLE_REQUEST_NO_PETS_IN_SLOT);
             sPetBattleSystem->RemoveRequest(l_TargetGUID);
             return;
         }
+
+        m_Player->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_PACIFIED | UNIT_FLAG_IMMUNE_TO_NPC); // Immuned only to NPC
+        l_Opposant->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_PACIFIED | UNIT_FLAG_IMMUNE_TO_NPC); // Immuned only to NPC
 
         m_Player->GetSession()->SendPetBattleFinalizeLocation(l_BattleRequest);
         l_Opposant->GetSession()->SendPetBattleFinalizeLocation(l_BattleRequest);
@@ -1169,13 +1184,13 @@ void WorldSession::HandlePetBattleRequestUpdate(WorldPacket& p_RecvData)
         l_Battle->Teams[PETBATTLE_TEAM_2]->OwnerGuid = m_Player->GetGUID();
         l_Battle->Teams[PETBATTLE_TEAM_2]->PlayerGuid = m_Player->GetGUID();
 
-        for (size_t i = 0; i < MAX_PETBATTLE_SLOTS; ++i)
+        for (size_t l_CurrentPetSlot = 0; l_CurrentPetSlot < MAX_PETBATTLE_SLOTS; ++l_CurrentPetSlot)
         {
-            if (playerOpposantPets[i])
-                l_Battle->AddPet(PETBATTLE_TEAM_1, playerOpposantPets[i]);
+            if (l_PlayerOpposantPets[l_CurrentPetSlot])
+                l_Battle->AddPet(PETBATTLE_TEAM_1, l_PlayerOpposantPets[l_CurrentPetSlot]);
 
-            if (playerPets[i])
-                l_Battle->AddPet(PETBATTLE_TEAM_2, playerPets[i]);
+            if (l_PlayerPets[l_CurrentPetSlot])
+                l_Battle->AddPet(PETBATTLE_TEAM_2, l_PlayerPets[l_CurrentPetSlot]);
         }
 
         l_Battle->BattleType = l_BattleRequest->RequestType;
@@ -1187,13 +1202,13 @@ void WorldSession::HandlePetBattleRequestUpdate(WorldPacket& p_RecvData)
 
         sPetBattleSystem->RemoveRequest(l_BattleRequest->RequesterGuid);
 
-        for (size_t i = 0; i < MAX_PETBATTLE_SLOTS; ++i)
+        for (size_t l_CurrentPetID = 0; l_CurrentPetID < MAX_PETBATTLE_SLOTS; ++l_CurrentPetID)
         {
-            if (playerPets[i])
-                playerPets[i] = std::shared_ptr<BattlePetInstance>();
+            if (l_PlayerPets[l_CurrentPetID])
+                l_PlayerPets[l_CurrentPetID] = BattlePetInstance::Ptr();
 
-            if (playerOpposantPets[i])
-                playerOpposantPets[i] = std::shared_ptr<BattlePetInstance>();
+            if (l_PlayerOpposantPets[l_CurrentPetID])
+                l_PlayerOpposantPets[l_CurrentPetID] = BattlePetInstance::Ptr();
         }
     }
     else
@@ -1214,33 +1229,24 @@ void WorldSession::HandlePetBattleFinalNotify(WorldPacket& /*p_RecvData*/)
     /// @TODO
 }
 
-/// [INTERNAL]
-void WorldSession::HandlePetBattleScriptErrorNotify(WorldPacket& /*p_RecvData*/)
-{
-    /// Internal handler
-}
-
 void WorldSession::HandlePetBattleQueueProposeMatchResult(WorldPacket& p_RecvData)
 {
     if (!m_Player || !m_Player->IsInWorld())
         return;
 
-    sPetBattleSystem->ProposalResponse(m_Player, p_RecvData.ReadBit());
-}
+    std::recursive_mutex& l_Lock = sPetBattleSystem->GetLock();
+    std::lock_guard<std::recursive_mutex> l_Guard(l_Lock);
 
-/// [INTERNAL]
-void WorldSession::HandlePetBattleFirstPet(WorldPacket& /*p_RecvData*/)
-{
-    /// Internal handler
+    sPetBattleSystem->ProposalResponse(m_Player, p_RecvData.ReadBit());
 }
 
 enum ePetBattleActions
 {
-    PETBATTLE_ACTION_REQUEST_LEAVE      = 0,
-    PETBATTLE_ACTION_CAST               = 1,
-    PETBATTLE_ACTION_SWAP_OR_PASS       = 2,
-    PETBATTLE_ACTION_CATCH              = 3,
-    PETBATTLE_ACTION_LEAVE_PETBATTLE    = 4
+    PETBATTLE_ACTION_REQUEST_LEAVE = 0,
+    PETBATTLE_ACTION_CAST = 1,
+    PETBATTLE_ACTION_SWAP_OR_PASS = 2,
+    PETBATTLE_ACTION_CATCH = 3,
+    PETBATTLE_ACTION_LEAVE_PETBATTLE = 4
 };
 
 void WorldSession::HandlePetBattleInput(WorldPacket& p_RecvData)
@@ -1259,6 +1265,9 @@ void WorldSession::HandlePetBattleInput(WorldPacket& p_RecvData)
 
     p_RecvData.ReadBit();
 
+    std::recursive_mutex& l_Lock = sPetBattleSystem->GetLock();
+    std::lock_guard<std::recursive_mutex> l_Guard(l_Lock);
+
     if (l_Action == PETBATTLE_ACTION_LEAVE_PETBATTLE)
     {
         SendPetBattleFinished(0);
@@ -1271,7 +1280,7 @@ void WorldSession::HandlePetBattleInput(WorldPacket& p_RecvData)
         return;
     }
 
-    PetBattle * l_PetBattle = sPetBattleSystem->GetBattle(m_Player->_petBattleId);
+    PetBattle* l_PetBattle = sPetBattleSystem->GetBattle(m_Player->_petBattleId);
 
     if (!l_PetBattle || l_PetBattle->BattleStatus == PETBATTLE_STATUS_FINISHED)
     {
@@ -1327,6 +1336,9 @@ void WorldSession::HandlePetBattleInput(WorldPacket& p_RecvData)
 
 void WorldSession::HandlePetBattleReplaceFrontPet(WorldPacket& p_RecvData)
 {
+    std::recursive_mutex& l_Lock = sPetBattleSystem->GetLock();
+    std::lock_guard<std::recursive_mutex> l_Guard(l_Lock);
+
     if (!m_Player->_petBattleId)
     {
         SendPetBattleFinished(0);
@@ -1360,10 +1372,4 @@ void WorldSession::HandlePetBattleReplaceFrontPet(WorldPacket& p_RecvData)
 
     l_PetBattle->SwapPet(l_PlayerTeamID, l_NewFrontPetID);
     l_PetBattle->SwapPet(!l_PlayerTeamID, l_PetBattle->Teams[!l_PlayerTeamID]->ActivePetID);
-}
-
-/// [INTERNAL]
-void WorldSession::HandlePetBattleDebugQueueDump(WorldPacket& /*p_RecvData*/)
-{
-    /// Internal handler
 }

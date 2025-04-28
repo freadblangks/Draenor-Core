@@ -1586,10 +1586,10 @@ bool Creature::CreateFromProto(uint32 guidlow, uint32 Entry, uint32 vehId, uint3
     if (!vehId)
         vehId = cinfo->VehicleId;
 
+    Object::_Create(guidlow, Entry, vehId ? HIGHGUID_VEHICLE : HIGHGUID_UNIT);
+
     if (vehId && !CreateVehicleKit(vehId, Entry))
         vehId = 0;
-
-    Object::_Create(guidlow, Entry, vehId ? HIGHGUID_VEHICLE : HIGHGUID_UNIT);
 
     if (!UpdateEntry(Entry, team, data))
         return false;
@@ -1672,7 +1672,7 @@ bool Creature::LoadCreatureFromDB(uint32 guid, Map* map, bool addToMap)
     if (addToMap && !GetMap()->AddToMap(this))
         return false;
 
-    GetMap()->AddBattlePet(this);
+    GetMap()->GetWildBattlePetPools()->OnAddToMap(this);
 
     return true;
 }

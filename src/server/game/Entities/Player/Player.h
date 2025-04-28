@@ -38,6 +38,7 @@
 #include "Common.h"
 #include "KillRewarder.h"
 #include "TradeData.h"
+#include "Opcodes.h"
 
 // for template
 #include "SpellMgr.h"
@@ -51,6 +52,7 @@ class Channel;
 class Creature;
 class DynamicObject;
 class Group;
+class LootLockoutMap;
 #ifndef CROSS
 class Guild;
 #else /* CROSS */
@@ -64,6 +66,7 @@ class SpellCastTargets;
 class UpdateMask;
 class PhaseMgr;
 class SceneObject;
+
 
 namespace CUF
 {
@@ -251,6 +254,17 @@ struct SpellCooldown
 
 typedef std::map<uint32, SpellCooldown> SpellCooldowns;
 typedef ACE_Based::LockedMap<uint32 /*instanceId*/, time_t/*releaseTime*/> InstanceTimeMap;
+
+enum class LootLockoutType
+{
+    PersonalLoot = 0,    // World bosses + Lfr + flex 
+    BonusLoot = 1,    // Per boss per week per difficult. Actually normal/heroic 10/25 must be one, but since we have all 4 difficulties as separate lockouts for normal loot...
+    MoguSeals = 2,    // Per boss per week. First quest for legendary cloak
+    SecretOfTheEmpire = 3,    // Per boss per week. Second quest for legendary cloak
+    TitanRunestone = 4,    // Per boss per week. Third quest for legendary cloak
+    HeirloomWeapon = 5,    // One boss (Garrosh) per week per difficulty
+    Max
+};
 
 enum TrainerSpellState
 {
@@ -1461,8 +1475,6 @@ struct CompletedChallenge
 /// MapID
 typedef std::map<uint32, CompletedChallenge> CompletedChallengesMap;
 
-typedef std::map<ObjectGuid, std::shared_ptr<BattlePet>> BattlePetMap;
-
 enum BattlegroundTimerTypes
 {
     PVP_TIMER,
@@ -1530,6 +1542,13 @@ namespace InteractionStatus
         MailBox
     };
 }
+
+enum class GroupSlot : uint8
+{
+    Original,       // LE_PARTY_CATEGORY_HOME       (home i.e. home realm only)
+    Instance,       // LE_PARTY_CATEGORY_INSTANCE
+    Max,
+};
 
 class Player : public Unit, public GridObject<Player>
 {
@@ -2226,6 +2245,12 @@ class Player : public Unit, public GridObject<Player>
             return mMitems.erase(id) ? true : false;
         }
 
+        void SendOnCancelExpectedVehicleRideAura()
+        {
+            WorldPacket data(SMSG_ON_CANCEL_EXPECTED_RIDE_VEHICLE_AURA, 0);
+            GetSession()->SendPacket(&data);
+        }
+
         void PetSpellInitialize();
         void CharmSpellInitialize();
         void PossessSpellInitialize();
@@ -2707,6 +2732,11 @@ class Player : public Unit, public GridObject<Player>
         void IncreaseBonusRollFails() { ++m_BonusRollFails; }
         void ResetBonusRollFails() { m_BonusRollFails = 0; }
 
+        bool HasLfrLockout(uint32 bossEntry) const { return HasLootLockout(LootLockoutType::PersonalLoot, bossEntry, RAID_DIFFICULTY_25MAN_LFR); }
+        bool HasLootLockout(LootLockoutType type, uint32 lootedObjectEntry, Difficulty difficulty, bool checkPending = false) const;
+        void AddLootLockout(LootLockoutType type, uint32 lootedObjectEntry, Difficulty difficulty, bool pending = true);
+        void ClearLootLockouts();
+
         void RemovedInsignia(Player* looterPlr);
 
         WorldSession* GetSession() const { return m_session; }
@@ -2798,6 +2828,10 @@ class Player : public Unit, public GridObject<Player>
         void SetSemaphoreTeleportNear(bool semphsetting) { mSemaphoreTeleport_Near = semphsetting; }
         void SetSemaphoreTeleportFar(bool semphsetting) { mSemaphoreTeleport_Far = semphsetting; }
         void ProcessDelayedOperations();
+
+        bool IsForcedTeleportFar() { return m_forcedTeleportFar; }
+        void SetForcedTeleportFar(bool forced) { m_forcedTeleportFar = forced; if (forced) SetrSemaphoreTeleportForcedFar(true); }
+        void SetrSemaphoreTeleportForcedFar(bool val) { m_forcedTeleportFarSemaphore = val; }
 
         void CheckAreaExploreAndOutdoor(void);
         bool m_IsOutdoors;
@@ -3254,7 +3288,8 @@ class Player : public Unit, public GridObject<Player>
 
         static void RemoveAtLoginFlagFromDB(uint32 p_Guid, AtLoginFlags p_Flags);
 
-        bool isUsingLfg();
+        bool IsUsingLfg(bool inProgressOnly = false);
+        bool inRandomLfgDungeon();
 
         typedef std::set<uint32> DFQuestsDoneList;
         DFQuestsDoneList m_DFQuests;
@@ -3288,7 +3323,7 @@ class Player : public Unit, public GridObject<Player>
         uint32 m_HomebindTimer;
         bool m_InstanceValid;
         // permanent binds and solo binds by difficulty
-        BoundInstancesMap m_boundInstances[Difficulty::MaxDifficulties];
+        BoundInstancesMap m_boundInstances[Difficulty::MAX_DIFFICULTY];
         InstancePlayerBind* GetBoundInstance(uint32 mapId, Difficulty difficulty);
         BoundInstancesMap& GetBoundInstances(Difficulty difficulty) { return m_boundInstances[difficulty]; }
         InstanceSave* GetInstanceSave(uint32 mapid);
@@ -3328,6 +3363,11 @@ class Player : public Unit, public GridObject<Player>
         void SetGroupInvite(uint32 groupGUID) { m_groupInviteGUID = groupGUID; }
         Group* GetGroup() { return m_group.getTarget(); }
         const Group* GetGroup() const { return (const Group*)m_group.getTarget(); }
+        Group* GetGroup(GroupSlot slot)
+        {
+            ASSERT(slot < GroupSlot::Max);
+            return m_group.getTarget();
+        }
         GroupReference& GetGroupRef() { return m_group; }
         void SetGroup(Group* group, int8 subgroup = -1);
         uint8 GetSubGroup() const { return m_group.getSubGroup(); }
@@ -3397,7 +3437,6 @@ class Player : public Unit, public GridObject<Player>
         AchievementMgr<Player> const& GetAchievementMgr() const { return m_achievementMgr; }
         void UpdateAchievementCriteria(AchievementCriteriaTypes type, uint64 miscValue1 = 0, uint64 miscValue2 = 0, uint64 miscValue3 = 0, Unit* unit = NULL, bool p_LoginCheck = false);
         void CompletedAchievement(AchievementEntry const* entry);
-        bool HasAchieved(uint32 achievementId) const;
 
         bool HasTitle(uint32 bitIndex);
         bool HasTitle(CharTitlesEntry const* title) { return HasTitle(title->MaskID); }
@@ -3421,6 +3460,7 @@ class Player : public Unit, public GridObject<Player>
         uint32 GetAverageItemLevelTotal() const;
         uint32 GetAverageItemLevelTotalWithOrWithoutPvPBonus(bool p_PvP) const;
         bool isDebugAreaTriggers;
+        float GetAverageItemLevel();
         bool m_IsDebugQuestLogs;
 
         void ClearWhisperWhiteList() { WhisperList.clear(); }
@@ -3520,19 +3560,19 @@ class Player : public Unit, public GridObject<Player>
         bool HasBattlePetTraining();
         /// Get battle pet trap level
         uint32 GetBattlePetTrapLevel();
-        void SaveBattlePets(SQLTransaction& trans);
         /// Compute the unlocked pet battle slot
         uint32 GetUnlockedPetBattleSlot();
         /// Summon current pet if any active
         void UnsummonCurrentBattlePetIfAny(bool p_Unvolontary);
         /// Summon new pet
-        void SummonBattlePet(ObjectGuid journalID);
+        void SummonBattlePet(uint64 p_JournalID);
         /// Get current summoned battle pet
         Creature* GetSummonedBattlePet();
         /// Summon last summoned battle pet
         void SummonLastSummonedBattlePet();
-        BattlePetMap* GetBattlePets();
 
+        /// Get pet battles
+        std::vector<std::shared_ptr<BattlePet>> GetBattlePets();
         /// Get pet battles
         std::shared_ptr<BattlePet> GetBattlePet(uint64 p_JournalID);
         /// Get pet battle combat team
@@ -3546,7 +3586,6 @@ class Player : public Unit, public GridObject<Player>
         void PetBattleCountBattleSpecies();
         /// Update battle pet combat team
         void UpdateBattlePetCombatTeam();
-        BattlePetMap _battlePets;
 
         //////////////////////////////////////////////////////////////////////////
         /// ToyBox
@@ -3596,6 +3635,7 @@ class Player : public Unit, public GridObject<Player>
             pvpInfo.inFFAPvPArea = false;
         }
 
+        void ReadyCheckComplete();
         uint32 GetQuestObjectiveCounter(uint32 objectiveId) const;
 
         //////////////////////////////////////////////////////////////////////////
@@ -3644,6 +3684,8 @@ class Player : public Unit, public GridObject<Player>
         CompletedChallenge* GetCompletedChallenge(uint32 p_MapID);
         void AddCompletedChallenge(uint32 p_MapID, CompletedChallenge p_Challenge);
 
+
+        std::unique_ptr<LootLockoutMap> m_lootLockouts;
         CompletedChallengesMap m_CompletedChallenges;
         //////////////////////////////////////////////////////////////////////////
 
@@ -3766,8 +3808,6 @@ class Player : public Unit, public GridObject<Player>
 
         uint32 GetBagsFreeSlots() const;
 
-        bool AddBattlePet(uint32 spellID, uint16 flags = 0, bool sendUpdate = true);
-
         bool IsSummoned() const { return m_Summoned; }
         void FinishSummon() { m_Summoned = false; }
         void BeginSummon() { m_Summoned = true; }
@@ -3833,8 +3873,8 @@ class Player : public Unit, public GridObject<Player>
         uint32 m_LastSummonedBattlePet;
 
         std::vector<std::shared_ptr<BattlePet>> m_BattlePets;
-        std::shared_ptr<BattlePet> _battlePetCombatTeam[3];
-        std::vector<std::pair<uint32, uint32>> _oldPetBattleSpellToMerge;
+        std::shared_ptr<BattlePet> m_BattlePetCombatTeam[3];
+        std::vector<std::pair<uint32, uint32>> m_OldPetBattleSpellToMerge;
 
         PreparedQueryResultFuture _petBattleJournalCallback;
 
@@ -4212,7 +4252,7 @@ class Player : public Unit, public GridObject<Player>
         // know currencies are not removed at any point (0 displayed)
         void AddKnownCurrency(uint32 itemId);
 
-        int32 CalculateReputationGain(ReputationSource source, uint32 creatureOrQuestLevel, int32 rep, int32 faction, bool noQuestBonus = false);
+        float CalculateReputationGain(ReputationSource source, uint32 creatureOrQuestLevel, int32 rep, int32 faction, bool noQuestBonus = false);
         void AdjustQuestReqItemCount(Quest const* quest);
 
         bool IsCanDelayTeleport() const { return m_bCanDelayTeleport; }
@@ -4238,6 +4278,9 @@ class Player : public Unit, public GridObject<Player>
 		uint32 m_teleport_option_param;
         bool mSemaphoreTeleport_Near;
         bool mSemaphoreTeleport_Far;
+
+        bool m_forcedTeleportFar;
+        bool m_forcedTeleportFarSemaphore = false;
 
         uint32 m_DelayedOperations;
         bool m_bCanDelayTeleport;
@@ -4271,6 +4314,9 @@ class Player : public Unit, public GridObject<Player>
 
         uint32 _lastTargetedGO;
         float m_PersonnalXpRate;
+
+
+        uint32 _readyCheckTimer;
 
         //////////////////////////////////////////////////////////////////////////
         /// Garrison

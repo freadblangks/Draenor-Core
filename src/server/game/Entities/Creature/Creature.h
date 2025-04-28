@@ -17,7 +17,6 @@
 #include "DatabaseEnv.h"
 #include "Cell.h"
 
-class BattlePetInstance;
 class SpellInfo;
 class GarrisonNPCAI;
 class CreatureAI;
@@ -132,7 +131,7 @@ enum CreatureFlagsExtra
 struct CreatureTemplate
 {
     uint32  Entry;
-    uint32  DifficultyEntry[Difficulty::MaxDifficulties];
+    uint32  DifficultyEntry[Difficulty::MAX_DIFFICULTY];
     uint32  KillCredit[MAX_KILL_CREDIT];
     uint32  Modelid1;
     uint32  Modelid2;
@@ -323,7 +322,7 @@ struct CreatureLocale
 {
     StringVector Name;
     StringVector SubName;
-    StringVector l_FemaleName;
+    StringVector FemaleName;
 };
 
 struct GossipMenuItemsLocale
@@ -784,9 +783,6 @@ class Creature : public Unit, public GridObject<Creature>, public MapObject
 
         uint32 m_groupLootTimer;                            // (msecs)timer used for group loot
         uint32 lootingGroupLowGUID;                         // used to find group which is looting corpse
-
-        ObjectGuid replacementFromGUID;
-        std::shared_ptr<BattlePetInstance> m_battlePetInstance;
 
         void SendZoneUnderAttackMessage(Player* attacker);
 

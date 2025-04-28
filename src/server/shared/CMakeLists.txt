@@ -86,6 +86,10 @@ include_directories(
   ${OPENSSL_INCLUDE_DIR}
 )
 
+if (Boost_FOUND)
+  include_directories(${Boost_INCLUDE_DIRS})
+endif()
+
 GroupSources(${CMAKE_CURRENT_SOURCE_DIR})
 
 add_library(shared STATIC
@@ -96,9 +100,11 @@ set_property(TARGET shared PROPERTY FOLDER "server")
 
 target_link_libraries(shared
   ${ACE_LIBRARY}
+    rapidjson
+    proto
 )
 
-add_dependencies(shared revision_data.h)
+add_dependencies(shared revision.h)
 
 # Generate precompiled header
 if (USE_COREPCH)

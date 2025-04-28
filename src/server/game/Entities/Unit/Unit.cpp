@@ -13819,8 +13819,7 @@ void Unit::Mount(uint32 mount, uint32 VehicleId, uint32 creatureEntry)
         {
             if (CreateVehicleKit(VehicleId, creatureEntry))
             {
-                GetVehicleKit()->Reset();
-
+                // Send others that we now have a vehicle
                 WorldPacket l_Data(SMSG_MOVE_SET_VEHICLE_REC_ID, 16 + 2 + 4 + 4);
                 l_Data.appendPackGUID(GetGUID());   ///< MoverGUID
                 l_Data << uint32(0);                ///< SequenceIndex
@@ -14987,7 +14986,9 @@ void Unit::setDeathState(DeathState s)
         if (IsNonMeleeSpellCasted(false))
             InterruptNonMeleeSpells(false);
 
-        ExitVehicle();
+        ExitVehicle();                                      // Exit vehicle before calling RemoveAllControlled
+        // vehicles use special type of charm that is not removed by the next function
+        // triggering an assert
 
         UnsummonAllTotems();
         RemoveAllControlled();
@@ -19029,16 +19030,16 @@ void Unit::Kill(Unit* p_KilledVictim, bool p_DurabilityLoss, SpellInfo const* p_
                         if (Player* l_Player = l_Itr->getSource())
                         {
                             uint32 l_DungeonID = l_Player->GetGroup() ? sLFGMgr->GetDungeon(l_Player->GetGroup()->GetGUID()) : 0;
-                            if (!l_KilledCreature || l_Player->IsAtGroupRewardDistance(l_KilledCreature))
-                                sLFGMgr->RewardDungeonDoneFor(l_DungeonID, l_Player);
+                            //if (!l_KilledCreature || l_Player->IsAtGroupRewardDistance(l_KilledCreature))
+                                //sLFGMgr->RewardDungeonDoneFor(l_DungeonID, l_Player);
                         }
                     }
                 }
 
                 /// Handle loot assignation for LFR
                 Player* l_Player = l_PlayerList.begin()->getSource();
-                if (l_Player && l_Player->GetGroup())
-                    sLFGMgr->AutomaticLootAssignation(l_KilledCreature, l_Player->GetGroup());
+                //if (l_Player && l_Player->GetGroup())
+                    //sLFGMgr->AutomaticLootAssignation(l_KilledCreature, l_Player->GetGroup());
             }
 
             /// @TODO: do instance binding anyway if the charmer/owner is offline
@@ -19508,7 +19509,10 @@ bool Unit::SetCharmedBy(Unit* charmer, CharmType type, AuraApplication const* au
 
     // dismount players when charmed
     if (IsPlayer())
-        Dismount();
+        RemoveAurasByType(SPELL_AURA_MOUNTED);
+
+    if (charmer->GetTypeId() == TYPEID_PLAYER)
+        charmer->RemoveAurasByType(SPELL_AURA_MOUNTED);
 
     ASSERT(type != CHARM_TYPE_POSSESS || charmer->IsPlayer());
     ASSERT((type == CHARM_TYPE_VEHICLE) == IsVehicle());
@@ -21541,41 +21545,14 @@ void Unit::_EnterVehicle(Vehicle* vehicle, int8 seatId, AuraApplication const* a
     if (Player* player = ToPlayer())
     {
         if (vehicle->GetBase()->IsPlayer() && player->isInCombat())
-            return;
-
-        InterruptNonMeleeSpells(false);
-        player->StopCastingCharm();
-        player->StopCastingBindSight();
-        Dismount();
-        RemoveAurasByType(SPELL_AURA_MOUNTED);
-
-        // drop flag at invisible in bg
-        if (Battleground* bg = player->GetBattleground())
-            bg->EventPlayerDroppedFlag(player);
-
-        WorldPacket l_Data(SMSG_ON_CANCEL_EXPECTED_RIDE_VEHICLE_AURA, 0);
-        player->GetSession()->SendPacket(&l_Data);
-
-        switch (vehicle->GetVehicleInfo()->m_ID)
         {
-            case 533:   ///< Bone Spike
-            case 647:   ///< Bone Spike
-            case 648:   ///< Bone Spike
-            case 3417:  ///< Grasping Earth
-                break;
-            default:
-                player->UnsummonPetTemporaryIfAny();
-                break;
+            vehicle->GetBase()->RemoveAura(const_cast<AuraApplication*>(aurApp));
+            return;
         }
     }
 
     ASSERT(!m_vehicle);
-    m_vehicle = vehicle;
-    if (!m_vehicle->AddPassenger(this, seatId))
-    {
-        m_vehicle = NULL;
-        return;
-    }
+    (void)vehicle->AddPassenger(this, seatId);
 }
 
 void Unit::ChangeSeat(int8 seatId, bool next)
@@ -21583,17 +21560,24 @@ void Unit::ChangeSeat(int8 seatId, bool next)
     if (!m_vehicle)
         return;
 
-    if (seatId < 0)
-    {
-        seatId = m_vehicle->GetNextEmptySeat(GetTransSeat(), next);
-        if (seatId < 0)
-            return;
-    }
-    else if (seatId == GetTransSeat() || !m_vehicle->HasEmptySeat(seatId))
+    // Don't change if current and new seat are identical
+    if (seatId == GetTransSeat())
         return;
 
+    SeatMap::const_iterator seat = (seatId < 0 ? m_vehicle->GetNextEmptySeat(GetTransSeat(), next) : m_vehicle->Seats.find(seatId));
+    // The second part of the check will only return true if seatId >= 0. @Vehicle::GetNextEmptySeat makes sure of that.
+    if (seat == m_vehicle->Seats.end() || seat->second.Passenger)
+        return;
+
+    // Todo: the functions below could be consolidated and refactored to take
+    // SeatMap::const_iterator as parameter, to save redundant map lookups.
+
     m_vehicle->RemovePassenger(this);
-    if (!m_vehicle->AddPassenger(this, seatId))
+    // Set m_vehicle to NULL before adding passenger as adding new passengers is handled asynchronously
+    // and someone may call ExitVehicle again before passenger is added to new seat
+    Vehicle* veh = m_vehicle;
+    m_vehicle = NULL;
+    if (!veh->AddPassenger(this, seatId))
         ABORT();
 }
 
@@ -21672,9 +21656,9 @@ void Unit::_ExitVehicle(Position const* exitPosition)
         player->SummonLastSummonedBattlePet();
     }
 
-    if (vehicle->GetBase()->HasUnitTypeMask(UNIT_MASK_MINION))
+    if (vehicle->GetBase()->HasUnitTypeMask(UNIT_MASK_MINION) && vehicle->GetBase()->GetTypeId() == TYPEID_UNIT)
         if (((Minion*)vehicle->GetBase())->GetOwner() == this)
-            vehicle->Dismiss();
+            vehicle->GetBase()->ToCreature()->DespawnOrUnsummon();
 
     if (HasUnitTypeMask(UNIT_MASK_ACCESSORY))
     {

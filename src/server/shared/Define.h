@@ -64,6 +64,27 @@
 #  define ATTR_DEPRECATED
 #endif //COMPILER == COMPILER_GNU
 
+#ifdef TRINITY_API_USE_DYNAMIC_LINKING
+#  if TRINITY_COMPILER == TRINITY_COMPILER_MICROSOFT
+#    define TC_API_EXPORT __declspec(dllexport)
+#    define TC_API_IMPORT __declspec(dllimport)
+#  elif TRINITY_COMPILER == TRINITY_COMPILER_GNU
+#    define TC_API_EXPORT __attribute__((visibility("default")))
+#    define TC_API_IMPORT
+#  else
+#    error compiler not supported!
+#  endif
+#else
+#  define TC_API_EXPORT
+#  define TC_API_IMPORT
+#endif
+
+#ifdef TRINITY_API_EXPORT_SHARED
+ #  define TC_SHARED_API TC_API_EXPORT
+ #else
+ #  define TC_SHARED_API TC_API_IMPORT
+ #endif
+ 
 #define UI64FMTD PRIu64
 #define UI64LIT(N) UINT64_C(N)
 
@@ -87,12 +108,22 @@ enum DBCFormer
     FT_FLOAT = 'f',                                           //float
     FT_INT = 'i',                                             //uint32
     FT_BYTE = 'b',                                            //uint8
+    FT_SHORT = 'w',                                           //uint16 aka word
     FT_SORT = 'd',                                            //sorted by this field, field is not included
     FT_INDEX = 'n',                                             //the same, but parsed to data
     FT_LOGIC = 'l',                                           //Logical (boolean)
     FT_SQL_PRESENT = 'p',                                     //Used in sql format to mark column present in sql dbc
     FT_SQL_ABSENT = 'a',                                      //Used in sql format to mark column absent in sql dbc
     FT_SQL_SUP = 'o',                                         // Supp sql row (not in dbc)
+
+    FT_ARR_2 = '2',
+    FT_ARR_3 = '3',
+    FT_ARR_4 = '4',
+    FT_ARR_5 = '5',
+    FT_ARR_6 = '6',
+    FT_ARR_7 = '7',
+    FT_ARR_8 = '8',
+
     FT_END = '\0'
 };
 #endif //TRINITY_DEFINE_H

@@ -15,7 +15,7 @@
 #if defined(OPENSSL_VERSION_NUMBER) && OPENSSL_VERSION_NUMBER < 0x10100000L
 HMAC_CTX* HMAC_CTX_new()
 {
-    HMAC_CTX *ctx = new HMAC_CTX();
+    HMAC_CTX* ctx = new HMAC_CTX();
     HMAC_CTX_init(ctx);
     return ctx;
 }
@@ -38,7 +38,7 @@ HmacHash::~HmacHash()
     HMAC_CTX_free(ctx);
 }
 
-void HmacHash::UpdateData(const std::string &str)
+void HmacHash::UpdateData(const std::string& str)
 {
     HMAC_Update(ctx, (uint8 const*)str.c_str(), str.length());
 }
@@ -55,7 +55,7 @@ void HmacHash::Finalize()
     ASSERT(length == SHA_DIGEST_LENGTH);
 }
 
-uint8 *HmacHash::ComputeHash(BigNumber* bn)
+uint8* HmacHash::ComputeHash(BigNumber* bn)
 {
     HMAC_Update(ctx, bn->AsByteArray(), bn->GetNumBytes());
     Finalize();

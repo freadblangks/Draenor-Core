@@ -4108,6 +4108,9 @@ void AuraEffect::HandleAuraControlVehicle(AuraApplication const* aurApp, uint8 m
         caster->_EnterVehicle(target->GetVehicleKit(), m_amount - 1, aurApp);
     else
     {
+        // Remove pending passengers before exiting vehicle - might cause an Uninstall
+        target->GetVehicleKit()->RemovePendingEventsForPassenger(caster);
+
         if (GetId() == 53111) // Devour Humanoid
         {
             target->Kill(caster);
@@ -6833,10 +6836,7 @@ void AuraEffect::HandleAuraSetVehicle(AuraApplication const* aurApp, uint8 mode,
         return;
 
     if (apply)
-    {
-        l_Data.Initialize(SMSG_ON_CANCEL_EXPECTED_RIDE_VEHICLE_AURA, 0);
-        target->ToPlayer()->GetSession()->SendPacket(&l_Data);
-    }
+        target->ToPlayer()->SendOnCancelExpectedVehicleRideAura();
 
     // Form of Stag
     if (m_spellInfo->Id == 115034)

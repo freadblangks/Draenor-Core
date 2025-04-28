@@ -66,7 +66,6 @@
 #include "MMapFactory.h"
 #include "GameEventMgr.h"
 #include "PoolMgr.h"
-#include "PetBattleSystem.h"
 #include "GridNotifiersImpl.h"
 #include "CellImpl.h"
 #include "InstanceSaveMgr.h"
@@ -735,6 +734,7 @@ void World::LoadConfigSettings(bool reload)
     m_bool_configs[CONFIG_ALLOW_TWO_SIDE_ACCOUNTS]                      = sConfigMgr->GetBoolDefault("AllowTwoSide.Accounts", true);
     m_bool_configs[CONFIG_ALLOW_TWO_SIDE_INTERACTION_CALENDAR]          = sConfigMgr->GetBoolDefault("AllowTwoSide.Interaction.Calendar", false);
     m_bool_configs[CONFIG_ALLOW_TWO_SIDE_INTERACTION_CHAT]              = sConfigMgr->GetBoolDefault("AllowTwoSide.Interaction.Chat", false);
+    m_bool_configs[CONFIG_ALLOW_TWO_SIDE_INTERACTION_LFG]               = sConfigMgr->GetBoolDefault("AllowTwoSide.Interaction.DungeonFinder", false);
     m_bool_configs[CONFIG_ALLOW_TWO_SIDE_INTERACTION_CHANNEL]           = sConfigMgr->GetBoolDefault("AllowTwoSide.Interaction.Channel", false);
     m_bool_configs[CONFIG_ALLOW_TWO_SIDE_INTERACTION_GROUP]             = sConfigMgr->GetBoolDefault("AllowTwoSide.Interaction.Group", false);
     m_bool_configs[CONFIG_ALLOW_TWO_SIDE_INTERACTION_GUILD]             = sConfigMgr->GetBoolDefault("AllowTwoSide.Interaction.Guild", false);
@@ -1341,6 +1341,18 @@ void World::LoadConfigSettings(bool reload)
     // Dungeon finder
     m_bool_configs[CONFIG_DUNGEON_FINDER_ENABLE] = sConfigMgr->GetBoolDefault("DungeonFinder.Enable", false);
 
+    m_int_configs[CONFIG_LFG_OPTIONSMASK] = sConfigMgr->GetIntDefault("DungeonFinder.OptionsMask", 1);
+    m_bool_configs[CONFIG_LFG_CASTDESERTER] = sConfigMgr->GetBoolDefault("DungeonFinder.CastDeserter", false);
+    m_bool_configs[CONFIG_LFG_OVERRIDE_ROLES_REQUIRED] = sConfigMgr->GetBoolDefault("DungeonFinder.OverrideRolesRequired", false);
+    m_bool_configs[CONFIG_LFG_MULTIQUEUE_ENABLED] = sConfigMgr->GetBoolDefault("DungeonFinder.MultiqueueEnabled", false);
+    m_bool_configs[CONFIG_LFG_KEEP_QUEUES_IN_DUNGEON] = sConfigMgr->GetBoolDefault("DungeonFinder.KeepQueuesInDungeon", false);
+    m_int_configs[CONFIG_LFG_TANKS_NEEDED] = sConfigMgr->GetIntDefault("DungeonFinder.TanksNeeded", 1);
+    m_int_configs[CONFIG_LFG_HEALERS_NEEDED] = sConfigMgr->GetIntDefault("DungeonFinder.HealersNeeded", 1);
+    m_int_configs[CONFIG_LFG_DPS_NEEDED] = sConfigMgr->GetIntDefault("DungeonFinder.DPSNeeded", 3);
+    m_int_configs[CONFIG_LFG_SHORTAGE_CHECK_INTERVAL] = sConfigMgr->GetIntDefault("DungeonFinder.ShortageCheckInterval", 5);
+    m_int_configs[CONFIG_LFG_SHORTAGE_PERCENT] = sConfigMgr->GetIntDefault("DungeonFinder.ShortagePercent", 50);
+    m_int_configs[CONFIG_LFG_MAX_LFR_QUEUES] = sConfigMgr->GetIntDefault("DungeonFinder.MaxLfrQueues", 3);
+
     // DBC_ItemAttributes
     m_bool_configs[CONFIG_DBC_ENFORCE_ITEM_ATTRIBUTES] = sConfigMgr->GetBoolDefault("DBC.EnforceItemAttributes", true);
 
@@ -1854,7 +1866,7 @@ void World::SetInitialWorldSettings()
     sLFGMgr->LoadRewards();
 
     TC_LOG_INFO("server.loading", "Loading LFG entrance positions...");
-    sLFGMgr->LoadEntrancePositions();
+    sLFGMgr->LoadLFGDungeons();
 
     TC_LOG_INFO("server.loading", "Loading SpellArea Data...");                // must be after quest load
     sSpellMgr->LoadSpellAreas();
@@ -2294,6 +2306,13 @@ void World::SetInitialWorldSettings()
     TC_LOG_INFO("misc", "Loading area skip update...");
     sObjectMgr->LoadSkipUpdateZone();
 
+    TC_LOG_INFO("server.loading", "Loading BattlePet template...");
+    sObjectMgr->LoadBattlePetTemplate();
+
+    TC_LOG_INFO("server.loading", "Loading BattlePet npc team member...");
+    sObjectMgr->LoadBattlePetNpcTeamMember();
+    ///sObjectMgr->ComputeBattlePetSpawns();
+
     TC_LOG_INFO("server.loading", "Loading Wild BattlePet pools...");
     sWildBattlePetMgr->Load();
 
@@ -2331,8 +2350,6 @@ void World::SetInitialWorldSettings()
 
     if (uint32 realmId = sConfigMgr->GetIntDefault("RealmID", 0)) // 0 reserved for auth
         sLog->SetRealmId(realmId);
-
-    //sWildBattlePetMgr->PopulateAll();
 }
 
 void World::DetectDBCLang()
@@ -2644,7 +2661,6 @@ void World::Update(uint32 diff)
 #endif
 
     sPetBattleSystem->Update(diff);
-    //sWildBattlePetMgr->Update(diff);
 
     sLFGMgr->Update(diff);
     SetRecordDiff(RECORD_DIFF_LFG, getMSTime() - diffTime);
@@ -4600,4 +4616,44 @@ void World::AutoRestartServer()
 
     m_NextServerRestart = time_t(m_NextServerRestart + DAY);
     sWorld->setWorldState(WS_AUTO_SERVER_RESTART_TIME, uint64(m_NextServerRestart));
+}
+
+void World::SendRaidQueueInfo(Player* player)
+{
+    using namespace lfg;
+
+    std::function<std::string(uint32, uint32, uint32, uint32)> makeText = [](uint32 dungeon, uint32 tanks, uint32 healers, uint32 dps)
+    {
+        return std::to_string(dungeon) + std::string("=") + std::to_string(tanks) + std::string(",") + std::to_string(healers) +
+            std::string(",") + std::to_string(dps) + std::string(";");
+    };
+
+    std::string text;
+    for (auto&& manager : sLFGMgr->GetQueueManagers())
+    {
+        for (auto&& dungeonId : { 416, 417, 527, 528, 529, 530, 526, 610, 611, 612, 613, 716, 717, 724, 725 })
+        {
+            auto& q = manager.second.GetQueue(dungeonId);
+            if (!q.GetBuckets().empty())
+                text += makeText(dungeonId, q.GetTotalPlayers(PLAYER_ROLE_TANK), q.GetTotalPlayers(PLAYER_ROLE_HEALER), q.GetTotalPlayers(PLAYER_ROLE_DAMAGE));
+            else
+                text += makeText(dungeonId, 0, 0, 0);
+        }
+    }
+
+    std::function<void(Player*)> sendInfo = [text](Player* plr)
+    {
+        WorldPacket data;
+        //ChatHandler::BuildChatPacket(data, CHAT_MSG_WHISPER, LANG_ADDON, plr, plr, text, 0, "", DEFAULT_LOCALE, "RaidQueue");
+        plr->GetSession()->SendPacket(&data);
+    };
+
+    if (player)
+        sendInfo(player);
+    else
+    {
+        for (auto&& itr : sWorld->GetAllSessions())
+            if (Player* plr = itr.second->GetPlayer())
+                sendInfo(plr);
+    }
 }
