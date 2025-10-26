@@ -2,29 +2,27 @@
 #include "SRP6a.h"
 #include <algorithm>
 
-namespace BNet2 {
-
-    /// Constructor
+/// Constructor
     SRP6a::SRP6a(const std::string& p_Salt, const std::string& p_AccountName, const std::string p_PasswordVerifier)
     {
         Sha256(p_AccountName, I);
         ToByteArray(p_Salt, Salt);
 
-        N.SetBinary(BNet2::SRP6a_N, sizeof(BNet2::SRP6a_N));
-        G.SetBinary(BNet2::SRP6a_G, sizeof(BNet2::SRP6a_G));
+        N.SetBinary(SRP6a_N, sizeof(SRP6a_N));
+        G.SetBinary(SRP6a_G, sizeof(SRP6a_G));
 
         V = MakeBigNumber(p_PasswordVerifier);
 
         //////////////////////////////////////////////////////////////////////////
 
-        uint8_t* l_Buffer = new uint8_t[sizeof(BNet2::SRP6a_N) + sizeof(BNet2::SRP6a_G)];
+        uint8_t* l_Buffer = new uint8_t[sizeof(SRP6a_N) + sizeof(SRP6a_G)];
 
-        memcpy(l_Buffer, BNet2::SRP6a_N, sizeof(BNet2::SRP6a_N));
-        memcpy(l_Buffer + sizeof(BNet2::SRP6a_N), BNet2::SRP6a_G, sizeof(BNet2::SRP6a_G));
+        memcpy(l_Buffer, SRP6a_N, sizeof(SRP6a_N));
+        memcpy(l_Buffer + sizeof(SRP6a_N), SRP6a_G, sizeof(SRP6a_G));
 
         uint8_t l_KHash[SHA256_DIGEST_LENGTH];
 
-        Sha256(l_Buffer, sizeof(BNet2::SRP6a_N) + sizeof(BNet2::SRP6a_G), l_KHash);
+        Sha256(l_Buffer, sizeof(SRP6a_N) + sizeof(SRP6a_G), l_KHash);
         K.SetBinary(l_KHash, SHA256_DIGEST_LENGTH);
 
         delete[] l_Buffer;
@@ -44,7 +42,7 @@ namespace BNet2 {
 
         BigNumber l_Result = ((K * V) + G.ModExp(PrivateB, N)) % N;
 
-        uint8* l_BinResult = l_Result.AsByteArray(4 * SHA256_DIGEST_LENGTH);
+        uint8* l_BinResult = l_Result.AsByteArray(4 * SHA256_DIGEST_LENGTH).get();
 
         for (uint32_t l_I = 0; l_I < sizeof(PublicB); ++l_I)
             PublicB[l_I] = l_BinResult[l_I];
@@ -82,7 +80,7 @@ namespace BNet2 {
     {
         uint32_t l_Size = S.GetNumBytes();
 
-        uint8* l_SBytes = S.AsByteArray(l_Size);
+        uint8* l_SBytes = S.AsByteArray(l_Size).get();
 
         uint8_t* l_Part1 = new uint8_t[l_Size / 2];
         uint8_t* l_Part2 = new uint8_t[l_Size / 2];
@@ -118,8 +116,8 @@ namespace BNet2 {
         uint8_t l_N_Hash[SHA256_DIGEST_LENGTH];
         uint8_t l_G_Hash[SHA256_DIGEST_LENGTH];
 
-        Sha256(BNet2::SRP6a_N, sizeof(BNet2::SRP6a_N), l_N_Hash);
-        Sha256(BNet2::SRP6a_G, sizeof(BNet2::SRP6a_G), l_G_Hash);
+        Sha256(SRP6a_N, sizeof(SRP6a_N), l_N_Hash);
+        Sha256(SRP6a_G, sizeof(SRP6a_G), l_G_Hash);
 
         for (uint32_t l_I = 0; l_I < SHA256_DIGEST_LENGTH; l_I++)
             l_N_Hash[l_I] ^= l_G_Hash[l_I];
@@ -144,7 +142,7 @@ namespace BNet2 {
         memcpy(l_Buffer + l_PtrPos, Salt, SHA256_DIGEST_LENGTH);      l_PtrPos += SHA256_DIGEST_LENGTH;
         memcpy(l_Buffer + l_PtrPos, p_A, p_ASize);                   l_PtrPos += p_ASize;
         memcpy(l_Buffer + l_PtrPos, PublicB, 4 * SHA256_DIGEST_LENGTH);  l_PtrPos += 4 * SHA256_DIGEST_LENGTH;
-        memcpy(l_Buffer + l_PtrPos, SessionKey.AsByteArray(2 * SHA256_DIGEST_LENGTH), 2 * SHA256_DIGEST_LENGTH);  l_PtrPos += 2 * SHA256_DIGEST_LENGTH;
+        memcpy(l_Buffer + l_PtrPos, SessionKey.AsByteArray(2 * SHA256_DIGEST_LENGTH).get(), 2 * SHA256_DIGEST_LENGTH);  l_PtrPos += 2 * SHA256_DIGEST_LENGTH;
 
         Sha256(l_Buffer, l_BufferSize, ClientM);
 
@@ -154,7 +152,7 @@ namespace BNet2 {
     void SRP6a::ComputeServerM(uint8_t* p_ClientM, uint32_t p_ClientMSize)
     {
         uint32_t l_Size = A.GetNumBytes() > 0x80 ? 0x80 : (A.GetNumBytes() != 0 ? A.GetNumBytes() : 1);
-        uint8* l_ABytes = A.AsByteArray(0x80);
+        uint8* l_ABytes = A.AsByteArray(0x80).get();
 
         uint32_t    l_BufferSize = l_Size + p_ClientMSize + SessionKey.GetNumBytes();
         uint8_t* l_Buffer = new uint8_t[l_BufferSize];
@@ -162,7 +160,7 @@ namespace BNet2 {
 
         memcpy(l_Buffer + l_PtrPos, l_ABytes, l_Size);                    l_PtrPos += l_Size;
         memcpy(l_Buffer + l_PtrPos, p_ClientM, p_ClientMSize);             l_PtrPos += p_ClientMSize;
-        memcpy(l_Buffer + l_PtrPos, SessionKey.AsByteArray(), SessionKey.GetNumBytes());  l_PtrPos += SessionKey.GetNumBytes();
+        memcpy(l_Buffer + l_PtrPos, SessionKey.AsByteArray().get(), SessionKey.GetNumBytes());  l_PtrPos += SessionKey.GetNumBytes();
 
         Sha256(l_Buffer, l_BufferSize, ServerM);
 
@@ -225,4 +223,3 @@ namespace BNet2 {
         SHA256_Update(&l_Context, p_Data, p_DataSize);
         SHA256_Final(p_Dest, &l_Context);
     }
-}

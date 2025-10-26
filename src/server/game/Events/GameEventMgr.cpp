@@ -1167,7 +1167,6 @@ void GameEventMgr::GameEventSpawn(int16 event_id)
     {
         TC_LOG_ERROR("gameevent", "GameEventMgr::GameEventSpawn attempt access to out of range mGameEventCreatureGuids element %i (size: %zu)",
                 internal_event_id, mGameEventCreatureGuids.size());
-            internal_event_id, mGameEventCreatureGuids.size();
         return;
     }
 
@@ -1619,7 +1618,7 @@ void GameEventMgr::RunSmartAIScripts(uint16 event_id, bool activate)
     //! Iterate over every supported source type (creature and gameobject)
     //! Not entirely sure how this will affect units in non-loaded grids.
     {
-        TRINITY_READ_GUARD(HashMapHolder<Creature>::LockType, *HashMapHolder<Creature>::GetLock());
+        std::shared_lock<std::shared_mutex> lock(*HashMapHolder<Creature>::GetLock());
         HashMapHolder<Creature>::MapType const& m = ObjectAccessor::GetCreatures();
         for (HashMapHolder<Creature>::MapType::const_iterator iter = m.begin(); iter != m.end(); ++iter)
         {
@@ -1632,7 +1631,7 @@ void GameEventMgr::RunSmartAIScripts(uint16 event_id, bool activate)
         }
     }
     {
-        TRINITY_READ_GUARD(HashMapHolder<GameObject>::LockType, *HashMapHolder<GameObject>::GetLock());
+        std::shared_lock<std::shared_mutex> lock(*HashMapHolder<Creature>::GetLock());
         HashMapHolder<GameObject>::MapType const& m = ObjectAccessor::GetGameObjects();
         for (HashMapHolder<GameObject>::MapType::const_iterator iter = m.begin(); iter != m.end(); ++iter)
         {

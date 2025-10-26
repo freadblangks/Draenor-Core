@@ -11,7 +11,6 @@
 */
 
 #ifndef CROSS
-# include "WorldSocket.h"
 # include "GarrisonMgr.hpp"
 # include "InterRealmOpcodes.h"
 # include "Channel.h"
@@ -20,6 +19,7 @@
 #endif
 
 #include <zlib.h>
+#include "WorldTcpSession.h"
 #include "Common.h"
 #include "DatabaseEnv.h"
 #include "Log.h"
@@ -99,7 +99,7 @@ bool WorldSessionFilter::Process(WorldPacket* packet)
 
 /// WorldSession constructor
 #ifndef CROSS
-WorldSession::WorldSession(uint32 id, WorldSocket* sock, AccountTypes sec, bool ispremium, uint8 premiumType, uint8 expansion, time_t mute_time, LocaleConstant locale, uint32 recruiter, bool isARecruiter, uint32 p_VoteRemainingTime, uint32 p_ServiceFlags, uint32 p_CustomFlags)
+WorldSession::WorldSession(uint32 id, WorldTcpSession* sock, AccountTypes sec, bool ispremium, uint8 premiumType, uint8 expansion, time_t mute_time, LocaleConstant locale, uint32 recruiter, bool isARecruiter, uint32 p_VoteRemainingTime, uint32 p_ServiceFlags, uint32 p_CustomFlags)
 #else /* CROSS */
 WorldSession::WorldSession(uint32 id, InterRealmClient* irc, AccountTypes sec, bool ispremium, uint8 expansion, time_t mute_time, LocaleConstant locale, uint32 recruiter, bool isARecruiter, std::string p_ServerName)
 #endif /* CROSS */
@@ -195,8 +195,7 @@ WorldSession::WorldSession(uint32 id, InterRealmClient* irc, AccountTypes sec, b
 
     if (sock)
     {
-        m_Address = sock->GetRemoteAddress();
-        sock->AddReference();
+        m_Address = sock->GetRemoteIpAddress();
         ResetTimeOutTime();
         LoginDatabase.PExecute("UPDATE account SET online = 1 WHERE id = %u;", GetAccountId());     // One-time query
     }
@@ -1641,11 +1640,10 @@ void WorldSession::ProcessQueryCallbacks()
     l_Times.push_back(getMSTime() - l_StartTime);
 
     //! HandleCharEnumOpcode
-    if (m_CharEnumCallback.ready())
+    if (_charEnumCallback.valid() && _charEnumCallback.wait_for(std::chrono::seconds(0)) == std::future_status::ready)
     {
-        m_CharEnumCallback.get(result);
+        result = _charEnumCallback.get();
         HandleCharEnum(result);
-        m_CharEnumCallback.cancel();
     }
 
     l_Times.push_back(getMSTime() - l_StartTime);
@@ -1654,7 +1652,6 @@ void WorldSession::ProcessQueryCallbacks()
     {
         _charCreateCallback.GetResult(result);
         HandleCharCreateCallback(result, _charCreateCallback.GetParam());
-        // Don't call FreeResult() here, the callback handler will do that depending on the events in the callback chain
     }
 
     l_Times.push_back(getMSTime() - l_StartTime);
@@ -1693,19 +1690,10 @@ void WorldSession::ProcessQueryCallbacks()
 #endif
 
     //! HandlePlayerLoginOpcode
-    if (m_CharacterLoginCallback.ready() && m_CharacterLoginDBCallback.ready())
+    if (_charLoginCallback.valid() && _charLoginCallback.wait_for(std::chrono::seconds(0)) == std::future_status::ready)
     {
-        SQLQueryHolder* l_Param;
-        SQLQueryHolder* l_Param2;
-        m_CharacterLoginCallback.get(l_Param);
-        m_CharacterLoginDBCallback.get(l_Param2);
-#ifndef CROSS
-        HandlePlayerLogin((LoginQueryHolder*)l_Param, (LoginDBQueryHolder*)l_Param2);
-#else /* CROSS */
-        LoadCharacterDone((LoginQueryHolder*)l_Param, (LoginDBQueryHolder*)l_Param2);
-#endif
-        m_CharacterLoginCallback.cancel();
-        m_CharacterLoginDBCallback.cancel();
+        SQLQueryHolder* param = _charLoginCallback.get();
+        HandlePlayerLogin((LoginQueryHolder*)param);
     }
 
     //- SendStabledPet

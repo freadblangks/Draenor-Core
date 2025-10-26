@@ -24,6 +24,7 @@
 #include "Define.h"
 #include "Appender.h"
 #include "Logger.h"
+#include <stdarg.h>
 #include "LogWorker.h"
 #include "LogOperation.h"
 

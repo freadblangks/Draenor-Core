@@ -150,7 +150,6 @@ include_directories(
   ${CMAKE_SOURCE_DIR}/src/server/game/Weather
   ${CMAKE_SOURCE_DIR}/src/server/game/World
   ${CMAKE_CURRENT_SOURCE_DIR}/PrecompiledHeaders
-  ${ACE_INCLUDE_DIR}
   ${MYSQL_INCLUDE_DIR}
   ${MSFRAMEWORK_INCLUDE_DIR}
 )
@@ -164,6 +163,11 @@ add_library(scripts STATIC
 
 add_definitions("-DGAME_SERVER_PROJECTS")
 set_property(TARGET scripts PROPERTY FOLDER "server")
+
+target_link_libraries(scripts
+  shared
+  boost
+)
 
 add_dependencies(scripts revision.h)
 

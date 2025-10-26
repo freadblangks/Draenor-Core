@@ -293,9 +293,9 @@ void WorldSession::HandleWhoOpcode(WorldPacket& p_RecvData)
     WorldPacket l_Data(SMSG_WHO, 5 * 1024);
     ByteBuffer l_Buffer(5 * 1024);
 
-    TRINITY_READ_GUARD(HashMapHolder<Player>::LockType, *HashMapHolder<Player>::GetLock());
-    HashMapHolder<Player>::MapType const& l_PlayersMap = sObjectAccessor->GetPlayers();
+    std::shared_lock<std::shared_mutex> lock(*HashMapHolder<Player>::GetLock());
 
+    HashMapHolder<Player>::MapType const& l_PlayersMap = sObjectAccessor->GetPlayers();
     for (HashMapHolder<Player>::MapType::const_iterator l_It = l_PlayersMap.begin(); l_It != l_PlayersMap.end(); ++l_It)
     {
         if (AccountMgr::IsPlayerAccount(l_Security))

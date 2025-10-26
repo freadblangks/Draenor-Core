@@ -54,15 +54,15 @@ namespace AccountMgr
         shaX.Finalize();
 
         BigNumber G;
-        G.SetBinary(BNet2::SRP6a_G, sizeof(BNet2::SRP6a_G));
+        G.SetBinary(SRP6a_G, sizeof(SRP6a_G));
         BigNumber N;
-        N.SetBinary(BNet2::SRP6a_N, sizeof(BNet2::SRP6a_N));
+        N.SetBinary(SRP6a_N, sizeof(SRP6a_N));
         BigNumber X;
         X.SetBinary(shaX.GetDigest(), shaX.GetLength());
         BigNumber res = G.ModExp(X, N);
-        std::string temp = ByteArrayToHexStr(X.AsByteArray(), 32);
+        std::string temp = ByteArrayToHexStr(X.AsByteArray().get(), 32);
 
-        return ByteArrayToHexStr(res.AsByteArray(), res.GetNumBytes());
+        return ByteArrayToHexStr(res.AsByteArray().get(), res.GetNumBytes());
     }
 
 #ifndef CROSS

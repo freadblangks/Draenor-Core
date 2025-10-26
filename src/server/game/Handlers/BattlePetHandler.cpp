@@ -12,6 +12,7 @@
 #include "WorldPacket.h"
 #include "WorldSession.h"
 #include "Player.h"
+#include "Item.h"
 #include "PetBattle.h"
 #include "WildBattlePet.h"
 #include "AchievementMgr.h"
@@ -328,7 +329,56 @@ void WorldSession::HandleBattlePetDeletePet(WorldPacket& p_RecvData)
     uint64 l_BattlePetGUID;
     p_RecvData.readPackGUID(l_BattlePetGUID);
 
-    /// @TODO
+    if (!m_Player || !m_Player->IsInWorld())
+        return;
+
+    // Find the battle pet
+    BattlePet::Ptr l_BattlePet = m_Player->GetBattlePet(l_BattlePetGUID);
+    if (!l_BattlePet)
+        return;
+
+    // Remove from combat team if it's there
+    std::shared_ptr<BattlePet>* l_PetSlots = m_Player->GetBattlePetCombatTeam();
+    for (size_t l_I = 0; l_I < MAX_PETBATTLE_SLOTS; ++l_I)
+    {
+        if (l_PetSlots[l_I] && l_PetSlots[l_I]->JournalID == l_BattlePetGUID)
+        {
+            l_PetSlots[l_I] = nullptr;
+            break;
+        }
+    }
+
+    // Unsummon if currently summoned
+    if (m_Player->GetSummonedBattlePet() && 
+        m_Player->GetSummonedBattlePet()->GetGuidValue(UNIT_FIELD_BATTLE_PET_COMPANION_GUID) == l_BattlePetGUID)
+    {
+        m_Player->UnsummonCurrentBattlePetIfAny(false);
+    }
+
+    // Remove from player's pet collection
+    std::vector<BattlePet::Ptr>& l_BattlePets = m_Player->m_BattlePets;
+    for (auto it = l_BattlePets.begin(); it != l_BattlePets.end(); ++it)
+    {
+        if (*it && (*it)->JournalID == l_BattlePetGUID)
+        {
+            // Delete from database
+            SQLTransaction l_Transaction = LoginDatabase.BeginTransaction();
+            PreparedStatement* l_Stmt = LoginDatabase.GetPreparedStatement(LOGIN_DEL_BATTLE_PET);
+            l_Stmt->setUInt64(0, l_BattlePetGUID);
+            l_Stmt->setUInt32(1, GetAccountId());
+            l_Transaction->Append(l_Stmt);
+            LoginDatabase.CommitTransaction(l_Transaction);
+
+            l_BattlePets.erase(it);
+            break;
+        }
+    }
+
+    // Update combat team
+    m_Player->UpdateBattlePetCombatTeam();
+
+    // Send updates to client
+    SendBattlePetUpdates(false);
 }
 
 void WorldSession::HandleBattlePetDeletePetCheat(WorldPacket& p_RecvData)
@@ -336,7 +386,63 @@ void WorldSession::HandleBattlePetDeletePetCheat(WorldPacket& p_RecvData)
     uint64 l_BattlePetGUID;
     p_RecvData.readPackGUID(l_BattlePetGUID);
 
-    /// @TODO
+    if (!m_Player || !m_Player->IsInWorld())
+        return;
+
+    // Check if player has GM permissions
+    if (!m_Player->isGameMaster())
+        return;
+
+    // Find the battle pet
+    BattlePet::Ptr l_BattlePet = m_Player->GetBattlePet(l_BattlePetGUID);
+    if (!l_BattlePet)
+        return;
+
+    // Remove from combat team if it's there
+    std::shared_ptr<BattlePet>* l_PetSlots = m_Player->GetBattlePetCombatTeam();
+    for (size_t l_I = 0; l_I < MAX_PETBATTLE_SLOTS; ++l_I)
+    {
+        if (l_PetSlots[l_I] && l_PetSlots[l_I]->JournalID == l_BattlePetGUID)
+        {
+            l_PetSlots[l_I] = nullptr;
+            break;
+        }
+    }
+
+    // Unsummon if currently summoned
+    if (m_Player->GetSummonedBattlePet() && 
+        m_Player->GetSummonedBattlePet()->GetGuidValue(UNIT_FIELD_BATTLE_PET_COMPANION_GUID) == l_BattlePetGUID)
+    {
+        m_Player->UnsummonCurrentBattlePetIfAny(false);
+    }
+
+    // Remove from player's pet collection
+    std::vector<BattlePet::Ptr>& l_BattlePets = m_Player->m_BattlePets;
+    for (auto it = l_BattlePets.begin(); it != l_BattlePets.end(); ++it)
+    {
+        if (*it && (*it)->JournalID == l_BattlePetGUID)
+        {
+            // Delete from database (GM command - no account restriction)
+            SQLTransaction l_Transaction = LoginDatabase.BeginTransaction();
+            PreparedStatement* l_Stmt = LoginDatabase.GetPreparedStatement(LOGIN_DEL_BATTLE_PET_CHEAT);
+            l_Stmt->setUInt64(0, l_BattlePetGUID);
+            l_Transaction->Append(l_Stmt);
+            LoginDatabase.CommitTransaction(l_Transaction);
+
+            l_BattlePets.erase(it);
+            break;
+        }
+    }
+
+    // Update combat team
+    m_Player->UpdateBattlePetCombatTeam();
+
+    // Send updates to client
+    SendBattlePetUpdates(false);
+
+    // Log GM action
+    TC_LOG_INFO("entities.player", "GM %s (GUID: %u) deleted battle pet %u", 
+        m_Player->GetName(), m_Player->GetGUIDLow(), l_BattlePetGUID);
 }
 
 void WorldSession::HandleBattlePetModifyName(WorldPacket& p_RecvData)
@@ -471,7 +577,91 @@ void WorldSession::HandleBattlePetSetFlags(WorldPacket& p_RecvData)
     }
 }
 
-void WorldSession::HandleBattlePetCage(WorldPacket& /*p_RecvData*/)
+void WorldSession::HandleBattlePetCage(WorldPacket& p_RecvData)
 {
-    /// @TODO
+    uint64 l_BattlePetGUID;
+    p_RecvData.readPackGUID(l_BattlePetGUID);
+
+    if (!m_Player || !m_Player->IsInWorld())
+        return;
+
+    // Unsummon if currently summoned
+    if (m_Player->m_SummonSlot[SUMMON_SLOT_MINIPET])
+    {
+        Creature* l_OldSummon = m_Player->GetMap()->GetCreature(m_Player->m_SummonSlot[SUMMON_SLOT_MINIPET]);
+        if (l_OldSummon && l_OldSummon->isSummon() && l_OldSummon->GetGuidValue(UNIT_FIELD_BATTLE_PET_COMPANION_GUID) == l_BattlePetGUID)
+            l_OldSummon->ToTempSummon()->UnSummon();
+    }
+
+    // Find the battle pet
+    BattlePet::Ptr l_BattlePet = m_Player->GetBattlePet(l_BattlePetGUID);
+    if (!l_BattlePet)
+        return;
+
+    // Get species info
+    BattlePetSpeciesEntry const* l_SpeciesEntry = sBattlePetSpeciesStore.LookupEntry(l_BattlePet->Species);
+    if (!l_SpeciesEntry)
+        return;
+
+    // Check if pet can be traded (cageable)
+    if ((l_SpeciesEntry->Flags & BATTLEPET_SPECIES_FLAG_CAGEABLE) == 0)
+        return;
+
+    // if (petInfo->SaveInfo == STATE_DELETED) - This check is not available in Draenor-Core
+
+    // Use species item ID for cage
+    uint32 l_ItemId = ITEM_BATTLE_PET_CAGE_ID;
+    uint32 l_Count = 1;
+    uint32 l_NoSpaceForCount = 0;
+    ItemPosCountVec l_Dest;
+    InventoryResult l_Msg = m_Player->CanStoreNewItem(NULL_BAG, NULL_SLOT, l_Dest, l_ItemId, l_Count, &l_NoSpaceForCount);
+    if (l_Msg != EQUIP_ERR_OK)
+        l_Count -= l_NoSpaceForCount;
+
+    if (l_Count == 0 || l_Dest.empty())
+        return;
+
+    // Create dynamic data for pet modifiers (if supported)
+    uint32 l_DynData = 0;
+    l_DynData |= l_BattlePet->Quality;
+    l_DynData |= uint32(l_BattlePet->Quality << 24);
+
+    Item* l_Item = m_Player->StoreNewItem(l_Dest, l_ItemId, true, 0);
+    if (!l_Item)                                               // prevent crash
+        return;
+
+    // Set item modifiers if supported
+    // Note: ITEM_MODIFIER_BATTLE_PET_* constants don't exist in this codebase
+    // The item will be created with basic species data
+
+    m_Player->SendNewItem(l_Item, 1, false, true);
+
+    // Remove spell if pet has one
+    if (l_SpeciesEntry->SummonSpellID)
+        m_Player->removeSpell(l_SpeciesEntry->SummonSpellID);
+
+    // Remove battle pet from collection
+    std::vector<BattlePet::Ptr>& l_BattlePets = m_Player->m_BattlePets;
+    for (auto it = l_BattlePets.begin(); it != l_BattlePets.end(); ++it)
+    {
+        if (*it && (*it)->JournalID == l_BattlePetGUID)
+        {
+            // Delete from database
+            SQLTransaction l_Transaction = LoginDatabase.BeginTransaction();
+            PreparedStatement* l_Stmt = LoginDatabase.GetPreparedStatement(LOGIN_DEL_BATTLE_PET);
+            l_Stmt->setUInt64(0, l_BattlePetGUID);
+            l_Stmt->setUInt32(1, GetAccountId());
+            l_Transaction->Append(l_Stmt);
+            LoginDatabase.CommitTransaction(l_Transaction);
+
+            l_BattlePets.erase(it);
+            break;
+        }
+    }
+
+    // Update combat team
+    m_Player->UpdateBattlePetCombatTeam();
+
+    // Send battle pet deleted packet
+    SendBattlePetDeleted(l_BattlePetGUID);
 }

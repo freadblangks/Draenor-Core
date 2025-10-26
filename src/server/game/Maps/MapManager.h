@@ -11,6 +11,7 @@
 
 #include "Define.h"
 #include "Common.h"
+#include <mutex>
 #include "Map.h"
 #include "GridStates.h"
 #include "MapUpdater.h"
@@ -20,7 +21,6 @@ struct TransportCreatureProto;
 
 class MapManager
 {
-    friend class ACE_Singleton<MapManager, ACE_Thread_Mutex>;
 
     public:
         Map* CreateBaseMap(uint32 mapId);
@@ -68,6 +68,8 @@ class MapManager
 
         //void LoadGrid(int mapid, int instId, float x, float y, const WorldObject* obj, bool no_unload = false);
         void UnloadAll();
+
+        static MapManager* instance();
 
         static bool ExistMapAndVMap(uint32 mapid, float x, float y);
         static bool IsValidMAP(uint32 mapid, bool startUp);
@@ -139,9 +141,8 @@ class MapManager
 
         void AddCriticalOperation(std::function<bool()> const&& p_Function)
         {
-            m_CriticalOperationLock.acquire();
+            std::lock_guard<std::mutex> lock(m_CriticalOperationLock);
             m_CriticalOperation.push(std::function<bool()>(p_Function));
-            m_CriticalOperationLock.release();
         }
 
         void RegisterMapDelay(uint32 p_MapId, uint32 p_Delay)
@@ -175,7 +176,7 @@ class MapManager
         MapManager(const MapManager &);
         MapManager& operator=(const MapManager &);
 
-        ACE_Thread_Mutex Lock;
+        std::mutex _mapsLock;
         uint32 i_gridCleanUpDelay;
         MapMapType i_maps;
         IntervalTimer i_timer;
@@ -186,10 +187,10 @@ class MapManager
         bool m_mapDiffLimit;
 
         std::queue<std::function<bool()>> m_CriticalOperation;
-        ACE_Thread_Mutex m_CriticalOperationLock;
+        std::mutex m_CriticalOperationLock;
 
         std::multimap<uint32, uint32> m_MapsDelay;
 
 };
-#define sMapMgr ACE_Singleton<MapManager, ACE_Thread_Mutex>::instance()
+#define sMapMgr MapManager::instance()
 #endif

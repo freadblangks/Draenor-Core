@@ -91,7 +91,7 @@ Map* MapManager::CreateBaseMap(uint32 id)
 
     if (map == NULL)
     {
-        TRINITY_GUARD(ACE_Thread_Mutex, Lock);
+        std::lock_guard<std::mutex> lock(_mapsLock);
 
         MapEntry const* entry = sMapStore.LookupEntry(id);
         ASSERT(entry);
@@ -305,14 +305,14 @@ void MapManager::Update(uint32 diff)
     sObjectAccessor->Update(uint32(i_timer.GetCurrent()));
 
     std::queue<std::function<bool()>> l_Operations;
-    m_CriticalOperationLock.acquire();
+    m_CriticalOperationLock.lock();
 
     l_Operations = m_CriticalOperation;
     
     while (!m_CriticalOperation.empty())
         m_CriticalOperation.pop();
 
-    m_CriticalOperationLock.release();
+    m_CriticalOperationLock.unlock();
 
     std::queue<std::function<bool()>> l_CriticalOperationFallBack;
     while (!l_Operations.empty())
@@ -328,13 +328,13 @@ void MapManager::Update(uint32 diff)
 
     if (!l_CriticalOperationFallBack.empty())
     {
-        m_CriticalOperationLock.acquire();
+        m_CriticalOperationLock.lock();
         while (!l_CriticalOperationFallBack.empty())
         {
             m_CriticalOperation.push(l_CriticalOperationFallBack.front());
             l_CriticalOperationFallBack.pop();
         }
-        m_CriticalOperationLock.release();
+        m_CriticalOperationLock.unlock();
     }
 
     i_timer.SetCurrent(0);
@@ -383,7 +383,7 @@ void MapManager::UnloadAll()
 
 uint32 MapManager::GetNumInstances()
 {
-    TRINITY_GUARD(ACE_Thread_Mutex, Lock);
+    std::lock_guard<std::mutex> lock(_mapsLock);
 
     uint32 ret = 0;
     for (MapMapType::iterator itr = i_maps.begin(); itr != i_maps.end(); ++itr)
@@ -400,7 +400,7 @@ uint32 MapManager::GetNumInstances()
 
 uint32 MapManager::GetNumPlayersInInstances()
 {
-    TRINITY_GUARD(ACE_Thread_Mutex, Lock);
+    std::lock_guard<std::mutex> lock(_mapsLock);
 
     uint32 ret = 0;
     for (MapMapType::iterator itr = i_maps.begin(); itr != i_maps.end(); ++itr)
@@ -459,4 +459,11 @@ void MapManager::FreeInstanceId(uint32 p_InstanceID)
         SetNextInstanceId(p_InstanceID);
 
     m_InstanceIDs.erase(p_InstanceID);
+}
+
+MapManager* sMapMgrInstance = nullptr;
+
+MapManager* MapManager::instance()
+{
+    return sMapMgrInstance;
 }

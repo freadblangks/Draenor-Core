@@ -247,7 +247,6 @@ include_directories(
   ${CMAKE_CURRENT_SOURCE_DIR}/SharedPtrs
   ${CMAKE_CURRENT_SOURCE_DIR}/Vignette
   ${CMAKE_SOURCE_DIR}/src/server/scripts/PrecompiledHeaders
-  ${ACE_INCLUDE_DIR}
   ${MYSQL_INCLUDE_DIR}
   ${OPENSSL_INCLUDE_DIR}
   ${MSFRAMEWORK_INCLUDE_DIR}
@@ -257,15 +256,16 @@ add_definitions("-DGAME_SERVER_PROJECTS")
 
 GroupSources(${CMAKE_CURRENT_SOURCE_DIR})
 
-if (Boost_FOUND)
-  include_directories(${Boost_INCLUDE_DIRS})
-endif()
-
 add_library(game STATIC
   ${game_STAT_SRCS}
   ${game_STAT_PCH_SRC}
 )
 set_property(TARGET game PROPERTY FOLDER "server")
+
+target_link_libraries(game
+  shared
+  boost
+)
 
 add_dependencies(game revision.h)
 

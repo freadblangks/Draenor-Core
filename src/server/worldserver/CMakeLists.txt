@@ -11,7 +11,6 @@
 file(GLOB_RECURSE sources_CommandLine CommandLine/*.cpp CommandLine/*.h)
 file(GLOB_RECURSE sources_RemoteAccess RemoteAccess/*.cpp RemoteAccess/*.h)
 file(GLOB_RECURSE sources_TCSoap TCSoap/*.cpp TCSoap/*.h)
-file(GLOB_RECURSE sources_WorldThread WorldThread/*.cpp WorldThread/*.h)
 file(GLOB sources_localdir *.cpp *.h)
 
 if (USE_COREPCH)
@@ -31,7 +30,6 @@ set(worldserver_SRCS
   ${sources_CommandLine}
   ${sources_RemoteAccess}
   ${sources_TCSoap}
-  ${sources_WorldThread}
   ${sources_localdir}
 )
 
@@ -86,6 +84,7 @@ include_directories(
   ${CMAKE_SOURCE_DIR}/src/server/shared/Dynamic/LinkedReference
   ${CMAKE_SOURCE_DIR}/src/server/shared/Dynamic
   ${CMAKE_SOURCE_DIR}/src/server/shared/Logging
+  ${CMAKE_SOURCE_DIR}/src/server/shared/Networking
   ${CMAKE_SOURCE_DIR}/src/server/shared/Packets
   ${CMAKE_SOURCE_DIR}/src/server/shared/Threading
   ${CMAKE_SOURCE_DIR}/src/server/shared/Utilities
@@ -172,8 +171,6 @@ include_directories(
   ${CMAKE_CURRENT_SOURCE_DIR}/CommandLine
   ${CMAKE_CURRENT_SOURCE_DIR}/RemoteAccess
   ${CMAKE_CURRENT_SOURCE_DIR}/TCSoap
-  ${CMAKE_CURRENT_SOURCE_DIR}/WorldThread
-  ${ACE_INCLUDE_DIR}
   ${MYSQL_INCLUDE_DIR}
   ${OPENSSL_INCLUDE_DIR}
   ${MSFRAMEWORK_INCLUDE_DIR}
@@ -216,14 +213,12 @@ target_link_libraries(worldserver
   ${JEMALLOC_LIBRARY}
   ${READLINE_LIBRARY}
   ${TERMCAP_LIBRARY}
-  ${ACE_LIBRARY}
   ${Boost_LIBRARIES}
   ${MYSQL_LIBRARY}
   ${OPENSSL_LIBRARIES}
   ${OPENSSL_EXTRA_LIBRARIES}
   ${ZLIB_LIBRARIES}
   ${MSFRAMEWORK_LIBRARIES}
-  ${Boost_LIBRARIES}
 )
 
 if( WIN32 )

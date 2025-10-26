@@ -9,6 +9,7 @@
 #ifndef __WORLDSESSION_H
 #define __WORLDSESSION_H
 
+#include <atomic>
 #include "Common.h"
 #include "SharedDefines.h"
 #include "AddonMgr.h"
@@ -34,7 +35,7 @@ class SpellCastTargets;
 class Unit;
 class Warden;
 class WorldPacket;
-class WorldSocket;
+class WorldTcpSession;
 struct AreaTableEntry;
 struct AuctionEntry;
 struct DeclinedName;
@@ -404,7 +405,7 @@ class WorldSession
 {
     public:
 #ifndef CROSS
-        WorldSession(uint32 id, WorldSocket* sock, AccountTypes sec, bool ispremium, uint8 premiumType, uint8 expansion, time_t mute_time, LocaleConstant locale,
+        WorldSession(uint32 id, WorldTcpSession* sock, AccountTypes sec, bool ispremium, uint8 premiumType, uint8 expansion, time_t mute_time, LocaleConstant locale,
                      uint32 recruiter, bool isARecruiter, uint32 p_VoteRemainingTime, uint32 p_ServiceFlags, uint32 p_CustomFlags);
 #else /* CROSS */
         WorldSession(uint32 id, InterRealmClient* irc, AccountTypes sec, bool ispremium, uint8 expansion, time_t mute_time, LocaleConstant locale,
@@ -609,7 +610,7 @@ class WorldSession
         void ResetClientTimeDelay() { m_clientTimeDelay = 0; }
         uint32 getDialogStatus(Player* player, Object* questgiver, uint32 defstatus);
 
-        time_t m_timeOutTime;
+        std::atomic<time_t> m_timeOutTime;
         void UpdateTimeOutTime(uint32 diff)
         {
             if (time_t(diff) > m_timeOutTime)
@@ -1584,7 +1585,7 @@ class WorldSession
         uint64 m_GUID;
         uint64 m_RealGUID; 
 #else
-        WorldSocket* m_Socket;
+        WorldTcpSession* m_Socket;
 
 #endif
 
@@ -1637,7 +1638,7 @@ class WorldSession
         bool _filterAddonMessages;
         uint32 recruiterId;
         bool isRecruiter;
-        ACE_Based::LockedQueue<WorldPacket*, ACE_Thread_Mutex> _recvQueue;
+        LockedQueue<WorldPacket*> _recvQueue;
         time_t timeLastWhoCommand;
         time_t timeCharEnumOpcode;
         time_t m_TimeLastChannelInviteCommand;

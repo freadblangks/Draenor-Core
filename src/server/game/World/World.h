@@ -15,10 +15,8 @@
 
 #include "Common.h"
 #include "Timer.h"
-#include <ace/Atomic_Op.h>
 #include "SharedDefines.h"
 #include "QueryResult.h"
-#include <ace/Null_Mutex.h>
 #include "Callback.h"
 #include "TimeDiffMgr.h"
 #include "DatabaseWorkerPool.h"
@@ -28,6 +26,9 @@
 #endif
 
 #include <atomic>
+#include <mutex>
+#include <future>
+#include <vector>
 
 class Object;
 class WorldPacket;
@@ -687,7 +688,7 @@ struct QueryHolderCallback
 {
     QueryHolderCallback(QueryResultHolderFuture p_QueryResultHolderFuture, std::function<void(SQLQueryHolder*)> p_Callback)
     {
-        m_QueryResultHolderFuture = p_QueryResultHolderFuture;
+        m_QueryResultHolderFuture = std::move(p_QueryResultHolderFuture);
         m_Callback = p_Callback;
     }
 
@@ -711,7 +712,7 @@ struct MotdText
 class World
 {
     public:
-        static ACE_Atomic_Op<ACE_Thread_Mutex, uint32> m_worldLoopCounter;
+        static std::atomic_uint32_t m_worldLoopCounter;
 
         World();
         ~World();
@@ -1033,17 +1034,17 @@ class World
             m_TransactionCallbackLock.unlock();
         }
 
-        void AddPrepareStatementCallback(std::pair<std::function<void(PreparedQueryResult)>, PreparedQueryResultFuture> p_Callback)
+        void AddPrepareStatementCallback(std::pair<std::function<void(PreparedQueryResult)>, PreparedQueryResultFuture>&& p_Callback)
         {
             m_PreparedStatementCallbackLock.lock();
-            m_PreparedStatementCallbacksBuffer->push_front(p_Callback);
+            m_PreparedStatementCallbacksBuffer->push_front(std::move(p_Callback));
             m_PreparedStatementCallbackLock.unlock();
         }
 
-        void AddQueryHolderCallback(QueryHolderCallback p_QueryHolderCallback)
+        void AddQueryHolderCallback(QueryHolderCallback&& p_QueryHolderCallback)
         {
             m_QueryHolderCallbackLock.lock();
-            m_QueryHolderCallbacksBuffer->push_front(p_QueryHolderCallback);
+            m_QueryHolderCallbacksBuffer->push_front(std::move(p_QueryHolderCallback));
             m_QueryHolderCallbackLock.unlock();
         }
 
@@ -1127,12 +1128,12 @@ class World
 
         // sessions that are added async
         void AddSession_(WorldSession* s);
-        ACE_Based::LockedQueue<WorldSession*, ACE_Thread_Mutex> addSessQueue;
+        LockedQueue<WorldSession*> addSessQueue;
 #endif
 
 #ifdef CROSS
         PlayerMap m_players;
-        ACE_Thread_Mutex playersLock;
+        std::mutex playersLock;
         uint32 m_update_online_timer;
         std::map<std::string, bool> nameMap;
 #endif
@@ -1146,7 +1147,7 @@ class World
         uint32 m_LastAccountLogId;
         PreparedQueryResultFuture m_AccountLogIpScanCallback;
 
-        ACE_Based::LockedQueue<CliCommandHolder*, ACE_Thread_Mutex> cliCmdQueue;
+        LockedQueue<CliCommandHolder*> cliCmdQueue;
 
         std::string m_newCharString;
         std::string m_realmName;
@@ -1195,7 +1196,7 @@ class World
 
 
         void ProcessQueryCallbacks();
-        ACE_Future_Set<PreparedQueryResult> m_realmCharCallbacks;
+        std::deque<std::future<PreparedQueryResult>> m_realmCharCallbacks;
         PreparedQueryResultFuture m_transfersDumpCallbacks;
         PreparedQueryResultFuture m_transfersLoadCallbacks;
         PreparedQueryResultFuture m_transfersExpLoadCallback;
@@ -1226,11 +1227,14 @@ class World
         std::unique_ptr<PreparedStatementCallbacks> m_PreparedStatementCallbacks;
         std::unique_ptr<PreparedStatementCallbacks> m_PreparedStatementCallbacksBuffer;
         std::mutex m_PreparedStatementCallbackLock;
+    public:
+        // Singleton instance
+        static World* instance();
 };
 
 extern uint32 g_RealmID;
 
-#define sWorld ACE_Singleton<World, ACE_Null_Mutex>::instance()
+#define sWorld World::instance()
 
 template <typename T>
 PreparedQueryResultFuture AsyncQuery(T& on, PreparedStatement* stmt, std::function<void(PreparedQueryResult)> p_Callback)

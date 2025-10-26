@@ -13,9 +13,11 @@
 
 # CMake policies (can not be handled elsewhere)
 
-project(DraenorCore)
-
+# Called prior to project
 cmake_minimum_required(VERSION 3.20.4)
+
+# CMake project name
+project(DraenorCore)
  
 # CMake policies (can not be handled elsewhere)
 cmake_policy(SET CMP0005 NEW)
@@ -69,15 +71,15 @@ if( NOPCH )
   set(USE_SCRIPTPCH 0)
 endif()
 
-include(ConfigureBaseTargets)
 include(CheckPlatform)
 
 include(GroupSources)
 
 # basic packagesearching and setup (further support will be needed, this is a preliminary release!)
 find_package(PCHSupport)
-find_package(ACE REQUIRED)
 find_package(OpenSSL REQUIRED)
+find_package(curl REQUIRED)
+find_package(EasyJSon REQUIRED)
 # FIND_PACKAGE(msFramework REQUIRED)
 find_package(MySQL REQUIRED)
 
@@ -91,10 +93,7 @@ if( NOT DISABLEGITCHECK )
   find_package(Git)
 endif()
 
-set(Boost_USE_STATIC_LIBS ON)
-find_package(Boost COMPONENTS system locale filesystem thread regex serialization
-    REQUIRED
-)
+# Boost will be handled by dep/boost/CMakeLists.txt
 
 # Find revision ID and hash of the sourcetree
 include(cmake/genrev.cmake)

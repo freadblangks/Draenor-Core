@@ -42,9 +42,9 @@
 
 // for template
 #include "SpellMgr.h"
-#include <ace/Stack_Trace.h>
 #include <chrono>
 #include <deque>
+#include <map>
 
 struct Mail;
 struct ItemExtendedCostEntry;
@@ -240,9 +240,9 @@ struct PlayerCurrency
 };
 
 typedef std::map<uint32, PlayerTalent*> PlayerTalentMap;
-typedef ACE_Based::LockedMap<uint32, PlayerSpell*> PlayerSpellMap;
+typedef std::map<uint32, PlayerSpell*> PlayerSpellMap;
 typedef std::list<SpellModifier*> SpellModList;
-typedef ACE_Based::LockedMap<uint32, PlayerCurrency> PlayerCurrenciesMap;
+typedef std::map<uint32, PlayerCurrency> PlayerCurrenciesMap;
 
 typedef std::list<uint64> WhisperListContainer;
 
@@ -253,7 +253,7 @@ struct SpellCooldown
 };
 
 typedef std::map<uint32, SpellCooldown> SpellCooldowns;
-typedef ACE_Based::LockedMap<uint32 /*instanceId*/, time_t/*releaseTime*/> InstanceTimeMap;
+typedef std::map<uint32 /*instanceId*/, time_t/*releaseTime*/> InstanceTimeMap;
 
 enum class LootLockoutType
 {
@@ -766,7 +766,7 @@ struct SkillStatusData
     SkillUpdateState uState;
 };
 
-typedef ACE_Based::LockedMap<uint32, SkillStatusData> SkillStatusMap;
+typedef std::map<uint32, SkillStatusData> SkillStatusMap;
 
 class Quest;
 class Spell;
@@ -2395,7 +2395,7 @@ class Player : public Unit, public GridObject<Player>
         {
             SpellCooldowns::const_iterator itr = m_spellCooldowns.find(spell_id);
             uint64 currTime = 0;
-            ACE_OS::gettimeofday().msec(currTime);
+            currTime = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now().time_since_epoch()).count();
             return uint32(itr != m_spellCooldowns.end() && itr->second.end > currTime ? itr->second.end - currTime : 0);
         }
         void AddSpellAndCategoryCooldowns(SpellInfo const* spellInfo, uint32 itemId, Spell* spell = NULL, bool infinityCooldown = false);
@@ -2581,8 +2581,8 @@ class Player : public Unit, public GridObject<Player>
 
             if (p_Value > 3500)
             {
-                ACE_Stack_Trace trace;
-                TC_LOG_ERROR("server.worldserver", "Suspiciously high personal rating. Rating: %u, Slot: %u, Player: %u, Trace log: %s", p_Value, p_Slot, GUID_LOPART(GetGUID()), trace.c_str());
+                // Stack trace removed - ACE dependency
+                TC_LOG_ERROR("server.worldserver", "Suspiciously high personal rating. Rating: %u, Slot: %u, Player: %u", p_Value, p_Slot, GUID_LOPART(GetGUID()));
             }
 
             UpdateAchievementCriteria(ACHIEVEMENT_CRITERIA_TYPE_HIGHEST_PERSONAL_RATING, p_Value, Arena::GetTypeBySlot(p_Slot));
@@ -2601,8 +2601,8 @@ class Player : public Unit, public GridObject<Player>
 
             if (value > 3500)
             {
-                ACE_Stack_Trace trace;
-                TC_LOG_ERROR("server.worldserver", "Suspiciously high match maker rating. Rating: %u, Slot: %u, Player: %u, Trace log: %s", value, slot, GUID_LOPART(GetGUID()), trace.c_str());
+                // Stack trace removed - ACE dependency
+                TC_LOG_ERROR("server.worldserver", "Suspiciously high match maker rating. Rating: %u, Slot: %u, Player: %u", value, slot, GUID_LOPART(GetGUID()));
             }
 
             m_ArenaMatchMakerRating[slot] = value;
@@ -3747,9 +3747,8 @@ class Player : public Unit, public GridObject<Player>
 
         void AddCriticalOperation(std::function<bool()> const&& p_Function)
         {
-            m_CriticalOperationLock.acquire();
+            std::lock_guard<std::mutex> lock(m_CriticalOperationLock);
             m_CriticalOperation.push(std::function<bool()>(p_Function));
-            m_CriticalOperationLock.release();
         }
 
         static void HandleFactionChangeActions(char const* p_KnownTitle, uint64 p_PlayerGUID, uint8 p_Race, bool p_AtFactionChange);
@@ -4232,7 +4231,7 @@ class Player : public Unit, public GridObject<Player>
         DailyQuestList m_dailyQuestStorage;
 
         std::queue<std::function<bool()>> m_CriticalOperation;
-        ACE_Thread_Mutex m_CriticalOperationLock;
+        std::mutex m_CriticalOperationLock;
 
         uint64 m_BeaconOfFaithTargetGUID;
 

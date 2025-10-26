@@ -10,6 +10,8 @@
     \ingroup world
 */
 
+#include <atomic>
+
 // Ugly hack allowing to use a version of libcurl built by VS2013
 #if defined(_MSC_VER) && _MSC_VER >= 1900
 #pragma comment(lib, "legacy_stdio_definitions.lib")
@@ -101,7 +103,7 @@ uint32 gOnlineGameMaster = 0;
 
 std::atomic<bool> World::m_stopEvent(false);
 uint8 World::m_ExitCode = SHUTDOWN_EXIT_CODE;
-ACE_Atomic_Op<ACE_Thread_Mutex, uint32> World::m_worldLoopCounter = 0;
+std::atomic_uint32_t World::m_worldLoopCounter = 0;
 
 float World::m_MaxVisibleDistanceOnContinents = DEFAULT_VISIBILITY_DISTANCE;
 float World::m_MaxVisibleDistanceInInstances  = DEFAULT_VISIBILITY_INSTANCE;
@@ -3442,7 +3444,7 @@ void World::UpdateSessions(uint32 diff)
         }
     }
 
-    playersLock.release();
+    playersLock.unlock();
 #else
     ///- Add new sessions
     WorldSession* sess = NULL;
@@ -3586,7 +3588,7 @@ void World::UpdateRealmCharCount(uint32 accountId)
     PreparedStatement* stmt = CharacterDatabase.GetPreparedStatement(CHAR_SEL_CHARACTER_COUNT);
     stmt->setUInt32(0, accountId);
     PreparedQueryResultFuture result = CharacterDatabase.AsyncQuery(stmt);
-    m_realmCharCallbacks.insert(result);
+    m_realmCharCallbacks.push_back(std::move(result));
 #endif
 }
 
@@ -4098,19 +4100,17 @@ void World::ProcessQueryCallbacks()
 {
     PreparedQueryResult result;
 
-    while (!m_realmCharCallbacks.is_empty())
+    for (std::deque<std::future<PreparedQueryResult>>::iterator itr = m_realmCharCallbacks.begin(); itr != m_realmCharCallbacks.end(); )
     {
-        ACE_Future<PreparedQueryResult> lResult;
-        ACE_Time_Value timeout = ACE_Time_Value::zero;
-        if (m_realmCharCallbacks.next_readable(lResult, &timeout) != 1)
-            break;
-
-        if (lResult.ready())
+        if ((*itr).wait_for(std::chrono::seconds(0)) != std::future_status::ready)
         {
-            lResult.get(result);
-            _UpdateRealmCharCount(result);
-            lResult.cancel();
+            ++itr;
+            continue;
         }
+
+        result = (*itr).get();
+        _UpdateRealmCharCount(result);
+        itr = m_realmCharCallbacks.erase(itr);
     }
 
     /// - Update querys holders callbacks
@@ -4238,7 +4238,7 @@ void World::AddPlayer(Player* player)
 
     m_players[player->GetGUID()] = player;
 
-    playersLock.release();
+    playersLock.unlock();
 }
 
 bool World::HasPlayer(uint64 guid) const
@@ -4279,7 +4279,7 @@ void World::UpdateInterRealmStat()
         }
     }
 
-    playersLock.release();
+    playersLock.unlock();
 
     uint32 uptimeDiff = uint32(m_gameTime - m_startTime);
 
@@ -4562,7 +4562,7 @@ void World::_updateTransfers()
                 }
 
                 //if (l_Error != DUMP_TOO_MANY_CHARS)
-                //    sLog->outSlack("#jarvis", "danger", true, "Inter Exp Transfer to realm [%u] on account [%u] failed. ErrorCode [%u]", g_RealmID, l_AccountID, l_Error);
+                //    TC_LOG_ERROR("server.world", "Inter Exp Transfer to realm [%u] on account [%u] failed. ErrorCode [%u]", g_RealmID, l_AccountID, l_Error);
 
                 LoginDatabase.PQuery("UPDATE webshop_delivery_interexp_transfer SET error = %u, nb_attempt = nb_attempt + 1 WHERE id = %u", (uint32)l_Error, l_Transaction);
             }
@@ -4656,4 +4656,12 @@ void World::SendRaidQueueInfo(Player* player)
             if (Player* plr = itr.second->GetPlayer())
                 sendInfo(plr);
     }
+}
+
+// Global World instance
+World* sWorldInstance = nullptr;
+
+World* World::instance()
+{
+    return sWorldInstance;
 }

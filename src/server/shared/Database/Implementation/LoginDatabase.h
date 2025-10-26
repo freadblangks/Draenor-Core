@@ -116,6 +116,8 @@ enum LoginDatabaseStatements
     LOGIN_SEL_PETBATTLE_ACCOUNT,
     LOGIN_REP_PETBATTLE,
     LOGIN_INS_PETBATTLE,
+    LOGIN_DEL_BATTLE_PET,
+    LOGIN_DEL_BATTLE_PET_CHEAT,
 
     //////////////////////////////////////////////////////////////////////////
     /// Transfers
@@ -167,7 +169,7 @@ public:
 
     //- Constructors for sync and async connections
     LoginDatabaseConnection(MySQLConnectionInfo& connInfo) : MySQLConnection(connInfo) {}
-    LoginDatabaseConnection(ACE_Activation_Queue* q, MySQLConnectionInfo& connInfo) : MySQLConnection(q, connInfo) {}
+    LoginDatabaseConnection(ProducerConsumerQueue<SQLOperation*>* q, MySQLConnectionInfo& connInfo) : MySQLConnection(q, connInfo) {}
 
     //- Loads database type specific prepared statements
     void DoPrepareStatements() override;

@@ -17,9 +17,9 @@
 
 #include <OpenSSLCrypto.h>
 #include <openssl/crypto.h>
-#include <ace/Thread_Mutex.h>
+#include <mutex>
 #include <vector>
-#include <ace/Thread.h>
+#include <thread>
 #if OPENSSL_VERSION_NUMBER >= 0x30000000L
 #include <openssl/provider.h>
 OSSL_PROVIDER* LegacyProvider;
@@ -27,7 +27,7 @@ OSSL_PROVIDER* DefaultProvider;
 #endif
 
 
-void OpenSSLCrypto::threadsSetup([[maybe_unused]] boost::filesystem::path const& providerModulePath)
+void OpenSSLCrypto::threadsSetup(boost::filesystem::path const& /*providerModulePath*/)
 {
 #if OPENSSL_VERSION_NUMBER >= 0x30000000L
 #if PLATFORM == PLATFORM_WINDOWS
